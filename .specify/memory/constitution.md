@@ -1,12 +1,25 @@
 <!--
 Sync Impact Report
 ==================
-Version change: (scaffold sin versionar) → 1.0.0
-Bump rationale: Ratificación inicial de la constitución; primer documento
-normativo del proyecto que reemplaza todos los placeholders del scaffold.
-Principios modificados: Ninguno (no existía constitución previa).
-Secciones añadidas: Core Principles (12), Technical Constraints,
-Security, Observability & Data Integrity, Governance.
+Version change: 1.0.0 → 1.1.0
+Bump rationale: MINOR. Se agrega un principio nuevo y se expande
+materialmente otro; no se remueve ni se redefine ningún principio previo. La
+renumeración en romanos es consecuencia de la inserción.
+Principios añadidos: IV. DTOs en el borde.
+Principios modificados: VIII. Observabilidad (ex VII) — se fija zerolog como
+única librería de logging, el formato JSON y los campos mínimos obligatorios,
+el ciclo del correlation ID, los eventos de registro obligatorio y qué no se
+registra. Se elimina la expresión "logs de análisis", que se leía como una
+traza del análisis de negocio y no como lo que pide el TP: logs estructurados
+que faciliten el análisis de los propios logs.
+V. Frontend React + TypeScript (ex IV) — los tipos TypeScript del módulo de
+abstracción HTTP espejan los DTOs de la API, no el modelo de dominio.
+IX. Auditoría transaccional (ex VIII) — el registro es inmutable: las filas se
+agregan y nunca se modifican ni se borran.
+XIII. Testing (ex XII) — se explicita qué se testea y qué se mockea en cada
+capa, los casos obligatorios por caso de uso y las técnicas de diseño de
+casos; los escenarios de prueba del enunciado pasan a ser tests e2e.
+Principios renumerados sin cambio de contenido: VI a XII (ex V a XI).
 Secciones eliminadas: Ninguna.
 TODOs pendientes: Ninguno.
 -->
@@ -40,66 +53,109 @@ separado en capas:
 - model (dominio): contiene la lógica del negocio.
 - adapters: integración con servicios externos.
 
-### IV. Frontend React + TypeScript
+### IV. DTOs en el borde
+
+Los tipos que cruzan el borde HTTP son DTOs y nunca son el modelo de dominio,
+aunque los campos coincidan. El modelo de dominio no lleva tags de
+serialización. Request y respuesta son DTOs distintos, y un mismo modelo puede
+tener varios DTOs según el contexto en que se lo devuelve.
+
+La conversión es explícita y vive en el DTO: `DesdeModelo` construye el DTO a
+partir del modelo y `AModelo` hace el camino inverso. `AModelo` recibe por
+parámetro los colaboradores ya resueltos, de modo que el DTO nunca consulta la
+persistencia. No se arman conversiones a mano en el controller.
+
+### V. Frontend React + TypeScript
 
 El frontend se implementa en React con TypeScript y se comunica con el backend
 por HTTP/REST usando axios como único cliente HTTP. Toda comunicación pasa por
 un módulo de abstracción: los métodos HTTP se representan como funciones
 privadas y se exporta una función por cada endpoint consumido, desacoplando la
-comunicación del cliente HTTP. El proyecto se organiza por páginas y
-componentes; los estilos se manejan con archivos CSS por página/componente,
-usando clases y siguiendo el arquetipo BEM.
+comunicación del cliente HTTP. Los tipos TypeScript de ese módulo espejan los
+DTOs de la API, no el modelo de dominio del backend. El proyecto se organiza
+por páginas y componentes; los estilos se manejan con archivos CSS por
+página/componente, usando clases y siguiendo el arquetipo BEM.
 
-### V. API REST documentada con OpenAPI
+### VI. API REST documentada con OpenAPI
 
 La API REST se documenta con el estándar OpenAPI. La especificación es un
 artefacto obligatorio y debe mantenerse sincronizada con la implementación en
 cada cambio de endpoints.
 
-### VI. Seguridad: autenticación y autorización JWT
+### VII. Seguridad: autenticación y autorización JWT
 
 La autenticación y autorización se implementan con JWT, diferenciando los
 privilegios entre usuario común y superusuario al gestionar el acceso a los
 recursos. Todas las entradas de datos deben validarse; las entradas inválidas
 se rechazan sin ejecutar lógica de negocio.
 
-### VII. Observabilidad
+### VIII. Observabilidad
 
-Toda operación relevante emite logs estructurados de análisis y propaga un
-correlation ID para trazabilidad de principio a fin. El sistema expone un
-health check y métricas de latencia y tasa de error para monitoreo continuo.
+Los logs se emiten con zerolog como única librería de logging, son
+estructurados en JSON, un evento por línea, y todo evento incluye como mínimo
+timestamp, nivel, correlation ID, operación y, en las operaciones
+autenticadas, el actor. Los nombres de los campos son comunes a todo el
+sistema: un log que no se puede filtrar no facilita ningún análisis.
 
-### VIII. Auditoría transaccional
+El correlation ID se genera en el borde HTTP cuando el cliente no lo provee,
+viaja por el `context` y aparece en todos los eventos de la operación,
+incluidos los de los adapters, de modo que filtrar por un ID muestre la
+solicitud completa de principio a fin.
+
+Se registran obligatoriamente cada request con su latencia y su status, todo
+error con su causa, y toda llamada a un servicio externo con su resultado y su
+duración. No se registran credenciales, tokens ni datos personales. El sistema
+expone un health check y métricas de latencia y tasa de error.
+
+### IX. Auditoría transaccional
 
 Se mantiene un registro de auditoría de las transacciones que incluye autor,
 timestamp, cambios realizados y la diferencia entre el estado anterior y el
-posterior. Todo cambio de estado relevante debe quedar auditado.
+posterior. El registro es inmutable: las filas se agregan y nunca se
+modifican ni se borran. Todo cambio de estado relevante debe quedar auditado.
 
-### IX. Integridad de datos
+### X. Integridad de datos
 
 Todas las operaciones de base de datos son transaccionales por defecto; omitir
 una transacción solo se permite cuando se indica y justifica explícitamente.
 El esquema se optimiza con indexación sobre las claves de búsqueda y consultas
 frecuentes.
 
-### X. Resiliencia: caché y scheduler
+### XI. Resiliencia: caché y scheduler
 
 Se implementa una caché para consultas frecuentes hacia la API externa, con
 funcionamiento local ante indisponibilidad de la misma, mitigando fallas y
 latencia. Un scheduler ejecuta procesos batch automáticos para la
 actualización de datos de jugadores y la revalorización.
 
-### XI. Backoffice de administración
+### XII. Backoffice de administración
 
 Existe un backoffice desde el cual se disparan trabajos automatizados y se
 modifican las reglas de evaluación de la aplicación. El acceso al backoffice
 es exclusivo de superusuarios.
 
-### XII. Testing
+### XIII. Testing
 
-Toda feature incluye test unitarios, de integración y e2e. Los tests que
-requieren base de datos usan testcontainers para no alterar la base de datos
-real.
+Toda feature incluye tests unitarios, de integración y e2e, y cada capa define
+qué se mockea:
+
+- model (dominio): sin base de datos ni red; las estrategias de valuación se
+  testean como funciones que reciben métricas y devuelven un score.
+- service: con el repository y los adapters mockeados.
+- repository: contra una base real levantada con testcontainers, para no
+  alterar la base de datos real.
+- adapters: contra respuestas guardadas; ningún test consulta el sitio o la
+  API externa.
+- controller: contra el contrato OpenAPI, incluidos los códigos de error.
+
+Cada caso de uso se cubre con su camino feliz, sus casos negativos y sus casos
+borde. Los casos no se eligen por intuición: se usan clases de equivalencia,
+un caso por clase de entrada; valores límite, probando el valor anterior, el
+exacto y el posterior en todo umbral; y tabla de decisión cuando una regla
+combina dos o más condiciones.
+
+Los escenarios de prueba exigidos por el enunciado se implementan como tests
+e2e, no como una demostración manual.
 
 ## Technical Constraints
 
@@ -136,4 +192,4 @@ práctica o implementación que la contradiga debe corregirse.
 - Cumplimiento: toda PR o revisión verifica la conformidad con esta
   constitución; la complejidad adicional debe justificarse.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-05 | **Last Amended**: 2026-09-05
+**Version**: 1.1.0 | **Ratified**: 2026-09-05 | **Last Amended**: 2026-09-06
