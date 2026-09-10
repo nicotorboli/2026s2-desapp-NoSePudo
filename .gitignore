@@ -2,3 +2,5 @@
 .claude/
 .env.*
 .env
+.agents/
+.specify/integrations
