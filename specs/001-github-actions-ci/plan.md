@@ -8,7 +8,7 @@
 
 Implement a unified GitHub Actions CI pipeline (`.github/workflows/ci.yml`) triggering on pushes to `main` and `dev` and pull requests targeting those branches. The pipeline executes two parallel, isolated quality gate jobs:
 1. `backend`: Resolves Go 1.26 from `backend/go.mod`, configures module caching, installs `golangci-lint`, executes a repository-managed precommit hook script (`scripts/pre-commit.sh` / `scripts/pre-commit.ps1` enforcing `gofmt`, `go vet`, and `golangci-lint`), and executes unit and integration tests (`go test -v -race ./...` utilizing testcontainers against Dockerized PostgreSQL).
-2. `frontend`: Detects whether `frontend/package.json` exists; if unscaffolded, cleanly skips with an informational notice (exit code 0); if scaffolded, executes `npm ci` with caching, TypeScript compilation check (`tsc --noEmit`), ESLint linting (`eslint .`), and dead-code static analysis (`knip`).
+2. `frontend`: Configures Node.js 22 LTS with npm dependency caching, runs `npm ci`, and executes TypeScript compilation check (`tsc --noEmit`), ESLint linting (`eslint .`), and dead-code static analysis (`knip`).
 
 The workflow incorporates workflow-level concurrency cancellation (`cancel-in-progress: true`) and provides repository-managed git hooks in `.githooks/pre-commit` so that local development gates and remote CI verification remain 100% identical.
 
@@ -28,7 +28,7 @@ The workflow incorporates workflow-level concurrency cancellation (`cancel-in-pr
 
 **Performance Goals**: Pull request feedback within 10 minutes (SC-002); dependency caching achieves ≥40% duration reduction on subsequent runs (SC-005)
 
-**Constraints**: Backend restricted to Go standard library for HTTP and DB access; Go version derived dynamically from `backend/go.mod` (no hardcoding); Precommit hook script runs identically locally and in CI; Frontend job skips cleanly (exit 0) when unscaffolded
+**Constraints**: Backend restricted to Go standard library for HTTP and DB access; Go version derived dynamically from `backend/go.mod` (no hardcoding); Precommit hook script runs identically locally and in CI; Frontend job executes standard quality gates (typecheck, lint, dead code analysis)
 
 **Scale/Scope**: Unified CI workflow orchestrating parallel quality gate jobs (`backend`, `frontend`) for a single repository and team
 
@@ -62,7 +62,7 @@ specs/001-github-actions-ci/
 ├── contracts/                  # Phase 1 output: formal interface contracts
 │   ├── ci-workflow.md          # Contract for .github/workflows/ci.yml
 │   ├── precommit-hook.md       # Contract for scripts/pre-commit.sh & pre-commit.ps1
-│   └── frontend-quality-gate.md# Contract for frontend scripts & scaffold guard
+│   └── frontend-quality-gate.md# Contract for frontend quality gate scripts & checks
 └── checklists/
     └── requirements.md         # Specification quality checklist
 ```
@@ -86,13 +86,14 @@ backend/
 └── .golangci.yml               # golangci-lint static analysis configuration
 
 frontend/
-└── .gitkeep                    # Unscaffolded frontend placeholder
+├── package.json                # Frontend package configuration & scripts
+└── src/                        # React + TypeScript application source
 ```
 
 **Structure Decision**: 
 A single workflow definition `.github/workflows/ci.yml` contains two parallel jobs (`backend` and `frontend`).
 - The `backend` job installs `golangci-lint`, executes the version-controlled `./scripts/pre-commit.sh`, and runs all unit and integration tests (`go test -v -race ./...`).
-- The `frontend` job verifies whether `frontend/package.json` exists, exiting cleanly (exit code 0) if unscaffolded, or running `npm ci`, `tsc --noEmit`, `eslint .`, and `knip` once scaffolded.
+- The `frontend` job sets up Node.js 22 LTS with npm caching, runs `npm ci`, and executes `tsc --noEmit`, `eslint .`, and `knip`.
 - The precommit script lives at `scripts/pre-commit.sh` and is mirrored for PowerShell at `scripts/pre-commit.ps1`. Developers can activate local git pre-commit checks via `git config core.hooksPath .githooks`.
 
 ## Pipeline Design
@@ -108,7 +109,7 @@ A single workflow definition `.github/workflows/ci.yml` contains two parallel jo
 | Job ID | Job Name | Runner | Working Dir | Key Steps | Fail Conditions |
 |---|---|---|---|---|---|
 | `backend` | `Backend Verification & Tests` | `ubuntu-latest` | `backend` | checkout, setup-go (`go-version-file: backend/go.mod`), setup-golangci-lint, run `./scripts/pre-commit.sh`, `go test -v -race ./...`, `go build -v ./...` | Misformatted code; vet warning; linter violation; test failure; compile error |
-| `frontend` | `Frontend Verification` | `ubuntu-latest` | `frontend` | checkout, scaffold guard check, setup-node (`node-version: 22`), `npm ci`, `tsc --noEmit`, `eslint .`, `npx knip` | Skipped cleanly if `frontend/package.json` absent; otherwise fails on type, lint, or dead-code violation |
+| `frontend` | `Frontend Verification` | `ubuntu-latest` | `frontend` | checkout, setup-node (`node-version: 22` with npm cache), `npm ci`, `tsc --noEmit`, `eslint .`, `npx knip` | Fails on type error, lint violation, or dead-code issue |
 
 ### 2. Precommit Hook Script (`scripts/pre-commit.sh` & `scripts/pre-commit.ps1`)
 
@@ -117,11 +118,13 @@ The precommit script enforces quality gates both locally and in CI:
 2. **Standard Static Analysis**: `go vet ./...` inside `backend/`. Fails if compiler static analysis detects defects.
 3. **Advanced Static Analysis**: `golangci-lint run ./...` inside `backend/` using `backend/.golangci.yml`. Fails on any enabled linter violation. In CI (`CI=true`), `golangci-lint` must be present. Locally, if not installed, a warning is emitted.
 
-### 3. Frontend Scaffold Guard
+### 3. Frontend Quality Gate Suite
 
-In the `frontend` job, the initial step inspects `frontend/package.json`:
-- If missing: Emits `Frontend is not yet scaffolded; skipping checks.`, sets step output `scaffolded=false`, and bypasses subsequent steps. The job concludes with `success` (green checkmark).
-- If present: Sets `scaffolded=true`, triggering Node.js setup, package installation, type checking, linting, and dead-code detection.
+The `frontend` job executes quality gates against `frontend/`:
+1. **Dependencies**: `npm ci` utilizing npm cache path `frontend/package-lock.json`.
+2. **Type Checking**: `npm run typecheck` (`tsc --noEmit`) to verify static types without emitting JavaScript.
+3. **Linting**: `npm run lint` (`eslint .`) enforcing React and TypeScript linting standards.
+4. **Dead Code Detection**: `npx knip` verifying that no unused files, exports, or dependencies remain.
 
 ## Post-Design Constitution Check
 
@@ -131,7 +134,7 @@ In the `frontend` job, the initial step inspects `frontend/package.json`:
 | II. Persistencia en PostgreSQL | PASS | CI runner provides native Docker daemon for testcontainers PostgreSQL testing. |
 | III. Arquitectura en capas | PASS | Tests and linters execute over all internal packages (`./...`). |
 | IV. DTOs en el borde | PASS | Unit/integration tests and static analysis linters validate boundary types. |
-| V. Frontend React + TypeScript | PASS | Quality gates (`tsc`, `eslint`, `knip`) enforce React+TS standards once scaffolded. |
+| V. Frontend React + TypeScript | PASS | Quality gates (`tsc`, `eslint`, `knip`) enforce React+TS standards. |
 | VI. API REST documentada con OpenAPI | PASS | Ready to enforce contract validation tests once OpenAPI specs are merged. |
 | VII. Seguridad JWT | PASS | No secret leaks; static analysis includes `gosec` security linter. |
 | VIII. Observabilidad | PASS | Step-level clarity, isolated PR check status, and `noctx` linter enforce context propagation. |

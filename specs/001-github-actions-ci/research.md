@@ -11,7 +11,7 @@
 ### Decision
 Implement a single unified GitHub Actions workflow file `.github/workflows/ci.yml` named `CI Pipeline` that triggers on all `push` and `pull_request` events targeting `main` and `dev`. The workflow orchestrates two isolated, parallel jobs:
 1. `backend`: Runs Go setup, executes the repository-managed precommit hook script (code formatting via `gofmt` and static analysis via `go vet` and `golangci-lint`), and executes unit and integration tests (`go test -v -race ./...`).
-2. `frontend`: Checks if the frontend application is scaffolded; if not, skips gracefully with an informational notice; if scaffolded, runs dependency installation (`npm ci`), TypeScript type checking (`npm run typecheck`), linting (`npm run lint`), and dead-code static analysis (`npx knip`).
+2. `frontend`: Sets up Node.js 22 LTS with npm dependency caching, runs `npm ci`, and executes TypeScript compilation check (`npm run typecheck`), ESLint linting (`npm run lint`), and dead-code static analysis (`npx knip`).
 
 ### Rationale
 - **Direct Alignment with Requirements**: The user requested "a github actions CI pipeline that runs over the pull requests and push actions to the main and dev branches. I need a job that runs the backend tests and a precommit hook script that runs formatting and static analysis; and another one that runs the frontend linting with type checking and static analysis." A single workflow containing two parallel jobs matches the specification verbatim.
@@ -88,10 +88,10 @@ Execute unit and integration tests inside the `backend` job with `go test -v -ra
 
 ### Decision
 - **Backend Caching**: Configure `actions/setup-go@v5` with `cache: true` and `cache-dependency-path: 'backend/go.sum'`. If `backend/go.sum` is not yet present, the step falls back gracefully to uncached execution until external dependencies are committed.
-- **Frontend Caching**: Configure `actions/setup-node@v4` with `cache: 'npm'` and `cache-dependency-path: 'frontend/package-lock.json'` inside the conditional scaffold block.
+- **Frontend Caching**: Configure `actions/setup-node@v4` with `cache: 'npm'` and `cache-dependency-path: 'frontend/package-lock.json'`.
 
 ### Rationale
-- **Performance Optimization (FR-010, SC-005)**: Reusing module caches cuts subsequent pipeline durations by >40%, meeting the fast feedback objective.
+- **Performance Optimization (FR-009, SC-005)**: Reusing module caches cuts subsequent pipeline durations by >40%, meeting the fast feedback objective.
 - **Zero Configuration Overhead**: Native caching in official actions (`setup-go`, `setup-node`) handles cache keys, lockfile hashing, and fallback invalidation automatically.
 
 ### Alternatives Considered
@@ -99,31 +99,7 @@ Execute unit and integration tests inside the `backend` job with `go test -v -ra
 
 ---
 
-## 6. Unscaffolded Frontend Handling
-
-### Decision
-The `frontend` job executes an initial step `Check scaffold state` that checks for `frontend/package.json`:
-```bash
-if [ ! -f "frontend/package.json" ]; then
-  echo "Frontend is not yet scaffolded (frontend/package.json not found)."
-  echo "Skipping frontend verification cleanly."
-  echo "scaffolded=false" >> $GITHUB_OUTPUT
-else
-  echo "scaffolded=true" >> $GITHUB_OUTPUT
-fi
-```
-Subsequent steps in the `frontend` job (Node setup, `npm ci`, typecheck, lint, knip) are conditioned on `if: steps.check-scaffold.outputs.scaffolded == 'true'`.
-
-### Rationale
-- **Graceful Skip & Green Verdict (FR-008, Edge Case)**: When `frontend/` contains only `.gitkeep`, the job skips cleanly, emits an informative log, and finishes with status `success` (exit code 0).
-- **Merge Block Prevention**: If GitHub branch protection requires the `Frontend Verification` check to pass, an exit code of 0 registers a green passing check rather than failing or hanging the PR.
-
-### Alternatives Considered
-- *Job-level `if: hashFiles('frontend/package.json') != ''`*: GitHub Actions marks skipped jobs as "Skipped". Some branch protection configurations treat "Skipped" as pending or failing. A step-level condition that finishes with `success` guarantees compatibility.
-
----
-
-## 7. Pipeline Concurrency & Outdated Run Cancellation
+## 6. Pipeline Concurrency & Outdated Run Cancellation
 
 ### Decision
 Define workflow-level concurrency in `.github/workflows/ci.yml`:
@@ -134,7 +110,7 @@ concurrency:
 ```
 
 ### Rationale
-- **Fast Feedback & Resource Efficiency (FR-009, SC-001)**: When a developer pushes a new commit to an open pull request, any running execution for that branch is immediately cancelled, freeing GitHub runner capacity and ensuring developers only wait on feedback for the latest code.
+- **Fast Feedback & Resource Efficiency (FR-008, SC-001)**: When a developer pushes a new commit to an open pull request, any running execution for that branch is immediately cancelled, freeing GitHub runner capacity and ensuring developers only wait on feedback for the latest code.
 - **Branch Scoping**: Using `${{ github.ref }}` ensures that pushes to separate branches or PRs do not cancel each other.
 
 ### Alternatives Considered

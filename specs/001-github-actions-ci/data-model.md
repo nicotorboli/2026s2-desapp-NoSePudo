@@ -53,7 +53,6 @@ classDiagram
     }
 
     class FrontendJob {
-        +Boolean isScaffolded
         +TypecheckExecution typecheckResult
         +LintExecution lintResult
         +DeadCodeExecution deadCodeResult
@@ -131,18 +130,13 @@ Represents the `frontend` quality gate job inside the workflow.
   - `jobId`: `"frontend"`.
   - `jobName`: `"Frontend Verification"`.
   - `runner`: `"ubuntu-latest"`.
-  - `scaffoldGuard`:
-    - Checks `frontend/package.json`.
-    - If missing: Sets `scaffolded=false`, skips remaining steps, finishes with status `success` (exit 0).
-    - If present: Sets `scaffolded=true`, proceeds to full checks.
-  - `steps` (when scaffolded):
+  - `steps`:
     1. Checkout (`actions/checkout@v4`)
-    2. Check scaffold state (scaffold guard)
-    3. Set up Node.js (`actions/setup-node@v4` with Node 22 + npm cache)
-    4. Install dependencies (`npm ci`)
-    5. TypeScript compilation check (`npm run typecheck`)
-    6. Linting (`npm run lint`)
-    7. Dead-code static analysis (`npx knip`)
+    2. Set up Node.js (`actions/setup-node@v4` with Node 22 + npm cache)
+    3. Install dependencies (`npm ci`)
+    4. TypeScript compilation check (`npm run typecheck`)
+    5. Linting (`npm run lint`)
+    6. Dead-code static analysis (`npx knip`)
   - `failConditions`: Type errors (`tsc`), ESLint errors, or unused code/exports (`knip`).
 
 ### 1.5 `PrecommitExecution`
@@ -166,10 +160,9 @@ Represents the execution of the shared precommit hook script (`scripts/pre-commi
 | **Go Linter Suite** | `golangci-lint run` | `backend/...`, `backend/.golangci.yml` | Clean exit 0 | Prints file, line, and rule violations; exits 1 |
 | **Backend Tests** | `go test -v -race ./...` | `backend/...` (unit + testcontainers DB) | All tests pass (0) | Dumps test failure stack traces; exits non-zero |
 | **Backend Build** | `go build -v ./...` | `backend/...` | Clean exit 0 | Emits compilation errors; exits non-zero |
-| **Frontend Scaffold Guard** | `test -f frontend/package.json` | `frontend/` | Missing or present | If missing: logs skip & exits 0 cleanly |
-| **Frontend Typecheck** | `tsc --noEmit` | `frontend/` (when scaffolded) | Clean exit 0 | Emits TypeScript type diagnostic errors |
-| **Frontend Lint** | `eslint .` | `frontend/` (when scaffolded) | Clean exit 0 | Emits ESLint rule violations |
-| **Frontend Dead Code** | `knip` | `frontend/` (when scaffolded) | Clean exit 0 | Emits unused files, exports, or types |
+| **Frontend Typecheck** | `tsc --noEmit` | `frontend/` | Clean exit 0 | Emits TypeScript type diagnostic errors |
+| **Frontend Lint** | `eslint .` | `frontend/` | Clean exit 0 | Emits ESLint rule violations |
+| **Frontend Dead Code** | `knip` | `frontend/` | Clean exit 0 | Emits unused files, exports, or types |
 
 ---
 
@@ -203,21 +196,13 @@ stateDiagram-v2
     }
 
     state FrontendJob {
-        [*] --> CheckScaffold
-        CheckScaffold --> CleanSkip: package.json missing
-        CleanSkip --> FrontendSuccess: Informational exit 0
-        CheckScaffold --> RunFrontendGates: package.json present
-        
-        state RunFrontendGates {
-            [*] --> SetupNode
-            SetupNode --> NpmInstall
-            NpmInstall --> Typecheck
-            Typecheck --> Lint
-            Lint --> DeadCodeAnalysis
-        }
-
-        RunFrontendGates --> FrontendFailed: Type, lint, or knip error
-        RunFrontendGates --> FrontendSuccess: All checks passed
+        [*] --> SetupNode
+        SetupNode --> NpmInstall
+        NpmInstall --> Typecheck
+        Typecheck --> Lint
+        Lint --> DeadCodeAnalysis
+        DeadCodeAnalysis --> FrontendFailed: Type, lint, or knip error
+        DeadCodeAnalysis --> FrontendSuccess: All checks passed
     }
 
     BackendSuccess --> PipelineVerdict

@@ -122,27 +122,7 @@ go test -v -race ./...
 
 ---
 
-## Scenario 5: Validate Frontend Scaffold Guard Locally
-
-### Objective
-Ensure the frontend quality gate cleanly skips when `frontend/package.json` is absent (FR-008).
-
-### Validation Steps
-From repository root:
-```bash
-if [ ! -f "frontend/package.json" ]; then
-  echo "Frontend is not yet scaffolded (frontend/package.json not found)."
-  echo "Skipping frontend verification cleanly."
-  exit 0
-fi
-```
-
-### Expected Outcome
-Emits `Frontend is not yet scaffolded; skipping checks.` and exits immediately with code `0`.
-
----
-
-## Scenario 6: End-to-End Pipeline Execution on GitHub Actions
+## Scenario 5: End-to-End Pipeline Execution on GitHub Actions
 
 ### Objective
 Validate workflow execution, job parallelism, concurrency cancellation, and pull request status checks.
@@ -155,10 +135,10 @@ Validate workflow execution, job parallelism, concurrency cancellation, and pull
 2. Open a Pull Request targeting `dev` on GitHub.
 3. Observe the **Checks** section on the PR:
    - `CI Pipeline / Backend Verification & Tests` executes setup-go, precommit hook script, and tests.
-   - `CI Pipeline / Frontend Verification` executes scaffold guard and concludes with green success.
+   - `CI Pipeline / Frontend Verification` executes setup-node, npm ci, typecheck, lint, and knip.
    - Both jobs run concurrently.
    - Wall-clock time completes within 10 minutes (SC-002).
-4. **Cancellation Test (FR-009)**:
+4. **Cancellation Test (FR-008)**:
    - While the workflow is running, push another commit to `001-github-actions-ci`.
    - Verify that the previous run immediately transitions to `cancelled`.
 5. **Negative Test (FR-006, SC-004)**:

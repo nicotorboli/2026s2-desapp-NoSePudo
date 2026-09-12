@@ -48,16 +48,15 @@ As a developer, I want a shared precommit hook script that checks code formattin
 
 As a frontend developer, when I push code or open a pull request targeting `main` or `dev`, an automated frontend job validates TypeScript types, runs linting rules, and performs static analysis (such as detecting dead or unused code).
 
-**Why this priority**: Static type safety and linting prevent runtime exceptions, UI defects, and style inconsistencies. Once the frontend is scaffolded, this gate ensures high code quality before merging.
+**Why this priority**: Static type safety and linting prevent runtime exceptions, UI defects, and style inconsistencies. This gate ensures high code quality before merging.
 
-**Independent Test**: With a scaffolded frontend, introduce a TypeScript type error or a lint violation; the frontend CI job must fail and highlight the exact file and line of the violation.
+**Independent Test**: Introduce a TypeScript type error or a lint violation in the frontend; the frontend CI job must fail and highlight the exact file and line of the violation.
 
 **Acceptance Scenarios**:
 
-1. **Given** the frontend application is scaffolded and a commit is pushed, **When** the frontend CI job runs, **Then** TypeScript type checking executes and reports any type discrepancies as failures.
-2. **Given** the frontend application is scaffolded, **When** the frontend CI job runs, **Then** linting executes and reports rule violations as failures.
-3. **Given** the frontend application is scaffolded, **When** the frontend CI job runs, **Then** static analysis executes and flags unused code, dead exports, or dependency issues.
-4. **Given** the frontend application is not yet scaffolded (or contains only placeholder files), **When** the frontend CI job runs, **Then** it skips gracefully without failing the overall pipeline.
+1. **Given** a commit is pushed to `main` or `dev`, **When** the frontend CI job runs, **Then** TypeScript type checking executes and reports any type discrepancies as failures.
+2. **Given** a commit is pushed to `main` or `dev`, **When** the frontend CI job runs, **Then** linting executes and reports rule violations as failures.
+3. **Given** a commit is pushed to `main` or `dev`, **When** the frontend CI job runs, **Then** static analysis executes and flags unused code, dead exports, or dependency issues.
 
 ---
 
@@ -79,8 +78,6 @@ As a software team member, I want CI jobs to run concurrently where appropriate,
 
 ### Edge Cases
 
-- What happens if the frontend code is not yet scaffolded (e.g., only a `.gitkeep` exists)?
-  The frontend job detects the absence of frontend configuration and exits cleanly with an informational notice, avoiding false-positive pipeline failures.
 - What happens if backend integration tests require a running database?
   In compliance with project standards, database dependencies are provided as containerized services during test execution. If the database fails to start, the job fails fast with explicit connection diagnostics.
 - What happens if a developer runs the precommit hook script on Windows, macOS, or Linux?
@@ -99,10 +96,9 @@ As a software team member, I want CI jobs to run concurrently where appropriate,
 - **FR-005**: The precommit hook script MUST be executable both locally by developers prior to committing and remotely within the CI backend job.
 - **FR-006**: The backend job MUST fail if any unit or integration test fails, or if the precommit hook script detects formatting or static analysis violations.
 - **FR-007**: The pipeline MUST define a frontend job responsible for running frontend linting, type checking, and static analysis.
-- **FR-008**: The frontend job MUST gracefully skip execution and succeed when the frontend project is not yet scaffolded.
-- **FR-009**: The pipeline MUST cancel in-progress runs on the same branch or pull request when a newer commit is pushed.
-- **FR-010**: The pipeline MUST utilize dependency caching to expedite repeated pipeline executions.
-- **FR-011**: The pipeline MUST present clear and isolated status checks for backend and frontend jobs on pull requests, enabling immediate identification of failures.
+- **FR-008**: The pipeline MUST cancel in-progress runs on the same branch or pull request when a newer commit is pushed.
+- **FR-009**: The pipeline MUST utilize dependency caching to expedite repeated pipeline executions.
+- **FR-010**: The pipeline MUST present clear and isolated status checks for backend and frontend jobs on pull requests, enabling immediate identification of failures.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -127,5 +123,5 @@ This feature does not introduce persistent application domain entities. It manag
 
 - Backend tests requiring PostgreSQL will run against containerized database instances in CI and test environments, fulfilling project architectural constraints.
 - The precommit hook script will reside in the repository (e.g., under a scripts directory) so that developers and CI workflows execute the exact same commands.
-- The frontend application, once scaffolded, will expose standard commands for linting, type checking, and static analysis.
+- The frontend application exposes standard commands for linting, type checking, and static analysis.
 - Pull request status checks can be used as merge requirements for `main` and `dev`.

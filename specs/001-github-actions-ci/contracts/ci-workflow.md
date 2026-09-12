@@ -72,33 +72,18 @@ concurrency:
 - **Runner**: `ubuntu-latest`
 - **Steps Execution Order**:
   1. **Checkout**: `actions/checkout@v4`
-  2. **Scaffold Guard Check (FR-008)**:
-     ```bash
-     if [ ! -f "frontend/package.json" ]; then
-       echo "Frontend is not yet scaffolded (frontend/package.json not found)."
-       echo "Skipping frontend verification cleanly."
-       echo "scaffolded=false" >> $GITHUB_OUTPUT
-     else
-       echo "scaffolded=true" >> $GITHUB_OUTPUT
-     fi
-     ```
-  3. **Setup Node.js Toolchain**:
-     - `if: steps.scaffold-guard.outputs.scaffolded == 'true'`
+  2. **Setup Node.js Toolchain**:
      - `actions/setup-node@v4` with `node-version: 22`, `cache: 'npm'`, `cache-dependency-path: frontend/package-lock.json`
-  4. **Install Dependencies**:
-     - `if: steps.scaffold-guard.outputs.scaffolded == 'true'`
+  3. **Install Dependencies**:
      - `working-directory: frontend`
      - `run: npm ci`
-  5. **Run TypeScript Type Checking (FR-007)**:
-     - `if: steps.scaffold-guard.outputs.scaffolded == 'true'`
+  4. **Run TypeScript Type Checking (FR-007)**:
      - `working-directory: frontend`
      - `run: npm run typecheck`
-  6. **Run ESLint Linting (FR-007)**:
-     - `if: steps.scaffold-guard.outputs.scaffolded == 'true'`
+  5. **Run ESLint Linting (FR-007)**:
      - `working-directory: frontend`
      - `run: npm run lint`
-  7. **Run Static Analysis / Dead Code Detection (FR-007)**:
-     - `if: steps.scaffold-guard.outputs.scaffolded == 'true'`
+  6. **Run Static Analysis / Dead Code Detection (FR-007)**:
      - `working-directory: frontend`
      - `run: npx knip`
-- **Exit Code Contract**: Returns 0 if `frontend/package.json` is missing (clean pass); if scaffolded, returns 0 only when typecheck, lint, and knip all succeed without violations.
+- **Exit Code Contract**: Returns 0 only when typecheck, lint, and knip all succeed without violations. Any violation immediately fails the job with a non-zero exit code.
