@@ -20,11 +20,6 @@ if ($Help) {
     exit 0
 }
 
-if ($RemainingArgs.Count -gt 0) {
-    [Console]::Error.WriteLine("ERROR: Unknown option '$($RemainingArgs[0])'")
-    exit 1
-}
-
 # Load common functions
 . "$PSScriptRoot/common.ps1"
 

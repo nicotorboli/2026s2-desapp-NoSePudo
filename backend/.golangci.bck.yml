@@ -1,0 +1,38 @@
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    # Correctness
+    - errcheck
+    - staticcheck
+    - govet
+    - ineffassign
+    - unused
+    - nilerr
+    # Database & Resources (Constitution II, X)
+    - sqlclosecheck
+    - rowserrcheck
+    - bodyclose
+    - noctx
+    # Security & Quality (Constitution VII)
+    - gosec
+    - gocyclo
+    - gocritic
+    - revive
+    - unconvert
+
+linters-settings:
+  govet:
+    enable-all: true
+  gocyclo:
+    min-complexity: 15
+  gosec:
+    excludes:
+      - G104
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

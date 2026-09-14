@@ -28,8 +28,8 @@ description: "Task list for GitHub Actions CI Pipeline implementation"
 
 **Purpose**: Initialize directory structures for repository hooks, scripts, and GitHub Actions workflows.
 
-- [ ] T001 Create automation scripts directory in scripts/ and git hooks directory in .githooks/
-- [ ] T002 [P] Create workflow configuration directory in .github/workflows/
+- [X] T001 Create automation scripts directory in scripts/ and git hooks directory in .githooks/
+- [X] T002 [P] Create workflow configuration directory in .github/workflows/
 
 ---
 
@@ -39,9 +39,9 @@ description: "Task list for GitHub Actions CI Pipeline implementation"
 
 **⚠️ CRITICAL**: Base workflow skeleton and runnable backend code must be established so that subsequent jobs can be attached and executed.
 
-- [ ] T003 Initialize base workflow skeleton with push and pull_request triggers for main and dev branches in .github/workflows/ci.yml
-- [ ] T004 [P] Create baseline Go server entrypoint using standard library net/http in backend/cmd/server/main.go
-- [ ] T005 [P] Initialize Vite+React+TypeScript project in frontend/ with typecheck, lint, and knip scripts per contracts/frontend-quality-gate.md, and remove frontend/.gitkeep
+- [X] T003 Initialize base workflow skeleton with push and pull_request triggers for main and dev branches in .github/workflows/ci.yml
+- [X] T004 [P] Create baseline Go server entrypoint using standard library net/http in backend/cmd/server/main.go
+- [X] T005 [P] Initialize Vite+React+TypeScript project in frontend/ with typecheck, lint, and knip scripts per contracts/frontend-quality-gate.md, and remove frontend/.gitkeep
 
 **Checkpoint**: Foundation ready - workflow skeleton, baseline Go code, and frontend project exist. User story implementation can begin.
 
@@ -55,13 +55,13 @@ description: "Task list for GitHub Actions CI Pipeline implementation"
 
 ### Tests for User Story 1
 
-- [ ] T006 [P] [US1] Create baseline unit and health check tests in backend/cmd/server/main_test.go
+- [X] T006 [P] [US1] Create baseline unit and health check tests in backend/cmd/server/main_test.go
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Implement backend verification job with Go 1.26 toolchain setup from backend/go.mod in .github/workflows/ci.yml
-- [ ] T008 [US1] Add test execution step running go test -v -race ./... with Docker daemon access in .github/workflows/ci.yml
-- [ ] T009 [US1] Add backend compilation step running go build -v ./... in .github/workflows/ci.yml
+- [X] T007 [US1] Implement backend verification job with Go 1.26 toolchain setup from backend/go.mod in .github/workflows/ci.yml
+- [X] T008 [US1] Add test execution step running go test -v -race ./... with Docker daemon access in .github/workflows/ci.yml
+- [X] T009 [US1] Add backend compilation step running go build -v ./... in .github/workflows/ci.yml
 
 **Checkpoint**: At this point, User Story 1 provides a functional MVP: pushes and PRs execute Go unit/integration tests and verify compilation in GitHub Actions.
 
@@ -75,12 +75,12 @@ description: "Task list for GitHub Actions CI Pipeline implementation"
 
 ### Implementation for User Story 2
 
-- [ ] T010 [P] [US2] Create static analysis configuration with correctness, security, and context linters in backend/.golangci.yml
-- [ ] T011 [P] [US2] Implement POSIX precommit hook script enforcing gofmt, go vet, and golangci-lint in scripts/pre-commit.sh
-- [ ] T012 [P] [US2] Implement PowerShell companion precommit hook script for Windows environments in scripts/pre-commit.ps1
-- [ ] T013 [P] [US2] Create repository Git hook entrypoint delegating to scripts/pre-commit.sh in .githooks/pre-commit
-- [ ] T014 [US2] Add golangci-lint v1.64.5 binary installation step to backend job in .github/workflows/ci.yml
-- [ ] T015 [US2] Integrate execution of bash ./scripts/pre-commit.sh into backend job prior to tests in .github/workflows/ci.yml
+- [X] T010 [P] [US2] Create static analysis configuration with correctness, security, and context linters in backend/.golangci.yml
+- [X] T011 [P] [US2] Implement POSIX precommit hook script enforcing gofmt, go vet, and golangci-lint in scripts/pre-commit.sh
+- [X] T012 [P] [US2] Implement PowerShell companion precommit hook script for Windows environments in scripts/pre-commit.ps1
+- [X] T013 [P] [US2] Create repository Git hook entrypoint delegating to scripts/pre-commit.sh in .githooks/pre-commit
+- [X] T014 [US2] Add golangci-lint v1.64.5 binary installation step to backend job in .github/workflows/ci.yml
+- [X] T015 [US2] Integrate execution of bash ./scripts/pre-commit.sh into backend job prior to tests in .github/workflows/ci.yml
 
 **Checkpoint**: At this point, User Stories 1 and 2 are active: local development and remote CI share 100% identical formatting and static analysis checks.
 
@@ -94,9 +94,9 @@ description: "Task list for GitHub Actions CI Pipeline implementation"
 
 ### Implementation for User Story 3
 
-- [ ] T016 [P] [US3] Document frontend contract scripts and quality gate requirements in frontend/README.md
-- [ ] T017 [US3] Implement frontend quality gate job with Node 22 setup and npm ci dependency installation in .github/workflows/ci.yml
-- [ ] T018 [US3] Add typecheck, lint, and knip static analysis steps to frontend job in .github/workflows/ci.yml
+- [X] T016 [P] [US3] Document frontend contract scripts and quality gate requirements in frontend/README.md
+- [X] T017 [US3] Implement frontend quality gate job with Node 22 setup and npm ci dependency installation in .github/workflows/ci.yml
+- [X] T018 [US3] Add typecheck, lint, and knip static analysis steps to frontend job in .github/workflows/ci.yml
 
 **Checkpoint**: At this point, User Stories 1, 2, and 3 are complete: both backend and frontend quality gates run in parallel.
 
@@ -110,10 +110,10 @@ description: "Task list for GitHub Actions CI Pipeline implementation"
 
 ### Implementation for User Story 4
 
-- [ ] T019 [US4] Configure workflow concurrency group and in-progress run cancellation in .github/workflows/ci.yml
-- [ ] T020 [US4] Enable Go module caching in actions/setup-go referencing backend/go.sum in .github/workflows/ci.yml
-- [ ] T021 [US4] Enable npm caching in actions/setup-node referencing frontend/package-lock.json in .github/workflows/ci.yml
-- [ ] T022 [US4] Validate independent parallel job execution and isolated PR check reporting in .github/workflows/ci.yml
+- [X] T019 [US4] Configure workflow concurrency group and in-progress run cancellation in .github/workflows/ci.yml
+- [X] T020 [US4] Enable Go module caching in actions/setup-go referencing backend/go.sum in .github/workflows/ci.yml
+- [X] T021 [US4] Enable npm caching in actions/setup-node referencing frontend/package-lock.json in .github/workflows/ci.yml
+- [X] T022 [US4] Validate independent parallel job execution and isolated PR check reporting in .github/workflows/ci.yml
 
 **Checkpoint**: All user stories are fully implemented and integrated.
 
@@ -123,8 +123,8 @@ description: "Task list for GitHub Actions CI Pipeline implementation"
 
 **Purpose**: Syntax validation and verification against quickstart scenarios.
 
-- [ ] T023 [P] Validate YAML syntax across .github/workflows/ci.yml and backend/.golangci.yml
-- [ ] T024 Execute local quickstart validation scenarios from specs/001-github-actions-ci/quickstart.md
+- [X] T023 [P] Validate YAML syntax across .github/workflows/ci.yml and backend/.golangci.yml
+- [X] T024 Execute local quickstart validation scenarios from specs/001-github-actions-ci/quickstart.md
 
 ---
 

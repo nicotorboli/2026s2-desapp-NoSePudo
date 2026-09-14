@@ -4,3 +4,23 @@
 .env
 .agents/
 .specify/integrations
+
+# Dependencies & Build artifacts
+node_modules/
+dist/
+build/
+vendor/
+
+# Binaries and test artifacts
+*.exe
+*.test
+*.out
+*.log
+
+# Editor & OS files
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.idea/
+.vscode/
