@@ -37,10 +37,9 @@ que coordina los DAOs; el service nunca los usa directamente.
 ### IV. Inyección de dependencias
 
 Ninguna capa construye sus propias dependencias: las recibe por constructor.
-Cada repository y cada adapter se declara como una interfaz en el service que
-lo consume, y su implementación concreta vive en la capa de persistencia o de
-integración: el service depende de la abstracción y nunca de la
-implementación.
+Cada repository y cada adapter expone una interfaz y el service depende de
+ella, nunca del tipo concreto. La interfaz se declara junto a su
+implementación, en el paquete de su capa.
 
 El único lugar donde se instancian implementaciones concretas y se arma el
 grafo de dependencias es `cmd`. Sin esto el service no se puede testear con el
