@@ -28,11 +28,10 @@ separado en capas:
 - adapters: integración con servicios externos.
 
 Hay un repository por concepto del dominio —jugador, cotización, usuario,
-orden—, no uno por tabla: su interfaz habla el lenguaje del negocio y lo que
-cruza su borde son modelos, nunca filas. Adentro delega en DAOs, uno por tabla
-o fuente de datos, y es el DAO el que ejecuta el SQL y traduce entre las filas
-y el modelo. Cuando una operación abarca varias tablas, es el repository el
-que coordina los DAOs; el service nunca los usa directamente.
+orden—, no uno por tabla, y lo que cruza su borde son modelos, nunca filas.
+Adentro delega en DAOs, uno por tabla, que ejecutan el SQL y viven en el
+paquete del repository sin exportarse. Si una operación abarca varias tablas
+las coordina el repository; el service nunca usa un DAO.
 
 ### IV. Inyección de dependencias
 
@@ -42,29 +41,29 @@ ella, nunca del tipo concreto. La interfaz se declara junto a su
 implementación, en el paquete de su capa.
 
 El único lugar donde se instancian implementaciones concretas y se arma el
-grafo de dependencias es `cmd`. Sin esto el service no se puede testear con el
-repository y los adapters mockeados, como exige el principio de Testing, ni se
-puede intercambiar la estrategia de valuación configurada desde el backoffice.
+grafo de dependencias es `cmd`. Sin eso el service no se puede testear con el
+repository mockeado, como exige el principio de Testing.
 
 ### V. DTOs en el borde
 
 Los tipos que cruzan el borde HTTP son DTOs y nunca son el modelo de dominio,
 aunque los campos coincidan. El modelo de dominio no lleva tags de
-serialización. Request y respuesta son DTOs distintos, y un mismo modelo puede
-tener varios DTOs según el contexto en que se lo devuelve.
+serialización. Request y respuesta son DTOs distintos, y cada contexto en que
+se devuelve un modelo tiene su propio DTO: no se reusa uno agregándole campos
+opcionales.
 
 La conversión es explícita y vive en el DTO: `DesdeModelo` construye el DTO a
-partir del modelo y `AModelo` hace el camino inverso. `AModelo` recibe por
-parámetro los colaboradores ya resueltos, de modo que el DTO nunca consulta la
-persistencia. No se arman conversiones a mano en el controller.
+partir del modelo y `AModelo` hace el camino inverso. El DTO nunca consulta la
+persistencia: `AModelo` recibe por parámetro los colaboradores ya resueltos.
+No se arman conversiones a mano en el controller.
 
 ### VI. Frontend React + TypeScript
 
 El frontend se implementa en React con TypeScript y se comunica con el backend
 por HTTP/REST usando axios como único cliente HTTP. Toda comunicación pasa por
 un módulo de abstracción: los métodos HTTP se representan como funciones
-privadas y se exporta una función por cada endpoint consumido, desacoplando la
-comunicación del cliente HTTP. Los tipos TypeScript de ese módulo espejan los
+privadas y se exporta una función por cada endpoint consumido; fuera de ese
+módulo nadie importa axios. Los tipos TypeScript de ese módulo espejan los
 DTOs de la API, no el modelo de dominio del backend. El proyecto se organiza
 por páginas y componentes; los estilos se manejan con archivos CSS por
 página/componente, usando clases y siguiendo el arquetipo BEM.
@@ -92,8 +91,8 @@ sistema: un log que no se puede filtrar no facilita ningún análisis.
 
 El correlation ID se genera en el borde HTTP cuando el cliente no lo provee,
 viaja por el `context` y aparece en todos los eventos de la operación,
-incluidos los de los adapters, de modo que filtrar por un ID muestre la
-solicitud completa de principio a fin.
+incluidos los de los adapters: filtrar por un ID devuelve la solicitud
+completa de principio a fin.
 
 Se registran obligatoriamente cada request con su latencia y su status, todo
 error con su causa, y toda llamada a un servicio externo con su resultado y su
@@ -116,18 +115,11 @@ frecuentes.
 
 ### XII. Resiliencia: caché y scheduler
 
-Se implementa una caché para consultas frecuentes hacia la API externa, con
-funcionamiento local ante indisponibilidad de la misma, mitigando fallas y
-latencia. Un scheduler ejecuta procesos batch automáticos para la
-actualización de datos de jugadores y la revalorización.
+Toda lectura de datos externos pasa por una caché, y el sistema responde con
+datos locales cuando la fuente externa no está disponible. Los procesos batch
+se ejecutan desde un scheduler, nunca a mano.
 
-### XIII. Backoffice de administración
-
-Existe un backoffice desde el cual se disparan trabajos automatizados y se
-modifican las reglas de evaluación de la aplicación. El acceso al backoffice
-es exclusivo de superusuarios.
-
-### XIV. Testing
+### XIII. Testing
 
 Toda feature incluye tests unitarios, de integración y e2e, y cada capa define
 qué se mockea:
@@ -165,9 +157,8 @@ e2e, no como una demostración manual.
 
 ## Security, Observability & Data Integrity
 
-- Privilegios: usuario común vs superusuario vía JWT; el backoffice, el
-  disparo de jobs y la modificación de reglas de evaluación requieren
-  superusuario.
+- Privilegios: usuario común vs superusuario vía JWT; disparar un job a mano
+  y modificar las reglas de valuación requieren superusuario.
 - Validación de entradas: obligatoria en todos los endpoints.
 - Observabilidad: logs estructurados, correlation ID, health check y métricas
   de latencia y tasa de error.
