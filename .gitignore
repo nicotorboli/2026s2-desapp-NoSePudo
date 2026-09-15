@@ -1,4 +1,14 @@
+# Archivos de agentes: cada uno instala el suyo, no viajan por git
 .opencode/
 .claude/
+.agents/
+
+# Estado local de Spec Kit: registra que integracion y que version usa cada
+# maquina, asi que cambia por desarrollador y genera conflictos al cambiar de
+# rama. Las reglas compartidas (memory/, templates/, scripts/) si se versionan.
+.specify/init-options.json
+.specify/integration.json
+.specify/integrations/
+
 .env.*
 .env
