@@ -6,7 +6,8 @@
 
 El backend se implementa en Go y expone la API REST únicamente con la librería
 estándar `net/http`. Se prohíbe el uso de frameworks web externos; toda
-funcionalidad HTTP debe construirse sobre la librería estándar.
+funcionalidad HTTP debe construirse sobre la librería estándar. Se debe incluir
+una versión dockerizada de la aplicación junto a la ejecución local.
 
 ### II. Persistencia en PostgreSQL
 
@@ -142,10 +143,22 @@ combina dos o más condiciones.
 Los escenarios de prueba exigidos por el enunciado se implementan como tests
 e2e, no como una demostración manual.
 
+### XIV. Semánticas
+
+Toda especificación sobre la que se trabaje debe llevar exactamente el nombre
+de la branch de GitHub sobre la cual se está programando. Queda prohibido
+desarrollar o modificar una especificación cuyo identificador o directorio no
+coincida con el nombre de la rama activa en el repositorio. Esta
+correspondencia unívoca asegura la trazabilidad estricta entre la
+especificación de requisitos, las tareas asociadas, los commits y las
+revisiones en los Pull Requests.
+
 ## Technical Constraints
 
 - Backend: Go con `net/http` y `database/sql` de la librería estándar; el
   módulo vive en `backend/` y su `go.mod` es fuente de verdad de la versión.
+  Se debe incluir una versión de la aplicación dockerizada para permitir tanto
+  la ejecución local como por medio de un contenedor.
 - Capas: el repository traduce entre la base de datos y el modelo delegando
   en DAOs; el service es el único orquestador de modelo, persistencia y
   adapters y depende de interfaces, no de implementaciones; el controller
@@ -153,7 +166,7 @@ e2e, no como una demostración manual.
 - Frontend: vive en `frontend/`, organizado por páginas y componentes, con CSS
   por página/componente siguiendo BEM; axios se usa únicamente dentro del
   módulo de abstracción HTTP.
-- Base de datos: PostgreSQL dockerizada de forma obligatoria.
+- Base de datos: PostgreSQL dockerizada de forma obligatoria y separada del contenedor de backend.
 
 ## Security, Observability & Data Integrity
 
@@ -181,4 +194,4 @@ práctica o implementación que la contradiga debe corregirse.
 - Cumplimiento: toda PR o revisión verifica la conformidad con esta
   constitución; la complejidad adicional debe justificarse.
 
-**Version**: 1.2.0 | **Ratified**: 2026-09-05 | **Last Amended**: 2026-09-10
+**Version**: 1.3.0 | **Ratified**: 2026-09-05 | **Last Amended**: 2026-09-15
