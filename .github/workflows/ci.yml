@@ -16,11 +16,14 @@ concurrency:
 
 jobs:
   backend:
-    name: Backend Verification & Tests
+    name: Backend Verification, Tests & Sonar
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Sonar necesita el historial completo para determinar que es codigo nuevo.
+          fetch-depth: 0
 
       - name: Setup Go toolchain
         uses: actions/setup-go@v5
@@ -38,11 +41,16 @@ jobs:
 
       - name: Execute backend tests
         working-directory: backend
-        run: go test -v -race ./...
+        run: go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
 
       - name: Compile backend packages
         working-directory: backend
         run: go build -v ./...
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   frontend:
     name: Frontend Verification

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/repository"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 )
 
 // HealthService defines the business logic interface for system health.
