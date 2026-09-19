@@ -1,23 +1,29 @@
+# Skills de agentes
 .opencode/
 .claude/
+.agents/
+
+# Estos archivos se excluyen ya que son configuraciones locales dependientes del agente que se usa 
+.specify/init-options.json
+.specify/integration.json
+.specify/integrations/
+
 .env.*
 .env
-.agents/
-.specify/integrations
 
-# Dependencies & Build artifacts
+# Dependencias y artefactos de build
 node_modules/
 dist/
 build/
 vendor/
 
-# Binaries and test artifacts
+# Binarios y artefactos de test
 *.exe
 *.test
 *.out
 *.log
 
-# Editor & OS files
+# Archivos del editor y del sistema operativo
 .DS_Store
 Thumbs.db
 *.tmp
