@@ -37,6 +37,7 @@ jobs:
         with:
           version: v2.12.1
           install-mode: binary
+          working-directory: backend
 
       - name: Execute precommit hook script
         run: ./scripts/pre-commit.sh
