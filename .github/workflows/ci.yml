@@ -16,14 +16,11 @@ concurrency:
 
 jobs:
   backend:
-    name: Backend Verification, Tests & Sonar
+    name: Backend Verification & Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          # Sonar necesita el historial completo para determinar que es codigo nuevo.
-          fetch-depth: 0
 
       - name: Setup Go toolchain
         uses: actions/setup-go@v5
@@ -32,10 +29,17 @@ jobs:
           cache: true
           cache-dependency-path: backend/go.sum
 
+      # La version sale de .golangci-version, el unico lugar donde esta declarada.
+      # El hook de pre-commit lee ese mismo archivo, asi que CI y las maquinas de
+      # desarrollo nunca pueden quedar en versiones distintas.
+      - name: Resolve golangci-lint version
+        id: golangci
+        run: echo "version=$(cat .golangci-version)" >> "$GITHUB_OUTPUT"
+
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.12.1
+          version: ${{ steps.golangci.outputs.version }}
           install-mode: binary
           working-directory: backend
 
@@ -50,10 +54,14 @@ jobs:
         working-directory: backend
         run: go build -v ./...
 
-      - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # Sonar corre en su propio job y necesita este reporte: go test no se vuelve
+      # a ejecutar alla.
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.out
+          retention-days: 1
 
   frontend:
     name: Frontend Verification
@@ -84,3 +92,29 @@ jobs:
       - name: Run Knip dead-code analysis
         working-directory: frontend
         run: npx knip
+
+  # Sonar es un gate propio, no un paso del job de backend: si el quality gate
+  # falla, el check que se pone en rojo en el PR tiene que ser el de Sonar y no
+  # el de los tests (FR-010, SC-004). Depende de backend porque consume su
+  # reporte de cobertura.
+  sonar:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest
+    needs: backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Sonar necesita el historial completo para determinar que es codigo nuevo.
+          fetch-depth: 0
+
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
