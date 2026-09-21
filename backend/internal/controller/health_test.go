@@ -13,8 +13,8 @@ import (
 )
 
 type mockService struct {
-	status model.HealthStatus
 	err    error
+	status model.HealthStatus
 }
 
 func (m *mockService) CheckHealth(_ context.Context) (model.HealthStatus, error) {
