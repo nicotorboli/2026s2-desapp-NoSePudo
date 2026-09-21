@@ -1,0 +1,26 @@
+# Normalizacion de finales de linea (FR-011).
+#
+# Sin esto, cada desarrollador depende de su `core.autocrlf` local: en Windows el
+# checkout escribe CRLF y `gofmt` reporta como desformateados archivos que en el
+# runner Linux de CI estan perfectos. Declarar `eol=lf` hace que el checkout
+# escriba LF en Windows, macOS y Linux por igual, asi la verificacion de formato
+# da el mismo resultado local y en CI.
+
+# Por defecto, Git detecta si un archivo es texto y normaliza a LF en el repositorio.
+* text=auto eol=lf
+
+# Codigo Go: el formato lo verifica `gofmt` y debe ser identico en todos los SO.
+*.go text eol=lf
+
+# Scripts de shell: los ejecuta bash en el runner Linux. Un CRLF aca rompe el
+# shebang y el script falla con un error de sintaxis enganoso.
+*.sh text eol=lf
+.githooks/* text eol=lf
+
+# Archivos binarios: Git no debe tocarlos.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
