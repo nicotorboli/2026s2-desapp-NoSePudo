@@ -179,6 +179,61 @@ revisiones en los Pull Requests.
   anterior y posterior.
 - Datos: operaciones transaccionales por defecto e indexación del esquema.
 
+## Code Quality & Linting
+
+El backend Go se valida con golangci-lint v2.12.1, la misma versión que corre el CI.
+Un PR con issues de lint no se mergea. La configuración vive en `backend/.golangci.yml`
+y es la fuente de verdad; esta sección la describe, no la reemplaza.
+
+Linters habilitados explícitamente:
+
+- `bodyclose`: cerrar HTTP response bodies
+- `gocritic`: patrones de código sospechosos (asignaciones innecesarias, etc.)
+- `gocyclo`: complejidad ciclomática máxima de 15 por función
+- `gosec`: problemas de seguridad, como log injection o datos sensibles en logs
+  (G104, errores sin chequear, queda excluido porque lo cubre `errcheck`)
+- `nilerr`: devolver `nil` después de haber comprobado que el error no era nil
+- `noctx`: requests HTTP sin contexto explícito
+- `revive`: estilo y legibilidad, incluido el package comment en cada archivo
+- `rowserrcheck`: chequear `Err()` en database result sets
+- `sqlclosecheck`: cerrar SQL statements y rows
+- `unconvert`: conversiones de tipo innecesarias
+
+`govet` corre con `enable-all: true`, lo que suma todos sus analizadores. El más
+propenso a sorprender es `fieldalignment`, que exige ordenar los campos de un struct
+para minimizar el padding: los tipos más grandes primero. No es un linter aparte, así
+que solo se desactiva tocando la config de `govet`.
+
+Además siguen activos los linters que golangci-lint habilita por defecto y que la
+config no desactiva: `errcheck`, `ineffassign`, `staticcheck` y `unused`.
+
+Quien programa verifica antes de pushear:
+
+```bash
+cd backend
+golangci-lint run
+```
+
+El repo versiona una sola implementación del hook, `scripts/pre-commit.sh`, y el
+entrypoint en `.githooks/pre-commit`. Corre en Linux, macOS y Windows (vía el Bash que
+trae Git). No se mantiene un par en PowerShell: de dos implementaciones solo se
+ejercita la que se invoca, y la otra se desincroniza sin que nadie se entere. El CI
+ejecuta ese mismo script, de modo que la verificación local y la remota son idénticas.
+Se activa una vez por clon:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+El hook requiere golangci-lint en el PATH, exactamente en la versión declarada en
+`.golangci-version`. Ese archivo es la única fuente de verdad: lo leen tanto el hook
+como el workflow de CI, así que una versión distinta a la del CI daría resultados
+distintos y el hook aborta el commit indicando la esperada y la detectada.
+
+```bash
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(cat .golangci-version)
+```
+
 ## Governance
 
 Esta constitución es el documento normativo supremo del proyecto; cualquier

@@ -8,6 +8,15 @@
 
 **Input**: User description: "I want to create a github actions CI pipeline that runs over the pull requests and push actions to the main and dev branches. I need a job that runs the backend tests and a precommit hook script that runs formatting and static analysis;  and another one that runs the frontend linting with type checking and static analysis."
 
+## Clarifications
+
+### Session 2026-09-21
+
+- Q: ¿Cómo debe garantizar el repositorio que los archivos `.go` tengan los mismos finales de línea en Windows, macOS y Linux, para que `gofmt` dé el mismo resultado local y en CI? → A: Agregar `.gitattributes` con `*.go text eol=lf` y renormalizar el repositorio, de modo que el checkout escriba LF en todos los sistemas operativos sin depender de `core.autocrlf`.
+- Q: ¿Qué debe hacer el script de pre-commit cuando `golangci-lint` no está instalado en la máquina del desarrollador? → A: Fallar y abortar el commit, mostrando el comando de instalación en el mensaje de error. El script nunca debe reportar éxito habiéndose salteado un chequeo.
+- Q: ¿Dónde debe declararse la versión de `golangci-lint`, y qué pasa si la versión local no coincide con la del CI? → A: Una única versión declarada en el repositorio, tomando como canónica la que ya usa el CI (`v2.12.1`). El hook aborta el commit si la versión instalada localmente no coincide.
+- Q: ¿El repositorio debe mantener una o dos implementaciones del script de pre-commit? → A: Una sola, `scripts/pre-commit.sh`, que funciona en Linux, macOS y Windows (vía el Bash que incluye Git para Windows). Se elimina `scripts/pre-commit.ps1` y se actualizan los documentos que lo referencian.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Automated Backend Verification and Testing (Priority: P1)
@@ -41,6 +50,7 @@ As a developer, I want a shared precommit hook script that checks code formattin
 2. **Given** code is pushed to `main` or `dev`, **When** the backend CI job executes the precommit script, **Then** formatting and static analysis are verified.
 3. **Given** code passes formatting and static analysis, **When** the precommit script runs in CI, **Then** the step succeeds without warning or error.
 4. **Given** the precommit hook script is maintained in the repository, **When** developers set up their local repository, **Then** they can install or run the script directly as a git pre-commit hook or standalone command.
+5. **Given** a required analysis tool is missing from the developer's PATH, **When** the precommit hook script runs locally, **Then** it exits with a non-zero code and reports the installation command, rather than skipping the check and reporting success.
 
 ---
 
@@ -81,7 +91,9 @@ As a software team member, I want CI jobs to run concurrently where appropriate,
 - What happens if backend integration tests require a running database?
   In compliance with project standards, database dependencies are provided as containerized services during test execution. If the database fails to start, the job fails fast with explicit connection diagnostics.
 - What happens if a developer runs the precommit hook script on Windows, macOS, or Linux?
-  The script is designed to run predictably across supported developer operating systems and inside the Linux-based CI runner.
+  Go source files are normalized to LF line endings via `.gitattributes`, so `gofmt`
+  produces identical results on every developer machine and on the Linux CI runner,
+  regardless of each developer's local `core.autocrlf` setting.
 - What happens if a pull request contains changes only to documentation or non-code files?
   The pipeline triggers appropriately for PR verification, but cache and step evaluations ensure minimal execution overhead.
 
@@ -99,6 +111,23 @@ As a software team member, I want CI jobs to run concurrently where appropriate,
 - **FR-008**: The pipeline MUST cancel in-progress runs on the same branch or pull request when a newer commit is pushed.
 - **FR-009**: The pipeline MUST utilize dependency caching to expedite repeated pipeline executions.
 - **FR-010**: The pipeline MUST present clear and isolated status checks for backend and frontend jobs on pull requests, enabling immediate identification of failures.
+- **FR-011**: The repository MUST enforce LF line endings for Go source files through a
+  version-controlled `.gitattributes`, so that formatting verification yields identical
+  results on Windows, macOS, and Linux without per-developer Git configuration.
+- **FR-012**: The precommit hook script MUST fail with a non-zero exit code and surface
+  the installation command when a required analysis tool is absent from the environment.
+  It MUST NOT report success when any configured check was skipped.
+- **FR-013**: The required `golangci-lint` version MUST be declared once in the repository
+  as the single source of truth, and both the CI workflow and the precommit hook script
+  MUST resolve it from that declaration. The canonical version is the one currently used
+  by CI (`v2.12.1`).
+- **FR-014**: The precommit hook script MUST abort the commit when the locally installed
+  `golangci-lint` version differs from the declared version, reporting both the expected
+  and the detected version.
+- **FR-015**: The repository MUST maintain exactly one implementation of the precommit
+  hook script (`scripts/pre-commit.sh`), executable on Linux, macOS, and Windows through
+  the Bash runtime bundled with Git. Duplicate per-platform implementations MUST NOT be
+  kept, since only the invoked one would be exercised by the hook and by CI.
 
 ### Key Entities *(include if feature involves data)*
 

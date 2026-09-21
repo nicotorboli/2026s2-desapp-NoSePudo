@@ -140,13 +140,14 @@ Represents the `frontend` quality gate job inside the workflow.
   - `failConditions`: Type errors (`tsc`), ESLint errors, or unused code/exports (`knip`).
 
 ### 1.5 `PrecommitExecution`
-Represents the execution of the shared precommit hook script (`scripts/pre-commit.sh` / `scripts/pre-commit.ps1`).
+Represents the execution of the shared precommit hook script (`scripts/pre-commit.sh`, the repository's single implementation).
 
 - **Attributes**:
   - `context`: `LocalGitHook`, `LocalManual`, or `RemoteCI`.
   - `formattingCheck`: Output of `gofmt -l backend/`. Zero output required for pass.
   - `vetCheck`: Output of `go vet ./...` in `backend/`. Zero warnings required for pass.
-  - `linterCheck`: Output of `golangci-lint run ./...` in `backend/`. Zero issues required for pass. In CI, binary must be available.
+  - `requiredLinterVersion`: Value read from `.golangci-version`, the single source of truth shared with the CI workflow. Absent or empty file fails the run.
+  - `linterCheck`: Output of `golangci-lint run ./...` in `backend/`. Zero issues required for pass. The binary must be available and match `requiredLinterVersion` in every context, CI and local alike; a mismatch aborts before any check runs.
   - `exitCode`: 0 on total pass, 1 on any violation.
 
 ---

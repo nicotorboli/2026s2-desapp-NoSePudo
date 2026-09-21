@@ -28,21 +28,22 @@ Implement a single unified GitHub Actions workflow file `.github/workflows/ci.ym
 ## 2. Repository-Managed Precommit Hook Script Architecture
 
 ### Decision
-Provide a centralized, version-controlled precommit script located at `scripts/pre-commit.sh` (POSIX bash, executable on Linux, macOS, and Git Bash on Windows) accompanied by a companion PowerShell script `scripts/pre-commit.ps1` for native Windows environments, and integrate it with Git hooks via `.githooks/pre-commit`.
+Provide a single centralized, version-controlled precommit script located at `scripts/pre-commit.sh` (POSIX bash, executable on Linux, macOS, and Git Bash on Windows), and integrate it with Git hooks via `.githooks/pre-commit`. Exactly one implementation is kept: with two, only the invoked one is ever exercised, so the other drifts unnoticed (FR-015).
 The CI `backend` job directly invokes `./scripts/pre-commit.sh` as an explicit step prior to executing tests.
 
 The script executes the following checks:
 1. **Formatting Check**: Verifies that all Go source files conform to standard formatting via `gofmt -l`. If any file requires formatting, the script prints the offending filenames, provides remediation instructions (`gofmt -w .`), and exits with code 1.
 2. **Standard Static Analysis**: Runs `go vet ./...` in `backend/` to detect common compiler-level anomalies.
-3. **Advanced Static Analysis**: Runs `golangci-lint run ./...` using configuration from `backend/.golangci.yml`. In CI environments (`CI=true`), `golangci-lint` is mandatory; in local developer environments, if `golangci-lint` is not installed, the script emits a clear warning and guidance on installation while passing formatting and `go vet` checks.
+3. **Advanced Static Analysis**: Runs `golangci-lint run ./...` using configuration from `backend/.golangci.yml`. `golangci-lint` is mandatory in every environment: if it is absent, or installed at a version other than the one declared in `.golangci-version`, the script exits non-zero reporting the install command and the expected-vs-detected version (FR-012, FR-014). Skipping a check and still reporting success would defeat the parity the script exists to provide.
 
 ### Rationale
 - **100% Parity Between Local & CI Quality Gates (FR-004, FR-005, SC-003)**: Running the identical script in both local development (manually or via git pre-commit hooks) and CI guarantees zero discrepancy. Any static analysis or formatting violation flagged in CI can be reproduced and resolved locally before pushing.
-- **Cross-Platform Developer Support**: Developers on Linux, macOS, and Windows (via Git Bash or PowerShell) can run checks with a single command (`./scripts/pre-commit.sh` or `pwsh ./scripts/pre-commit.ps1`).
+- **Cross-Platform Developer Support**: Developers on Linux, macOS, and Windows (the latter via the Bash bundled with Git) run checks with one single command: `./scripts/pre-commit.sh`.
 - **Seamless Git Hook Integration**: By maintaining `.githooks/pre-commit` in the repository, developers can enable automated git pre-commit checks with a single command: `git config core.hooksPath .githooks`.
 
 ### Alternatives Considered
-- *Third-party frameworks like Python `pre-commit`*: Introduces external dependencies (Python, virtualenvs, YAML config files) into a pure Go + TypeScript project. Rejected in favor of lightweight, dependency-free shell and PowerShell scripts.
+- *Third-party frameworks like Python `pre-commit`*: Introduces external dependencies (Python, virtualenvs, YAML config files) into a pure Go + TypeScript project. Rejected in favor of a lightweight, dependency-free shell script.
+- *A companion PowerShell script for native Windows*: Rejected. Git for Windows ships Bash, so the POSIX script already covers Windows, and a second implementation only creates a copy that no one runs and that silently diverges from the one CI executes.
 - *Running linters inline in CI without a local script*: Fails requirement FR-004/FR-005 and leads to "commit-push-wait" debugging cycles where developers push broken code to CI because they cannot execute the exact CI checks locally.
 
 ---

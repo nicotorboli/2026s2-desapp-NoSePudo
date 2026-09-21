@@ -69,7 +69,9 @@ description: "Task list for GitHub Actions CI Pipeline implementation"
 
 ## Phase 4: User Story 2 - Precommit Hook Script for Formatting and Static Analysis (Priority: P1)
 
-**Goal**: Provide a shared precommit hook script (`scripts/pre-commit.sh` and `scripts/pre-commit.ps1`) and Git hook entrypoint (`.githooks/pre-commit`) running `gofmt`, `go vet`, and `golangci-lint`, and execute it in CI.
+**Goal**: Provide a shared precommit hook script (`scripts/pre-commit.sh`) and Git hook entrypoint (`.githooks/pre-commit`) running `gofmt`, `go vet`, and `golangci-lint`, and execute it in CI.
+
+> **Note**: `T012` originally added a PowerShell companion (`scripts/pre-commit.ps1`). The 2026-09-21 clarification settled on a single implementation, and `T029` removed it (FR-015). `T012` is kept as a record of what was built, not of the current state.
 
 **Independent Test**: Create an intentionally unformatted Go file (`gofmt` violation) or compiler warning; `./scripts/pre-commit.sh` must flag the issue with remediation guidance and exit with code 1. In CI, the precommit step in the `backend` job must fail with the same diagnostic output.
 
@@ -211,3 +213,20 @@ Developer 3: "T017 [US3] Implement frontend quality gate job..." & "T018 [US3] A
 - File paths are exact and unambiguous.
 - Each user story is independently testable per its test criteria.
 - Local Git hook activation command: `git config core.hooksPath .githooks`.
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Close the gaps between the specification (including the 2026-09-21
+clarifications) and the current state of the repository.
+
+- [X] T025 CRITICAL: Add a version-controlled .gitattributes at the repository root declaring `*.go text eol=lf` and renormalize the tracked Go sources, so that gofmt yields identical results on Windows, macOS, and Linux without relying on each developer's core.autocrlf, per FR-011 (missing)
+- [X] T026 Replace the local skip-with-warning branch in scripts/pre-commit.sh with a hard failure that exits non-zero and prints the golangci-lint installation command, so the script never reports [SUCCESS] having skipped a configured check, per FR-012 (contradicts)
+- [X] T027 Declare the required golangci-lint version once in the repository as the single source of truth (canonical value `v2.12.1`) and make both .github/workflows/ci.yml and scripts/pre-commit.sh resolve the version from that declaration instead of hardcoding it, per FR-013 (missing)
+- [X] T028 Add a version verification step to scripts/pre-commit.sh that aborts the commit when the locally installed golangci-lint differs from the declared version, reporting both the expected and the detected version, per FR-014 (missing)
+- [X] T029 Delete scripts/pre-commit.ps1 so the repository keeps exactly one precommit implementation (scripts/pre-commit.sh, runnable on Linux, macOS, and Windows through Git Bash), per FR-015 (contradicts)
+- [X] T030 Update the documents that still describe a PowerShell companion script to the single-script model: .specify/memory/constitution.md (Code Quality & Linting), specs/001-github-actions-ci/contracts/precommit-hook.md, specs/001-github-actions-ci/quickstart.md, specs/001-github-actions-ci/research.md, and specs/001-github-actions-ci/data-model.md, per FR-015 (partial)
+- [X] T031 Add the testcontainers-backed PostgreSQL integration test that the plan's Constitution Check claims as satisfied, or record an explicit deferral, so that `go test -v -race ./...` in the backend job actually exercises a Dockerized database, per plan: testcontainers/PostgreSQL decision, US1/AC1, Constitution II & XIII (partial)
+- [X] T032 Review and justify or isolate the SonarQube scan added to the backend job in .github/workflows/ci.yml (and sonar-project.properties): it is not called for by this feature's spec, plan, or tasks, and folding a third gate into the backend check blurs the per-gate status isolation, per FR-010, SC-004 (unrequested)
+- [X] T033 Remove backend/.golangci.bck.yml or justify keeping a backup copy alongside the authoritative backend/.golangci.yml, per plan: static analysis configuration (unrequested)
