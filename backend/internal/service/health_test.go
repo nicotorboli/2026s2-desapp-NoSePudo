@@ -1,3 +1,4 @@
+// Package service contains application services.
 package service
 
 import (
@@ -10,7 +11,7 @@ type mockRepo struct {
 	err error
 }
 
-func (m *mockRepo) Ping(ctx context.Context) error {
+func (m *mockRepo) Ping(_ context.Context) error {
 	return m.err
 }
 

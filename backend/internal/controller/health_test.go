@@ -1,3 +1,4 @@
+// Package controller contains HTTP request handlers.
 package controller
 
 import (
@@ -16,7 +17,7 @@ type mockService struct {
 	err    error
 }
 
-func (m *mockService) CheckHealth(ctx context.Context) (model.HealthStatus, error) {
+func (m *mockService) CheckHealth(_ context.Context) (model.HealthStatus, error) {
 	return m.status, m.err
 }
 
@@ -31,7 +32,7 @@ func TestHealthController_HandleHealth(t *testing.T) {
 		}
 		ctrl := NewHealthController(svc)
 
-		req := httptest.NewRequest(http.MethodGet, "/health", nil)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/health", nil)
 		rec := httptest.NewRecorder()
 
 		ctrl.HandleHealth(rec, req)
@@ -47,7 +48,7 @@ func TestHealthController_HandleHealth(t *testing.T) {
 		}
 		ctrl := NewHealthController(svc)
 
-		req := httptest.NewRequest(http.MethodGet, "/health", nil)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/health", nil)
 		rec := httptest.NewRecorder()
 
 		ctrl.HandleHealth(rec, req)
@@ -61,7 +62,7 @@ func TestHealthController_HandleHealth(t *testing.T) {
 		svc := &mockService{}
 		ctrl := NewHealthController(svc)
 
-		req := httptest.NewRequest(http.MethodPost, "/health", nil)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/health", nil)
 		rec := httptest.NewRecorder()
 
 		ctrl.HandleHealth(rec, req)

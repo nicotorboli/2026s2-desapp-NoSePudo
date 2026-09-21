@@ -1,3 +1,4 @@
+// Package dto contains HTTP data transfer objects.
 package dto
 
 import (
@@ -9,8 +10,8 @@ import (
 // HealthResponseDTO represents the HTTP response data transfer object for health checks.
 // Per Constitution Principle IV, boundary types have serialization tags and explicit conversion methods.
 type HealthResponseDTO struct {
-	Status    string    `json:"status"`
 	Timestamp time.Time `json:"timestamp"`
+	Status    string    `json:"status"`
 }
 
 // DesdeModelo constructs a HealthResponseDTO from the domain HealthStatus.

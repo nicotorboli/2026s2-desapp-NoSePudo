@@ -1,3 +1,4 @@
+// Package repository contains persistence implementations.
 package repository
 
 import (

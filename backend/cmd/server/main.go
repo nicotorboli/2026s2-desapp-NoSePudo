@@ -1,3 +1,4 @@
+// Package main starts the HTTP server.
 package main
 
 import (
@@ -40,7 +41,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("Server listening on port %s\n", port)
+		log.Println("Server listening")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server listen error: %v\n", err)
 		}
