@@ -91,6 +91,19 @@ jobs:
         working-directory: frontend
         run: npm run knip
 
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm run test:coverage
+
+      # Sonar corre en su propio job y necesita este reporte: los tests no se
+      # vuelven a ejecutar alla.
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/lcov.info
+          retention-days: 1
+
   # Sonar es un gate propio, no un paso del job de backend: si el quality gate
   # falla, el check que se pone en rojo en el PR tiene que ser el de Sonar y no
   # el de los tests (FR-010, SC-004). Depende de backend porque consume su
@@ -98,7 +111,7 @@ jobs:
   sonar:
     name: SonarQube Analysis
     runs-on: ubuntu-latest
-    needs: backend
+    needs: [backend, frontend]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -106,11 +119,17 @@ jobs:
           # Sonar necesita el historial completo para determinar que es codigo nuevo.
           fetch-depth: 0
 
-      - name: Download coverage report
+      - name: Download backend coverage report
         uses: actions/download-artifact@v4
         with:
           name: backend-coverage
           path: backend
+
+      - name: Download frontend coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
