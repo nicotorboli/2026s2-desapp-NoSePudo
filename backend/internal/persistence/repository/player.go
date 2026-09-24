@@ -13,3 +13,9 @@ type PlayerRepository struct {
 func (repo *PlayerRepository) GetPlayer() []model.Player {
 	return repo.sql.GetPlayer()
 }
+
+func NewPlayerRepository(sql PlayerSql) *PlayerRepository {
+	return &PlayerRepository{
+		sql: sql,
+	}
+}

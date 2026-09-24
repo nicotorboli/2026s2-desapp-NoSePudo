@@ -2,19 +2,23 @@ package controller
 
 import (
 	"net/http"
-
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller/dto"
 )
 
 type Controller interface {
-	Register(mux *http.ServeMux) any
+	Register(mux *http.ServeMux)
 }
 
 type PlayerController interface {
 	Controller
-	ListPlayers() []dto.Player
+	ListPlayers(http.ResponseWriter, *http.Request)
 }
 
 type Container struct {
 	Player PlayerController
+}
+
+func NewContainer(p PlayerController) *Container {
+	return &Container{
+		Player: p,
+	}
 }

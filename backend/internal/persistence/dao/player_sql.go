@@ -13,3 +13,9 @@ type PlayerSql struct {
 func (dao *PlayerSql) GetPlayer() []model.Player {
 	return make([]model.Player, 1)
 }
+
+func NewPlayerDao(db *sql.DB) *PlayerSql {
+	return &PlayerSql{
+		Db: db,
+	}
+}

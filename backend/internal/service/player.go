@@ -3,7 +3,7 @@ package service
 import "github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 
 type PlayerRepository interface {
-	GetPlayers() []model.Player
+	GetPlayer() []model.Player
 }
 
 type Player struct {
@@ -11,5 +11,11 @@ type Player struct {
 }
 
 func (p *Player) ListPlayers() []model.Player {
-	return p.repo.GetPlayers()
+	return p.repo.GetPlayer()
+}
+
+func NewPlayerService(r PlayerRepository) *Player {
+	return &Player{
+		repo: r,
+	}
 }

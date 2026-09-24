@@ -7,8 +7,8 @@ type Player struct {
 	position int8
 }
 
-func FromModel(p model.Player) *Player {
-	return &Player{
+func FromModel(p model.Player) Player {
+	return Player{
 		name:     p.Name,
 		position: p.Position,
 	}
