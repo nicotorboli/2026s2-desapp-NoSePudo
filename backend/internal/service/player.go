@@ -6,10 +6,10 @@ type PlayerRepository interface {
 	GetPlayers() []model.Player
 }
 
-type PlayerService struct {
-	playerRepo PlayerRepository
+type Player struct {
+	repo PlayerRepository
 }
 
-func (p *PlayerService) ListPlayers() []model.Player {
-	return p.playerRepo.GetPlayers()
+func (p *Player) ListPlayers() []model.Player {
+	return p.repo.GetPlayers()
 }

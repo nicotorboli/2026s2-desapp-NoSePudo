@@ -2,30 +2,19 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
-	"net/http"
+	"os"
 
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/logger"
+	_ "github.com/lib/pq"
+
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/cfg"
 )
 
-type Config struct {
-	env []string
-}
-
-func etc() *slog.Logger {
-	return logger.NewLog()
-}
-
-func NewServer(
-	logger *slog.Logger,
-	config *Config,
-	controllers *controller.Container) http.Handler {
-	mplex := http.NewServeMux()
-
-	return mplex
-}
-
 func main() {
-	fmt.Println("Hola mundo")
+	cfg := &cfg.Config{
+		DBUrl:  os.Getenv("DBURL"),
+		DBUser: os.Getenv("DBUSER"),
+		DBPass: os.Getenv("DBPASSWORD"),
+	}
+
+	fmt.Println(cfg.DBUrl)
 }

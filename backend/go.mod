@@ -2,7 +2,10 @@ module github.com/nicotorboli/2026s2-desapp-NoSePudo/backend
 
 go 1.26.5
 
-require github.com/rs/zerolog v1.35.1
+require (
+	github.com/lib/pq v1.12.3
+	github.com/rs/zerolog v1.35.1
+)
 
 require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
