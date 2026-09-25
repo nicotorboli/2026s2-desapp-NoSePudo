@@ -1,0 +1,136 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend Verification & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go toolchain
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      # Solo se INSTALA el binario: quien corre el linter es ./scripts/pre-commit.sh,
+      # el mismo script que corre el desarrollador. Se evita golangci-lint-action
+      # porque ejecuta golangci-lint por su cuenta, lo que duplicaba la corrida y
+      # abortaba el job antes de llegar al hook (T034).
+      #
+      # La version sale de .golangci-version, el unico lugar donde esta declarada,
+      # y el comando es el mismo que la constitucion le pide al desarrollador.
+      - name: Install golangci-lint
+        run: |
+          go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(cat .golangci-version)"
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Execute precommit hook script
+        run: ./scripts/pre-commit.sh
+
+      - name: Execute backend tests
+        working-directory: backend
+        run: go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
+
+      - name: Compile backend packages
+        working-directory: backend
+        run: go build -v ./...
+
+      # Sonar corre en su propio job y necesita este reporte: go test no se vuelve
+      # a ejecutar alla.
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.out
+          retention-days: 1
+
+  frontend:
+    name: Frontend Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js toolchain
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci --ignore-scripts
+
+      - name: Run TypeScript type checking
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Run ESLint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Run Knip dead-code analysis
+        working-directory: frontend
+        run: npm run knip
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm run test:coverage
+
+      # Sonar corre en su propio job y necesita este reporte: los tests no se
+      # vuelven a ejecutar alla.
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/lcov.info
+          retention-days: 1
+
+  # Sonar es un gate propio, no un paso del job de backend: si el quality gate
+  # falla, el check que se pone en rojo en el PR tiene que ser el de Sonar y no
+  # el de los tests (FR-010, SC-004). Depende de backend porque consume su
+  # reporte de cobertura.
+  sonar:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Sonar necesita el historial completo para determinar que es codigo nuevo.
+          fetch-depth: 0
+
+      - name: Download backend coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend
+
+      - name: Download frontend coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

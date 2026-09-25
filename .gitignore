@@ -10,3 +10,24 @@
 
 .env.*
 .env
+
+# Dependencias y artefactos de build
+node_modules/
+dist/
+build/
+vendor/
+coverage/
+
+# Binarios y artefactos de test
+*.exe
+*.test
+*.out
+*.log
+
+# Archivos del editor y del sistema operativo
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.idea/
+.vscode/
