@@ -2,13 +2,13 @@ package logger
 
 import (
 	"log/slog"
+	"os"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 func NewLog() *slog.Logger {
-	zl := log.Logger
+	zl := zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout}).With().Timestamp().Logger()
 	handler := zerolog.NewSlogHandler(zl)
 	return slog.New(handler)
 }

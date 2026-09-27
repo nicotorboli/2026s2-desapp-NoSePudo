@@ -1,22 +1,23 @@
-package handler
+package server
 
 import (
 	"log/slog"
 	"net/http"
 
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/cfg"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/configuration"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/dao"
 )
 
 func NewServer(
 	logger *slog.Logger,
-	config *cfg.Config,
+	cfg *configuration.Cfg,
 	controllers *controller.Container,
 	playerSql *dao.PlayerSql,
 ) http.Handler {
-	mplex := http.NewServeMux()
+	mux := http.NewServeMux()
 
-	return mplex
+	addRoutes(mux, logger, controllers, nil)
 
+	return mux
 }

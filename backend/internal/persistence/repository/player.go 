@@ -1,0 +1,10 @@
+package repository
+
+import "database/sql"
+
+type Player struct {
+	db *sql.DB
+}
+
+
+

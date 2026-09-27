@@ -1,16 +1,11 @@
 package controller
 
 import (
-	"net/http"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
 )
 
-type Controller interface {
-	Register(mux *http.ServeMux)
-}
-
 type PlayerController interface {
-	Controller
-	ListPlayers(http.ResponseWriter, *http.Request)
+	GetPlayers() httphandler.Endpoint
 }
 
 type Container struct {

@@ -1,11 +1,10 @@
 package controller
 
 import (
-	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller/dto"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
@@ -23,16 +22,18 @@ func NewPlayerController(svc PlayerService) *RestPlayerController {
 	}
 }
 
-func (c *RestPlayerController) ListPlayers(w http.ResponseWriter, req *http.Request) {
-	players := c.svc.ListPlayers()
-	playersDto := make([]dto.Player, len(players))
-	for i := range players {
-		playersDto[i] = dto.FromModel(players[i])
-		io.WriteString(w, fmt.Sprintf("%v", playersDto[i]))
+func (c *RestPlayerController) GetPlayers() httphandler.Endpoint {
+	return func(w http.ResponseWriter, req *http.Request) error {
+		players := c.svc.ListPlayers()
+		playersDto := make([]dto.Player, len(players))
+		for i := range players {
+			playersDto[i] = dto.FromModel(players[i])
+		}
+
+		if err := httphandler.Encode(w, http.StatusOK, playersDto); err != nil {
+			return err
+		}
+
+		return nil
 	}
-
-}
-
-func (c *RestPlayerController) Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /player/", c.ListPlayers)
 }
