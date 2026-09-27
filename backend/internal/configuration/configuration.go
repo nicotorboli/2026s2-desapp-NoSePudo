@@ -20,5 +20,13 @@ func LoadCfg() *Cfg {
 }
 
 func (c *Cfg) GetServerAddress() string {
+
+	if c.Host == "" {
+		c.Host = "127.0.0.1"
+	}
+	if c.Port == "" {
+		c.Port = "8080"
+	}
+
 	return fmt.Sprintf("%s:%s", c.Host, c.Port)
 }

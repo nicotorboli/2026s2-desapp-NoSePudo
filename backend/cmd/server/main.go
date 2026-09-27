@@ -29,9 +29,9 @@ func main() {
 
 func startServer() error {
 	cfg := configuration.LoadCfg()
-	appLog := logger.NewLog()
+	logger := logger.NewLog()
 
-	appLog.Info("Initializing DB connection")
+	logger.Info("Initializing DB connection")
 
 	db, err := sql.Open("postgres", cfg.PostgresDataSource)
 
@@ -50,7 +50,7 @@ func startServer() error {
 	if err := db.PingContext(ctx); err != nil {
 		return fmt.Errorf("Database unreachable: %w", err)
 	}
-	appLog.Info("Database connection successful")
+	logger.Info("Database connection successful")
 
 	playerDao := dao.NewPlayerDao(nil)
 	playerRepo := repository.NewPlayerRepository(playerDao)
@@ -58,7 +58,7 @@ func startServer() error {
 	playerController := controller.NewPlayerController(playerService)
 
 	handler := server.NewServer(
-		appLog,
+		logger,
 		cfg,
 		controller.NewContainer(playerController),
 		nil,
@@ -72,6 +72,8 @@ func startServer() error {
 		IdleTimeout:  120 * time.Second,
 	}
 
+	logger.Info(fmt.Sprintf("Starting server at %s", cfg.GetServerAddress()))
+
 	err = server.ListenAndServe()
 
 	if errors.Is(err, http.ErrServerClosed) {
@@ -81,6 +83,6 @@ func startServer() error {
 		os.Exit(1)
 	}
 
-	appLog.Info("Server stopped gracefully")
+	logger.Info("Server stopped gracefully")
 	return nil
 }

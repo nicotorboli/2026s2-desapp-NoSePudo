@@ -10,6 +10,7 @@
 
 .env.*
 .env
+*.env
 
 # Dependencias y artefactos de build
 node_modules/
