@@ -38,8 +38,7 @@ func startServer() error {
 	if err != nil {
 		return fmt.Errorf("Invalid database credentials: %w", err)
 	}
-	defer db.Close()
-
+	defer func() { _ = db.Close() }() // No hay mucha razón para handlear el error cuando se cierra la db
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(20)
 	db.SetConnMaxLifetime(5 * time.Minute)
@@ -47,7 +46,7 @@ func startServer() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := db.PingContext(ctx); err != nil {
+	if err = db.PingContext(ctx); err != nil {
 		return fmt.Errorf("Database unreachable: %w", err)
 	}
 	logger.Info("Database connection successful")
