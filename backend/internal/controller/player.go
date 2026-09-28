@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller/dto"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )

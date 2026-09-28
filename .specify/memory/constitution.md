@@ -51,6 +51,7 @@ dependencias) e `internal`, separado en paquetes con responsabilidades claras:
   por tabla que ejecutan el SQL).
 - model (dominio): contiene los modelos y la lógica pura del negocio.
 - adapters: integración con servicios externos.
+- dto: contiene las estructuras de datos que se comunican entre capas
 
 Hay un repository por concepto del dominio —jugador, cotización, usuario,
 orden—, no uno por tabla, y lo que cruza su borde son modelos, nunca filas.
