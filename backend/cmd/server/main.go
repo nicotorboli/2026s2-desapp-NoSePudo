@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -14,6 +16,7 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/configuration"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/logger"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/middleware"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/dao"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/server"
@@ -38,7 +41,8 @@ func startServer() error {
 	if err != nil {
 		return fmt.Errorf("Invalid database credentials: %w", err)
 	}
-	defer func() { _ = db.Close() }() // No hay mucha razón para handlear el error cuando se cierra la db
+	defer db.Close() //nolint:errcheck
+	// Se suprime este chequeo en particular porque no es un error que se suela handlear
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(20)
 	db.SetConnMaxLifetime(5 * time.Minute)
@@ -51,7 +55,7 @@ func startServer() error {
 	}
 	logger.Info("Database connection successful")
 
-	playerDao := dao.NewPlayerDao(nil)
+	playerDao := dao.NewPlayerDao(db)
 	playerRepo := repository.NewPlayerRepository(playerDao)
 	playerService := service.NewPlayerService(playerRepo)
 	playerController := controller.NewPlayerController(playerService)
@@ -60,7 +64,7 @@ func startServer() error {
 		logger,
 		cfg,
 		controller.NewContainer(playerController),
-		nil,
+		middleware.NewContainer(),
 	)
 
 	server := &http.Server{
@@ -73,13 +77,26 @@ func startServer() error {
 
 	logger.Info(fmt.Sprintf("Starting server at %s", cfg.GetServerAddress()))
 
-	err = server.ListenAndServe()
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(stop)
 
-	if errors.Is(err, http.ErrServerClosed) {
-		fmt.Println("Server closed")
-	} else if err != nil {
-		fmt.Println("Error starting server:", err)
-		os.Exit(1)
+	serverErr := make(chan error, 1)
+	go func() {
+		serverErr <- server.ListenAndServe()
+	}()
+
+	select {
+	case err = <-serverErr:
+		if !errors.Is(err, http.ErrServerClosed) && err != nil {
+			return fmt.Errorf("error starting server: %w", err)
+		}
+	case <-stop:
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			return fmt.Errorf("error shutting down server: %w", err)
+		}
 	}
 
 	logger.Info("Server stopped gracefully")
