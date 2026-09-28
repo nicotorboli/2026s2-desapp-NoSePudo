@@ -7,6 +7,7 @@ import (
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/middleware"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
 // route es la declaración de un endpoint: su patrón, el nivel de acceso que
@@ -80,6 +81,19 @@ func chainFor(r route, middlewares *middleware.Container) httphandler.Endpoint {
 		return middlewares.Authentication.RequireAccessToken()(r.endpoint)
 	case AccessRenewal:
 		return middlewares.Authentication.RequireRefreshToken()(r.endpoint)
+	case AccessSuperuser:
+		// Ninguna ruta lo usa en esta entrega. La cadena existe porque es el
+		// punto donde se engancha la primera operación reservada al
+		// superusuario, y dejarla armada ahora es lo que hace que esa feature
+		// no tenga que tocar el ruteo.
+		//
+		// El orden se lee al revés de como se ejecuta: el decorador de afuera
+		// corre primero. La autenticación tiene que ser la externa porque es la
+		// que publica el actor que la autorización después lee; invertirlas
+		// deja a la autorización sin actor y todo termina en 401.
+		return middlewares.Authentication.RequireAccessToken()(
+			middlewares.Authorization.Require(model.PrivilegeSuperuser)(r.endpoint),
+		)
 	case AccessUndeclared:
 		panic(fmt.Sprintf("la ruta %q no declara su nivel de acceso", r.pattern))
 	default:

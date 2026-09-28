@@ -450,3 +450,134 @@ func TestLoginReturnsNoSessionWhenIssuingFails(t *testing.T) {
 		t.Error("se devolvió una sesión pese a que la firma falló")
 	}
 }
+
+func TestEnsureSuperuserCreatesTheAccount(t *testing.T) {
+	auth, userRepository, _, _ := newAuthServiceWithIssuer()
+
+	if err := auth.EnsureSuperuser(t.Context(), "  Admin@NoSePudo.AR ", "una-contraseña"); err != nil {
+		t.Fatalf("EnsureSuperuser devolvió error: %v", err)
+	}
+
+	if len(userRepository.inserted) != 1 {
+		t.Fatalf("se insertaron %d cuentas, se esperaba 1", len(userRepository.inserted))
+	}
+
+	created := userRepository.inserted[0]
+	if created.Privilege != model.PrivilegeSuperuser {
+		t.Errorf("Privilege = %v, se esperaba superuser", created.Privilege)
+	}
+	if created.Email != "admin@nosepudo.ar" {
+		t.Errorf("Email = %q, se esperaba normalizado", created.Email)
+	}
+	if created.PasswordHash == "una-contraseña" {
+		t.Error("se guardó la contraseña en texto plano")
+	}
+	if !created.Active {
+		t.Error("la cuenta se creó inactiva")
+	}
+}
+
+// Es lo que permite reiniciar el contenedor sin crear una segunda cuenta ni
+// fallar el arranque.
+func TestEnsureSuperuserIsIdempotent(t *testing.T) {
+	auth, userRepository, _, _ := newAuthServiceWithIssuer()
+
+	for range 3 {
+		if err := auth.EnsureSuperuser(t.Context(), "admin@nosepudo.ar", "una-contraseña"); err != nil {
+			t.Fatalf("EnsureSuperuser devolvió error: %v", err)
+		}
+	}
+
+	if len(userRepository.inserted) != 1 {
+		t.Errorf("se insertaron %d cuentas en tres llamadas, se esperaba 1", len(userRepository.inserted))
+	}
+}
+
+// Un reinicio no puede deshacerle en silencio al dueño una contraseña que había
+// cambiado.
+func TestEnsureSuperuserLeavesAnExistingPasswordAlone(t *testing.T) {
+	auth, userRepository, passwordHasher, _ := newAuthServiceWithIssuer()
+
+	if err := auth.EnsureSuperuser(t.Context(), "admin@nosepudo.ar", "la-original"); err != nil {
+		t.Fatalf("EnsureSuperuser devolvió error: %v", err)
+	}
+	originalHash := userRepository.byEmail["admin@nosepudo.ar"].PasswordHash
+	hashesBefore := len(passwordHasher.hashed)
+
+	if err := auth.EnsureSuperuser(t.Context(), "admin@nosepudo.ar", "otra-distinta"); err != nil {
+		t.Fatalf("la segunda llamada devolvió error: %v", err)
+	}
+
+	if got := userRepository.byEmail["admin@nosepudo.ar"].PasswordHash; got != originalHash {
+		t.Errorf("la contraseña cambió: %q pasó a %q", originalHash, got)
+	}
+	if len(passwordHasher.hashed) != hashesBefore {
+		t.Error("se hasheó la contraseña nueva pese a que la cuenta ya existía")
+	}
+}
+
+// FR-019: la cuenta de superusuario no es obtenible a través del alta.
+func TestRegisterCannotProduceASuperuser(t *testing.T) {
+	auth, userRepository, _, _ := newAuthServiceWithIssuer()
+
+	if _, err := auth.Register(t.Context(), "quiero@ser.admin", "una-contraseña"); err != nil {
+		t.Fatalf("Register devolvió error: %v", err)
+	}
+
+	for _, created := range userRepository.inserted {
+		if created.Privilege == model.PrivilegeSuperuser {
+			t.Errorf("el alta produjo un superusuario: %q", created.Email)
+		}
+	}
+}
+
+// Si la cuenta la creó otro proceso entre la consulta y la escritura, el
+// objetivo igual se cumplió y el arranque no tiene por qué fallar.
+func TestEnsureSuperuserToleratesALostRace(t *testing.T) {
+	auth, userRepository, _, _ := newAuthServiceWithIssuer()
+	userRepository.getByEmailer = func(string) (model.User, error) {
+		return model.User{}, model.ErrUserNotFound
+	}
+	userRepository.insertErr = model.ErrEmailTaken
+
+	if err := auth.EnsureSuperuser(t.Context(), "admin@nosepudo.ar", "una-contraseña"); err != nil {
+		t.Errorf("EnsureSuperuser devolvió error ante una carrera perdida: %v", err)
+	}
+}
+
+// Un fallo de la base al consultar no puede leerse como "no existe" y derivar
+// en una segunda cuenta de superusuario.
+func TestEnsureSuperuserPropagatesALookupFailure(t *testing.T) {
+	auth, userRepository, _, _ := newAuthServiceWithIssuer()
+	lookupFailure := errors.New("la base no responde")
+	userRepository.getByEmailer = func(string) (model.User, error) {
+		return model.User{}, lookupFailure
+	}
+
+	err := auth.EnsureSuperuser(t.Context(), "admin@nosepudo.ar", "una-contraseña")
+
+	if !errors.Is(err, lookupFailure) {
+		t.Errorf("devolvió %v, se esperaba que propagara el fallo", err)
+	}
+	if len(userRepository.inserted) != 0 {
+		t.Error("se creó una cuenta pese a que la consulta falló")
+	}
+}
+
+// El superusuario inicia sesión y su credencial declara el privilegio que
+// tiene la cuenta.
+func TestLoginIssuesTheSuperuserPrivilege(t *testing.T) {
+	auth, _, _, tokenIssuer := newAuthServiceWithIssuer()
+
+	if err := auth.EnsureSuperuser(t.Context(), "admin@nosepudo.ar", "una-contraseña"); err != nil {
+		t.Fatalf("EnsureSuperuser devolvió error: %v", err)
+	}
+
+	if _, err := auth.Login(t.Context(), "admin@nosepudo.ar", "una-contraseña"); err != nil {
+		t.Fatalf("Login devolvió error: %v", err)
+	}
+
+	if tokenIssuer.gotPrivilege != model.PrivilegeSuperuser {
+		t.Errorf("se emitió con privilegio %v, se esperaba superuser", tokenIssuer.gotPrivilege)
+	}
+}

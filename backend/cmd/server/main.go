@@ -105,6 +105,13 @@ func startServer() error {
 	repos := repository.NewContainer(daos)
 	adapterContainer := adapters.NewContainer(cfg)
 	services := service.NewContainer(repos, adapterContainer)
+	if cfg.HasSuperuserCredentials() {
+		if err = services.Auth.EnsureSuperuser(ctx, cfg.SuperuserEmail, cfg.SuperuserPassword); err != nil {
+			return fmt.Errorf("aprovisionar el superusuario: %w", err)
+		}
+		logger.Info("Superuser account ensured")
+	}
+
 	controllers := controller.NewContainer(services)
 	middlewares := middleware.NewContainer(adapterContainer.JWT)
 

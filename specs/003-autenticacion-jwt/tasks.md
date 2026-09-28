@@ -190,13 +190,13 @@ persistence and the route table. Every user story below consumes something from 
 
 **Independent Test**: Sign in as a common user and as the superuser and read the `priv` claim of each; confirm registration has no path to producing a superuser.
 
-- [ ] T060 [P] [US5] Create `backend/internal/middleware/authorization.go` — `Authorize(required model.PrivilegeLevel)` as an `Endpoint` decorator reading the actor from the context and returning `httphandler.Error` with 403 when `Satisfies` is false, which is a different call site from the 401 (FR-011). Depends on T050.
-- [ ] T061 [P] [US5] Create `backend/internal/middleware/authorization_test.go` — a common user refused where superuser is required, the superuser allowed, and an absent or unknown level refused rather than treated as superuser (FR-018). Depends on T060.
-- [ ] T062 [US5] Modify `backend/internal/middleware/container.go` and `backend/internal/server/routes.go` — hold the authorization middleware and give `AccessSuperuser` its chain in `buildMux`, `Authenticate(KindAccess)` then `Authorize(model.PrivilegeSuperuser)`. No route uses it in this delivery; it is the point the next feature plugs into. Depends on T060.
-- [ ] T063 [US5] Modify `backend/internal/service/auth.go` — `EnsureSuperuser(ctx, email, password) error`: normalise, create with `PrivilegeSuperuser` when no account holds the address, and do nothing at all when one does — including not resetting its password (R12, FR-019). Depends on T033.
-- [ ] T064 [US5] Modify `backend/internal/service/auth_test.go` — `EnsureSuperuser` creates on an empty store, is idempotent on a second call, and leaves an existing account's hash untouched. Depends on T063.
-- [ ] T065 [US5] Modify `backend/cmd/server/main.go` — call `EnsureSuperuser` once after the schema check, only when both superuser variables are set, and skip silently otherwise. Depends on T030, T063.
-- [ ] T066 [US5] Modify `backend/test/e2e/auth_test.go` — US5's five acceptance scenarios: the `priv` claim for each level, exactly one superuser after provisioning, and that it was not reachable through registration. Depends on T065.
+- [X] T060 [P] [US5] Create `backend/internal/middleware/authorization.go` — `Authorize(required model.PrivilegeLevel)` as an `Endpoint` decorator reading the actor from the context and returning `httphandler.Error` with 403 when `Satisfies` is false, which is a different call site from the 401 (FR-011). Depends on T050.
+- [X] T061 [P] [US5] Create `backend/internal/middleware/authorization_test.go` — a common user refused where superuser is required, the superuser allowed, and an absent or unknown level refused rather than treated as superuser (FR-018). Depends on T060.
+- [X] T062 [US5] Modify `backend/internal/middleware/container.go` and `backend/internal/server/routes.go` — hold the authorization middleware and give `AccessSuperuser` its chain in `buildMux`, `Authenticate(KindAccess)` then `Authorize(model.PrivilegeSuperuser)`. No route uses it in this delivery; it is the point the next feature plugs into. Depends on T060.
+- [X] T063 [US5] Modify `backend/internal/service/auth.go` — `EnsureSuperuser(ctx, email, password) error`: normalise, create with `PrivilegeSuperuser` when no account holds the address, and do nothing at all when one does — including not resetting its password (R12, FR-019). Depends on T033.
+- [X] T064 [US5] Modify `backend/internal/service/auth_test.go` — `EnsureSuperuser` creates on an empty store, is idempotent on a second call, and leaves an existing account's hash untouched. Depends on T063.
+- [X] T065 [US5] Modify `backend/cmd/server/main.go` — call `EnsureSuperuser` once after the schema check, only when both superuser variables are set, and skip silently otherwise. Depends on T030, T063.
+- [X] T066 [US5] Modify `backend/test/e2e/auth_test.go` — US5's five acceptance scenarios: the `priv` claim for each level, exactly one superuser after provisioning, and that it was not reachable through registration. Depends on T065.
 
 **Checkpoint**: the privilege distinction exists end to end and the enforcement point is ready for the first operation that needs it.
 

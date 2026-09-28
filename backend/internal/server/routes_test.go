@@ -11,14 +11,20 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io"
+	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/middleware"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
 // Los controllers de estos casos no hacen nada: lo que se examina es la tabla
@@ -182,5 +188,89 @@ func TestNoRouteIsRegisteredOutsideBuildMux(t *testing.T) {
 	// mirado nada.
 	if checked == 0 {
 		t.Fatal("no se examinó ningún archivo del paquete")
+	}
+}
+
+// stubVerifier acepta toda credencial y declara el privilegio que se le pida.
+type stubVerifier struct {
+	privilege model.PrivilegeLevel
+}
+
+func (s stubVerifier) Verify(string) (adapters.Claims, error) {
+	return adapters.Claims{Subject: 42, Privilege: s.privilege, Kind: adapters.KindAccess}, nil
+}
+
+// El orden de la cadena de AccessSuperuser, ejercitado a través de buildMux y
+// no armado a mano.
+//
+// Existe porque la composición se lee al revés de como se ejecuta y es fácil
+// invertirla: con la autorización por fuera, corre antes de que la
+// autenticación haya publicado el actor, y toda operación de superusuario
+// termina en 401 sin que nadie se entere de por qué. Los casos del middleware
+// no lo detectan porque arman su propia cadena; esto mira la que se usa.
+func TestSuperuserChainAuthenticatesBeforeAuthorizing(t *testing.T) {
+	cases := []struct {
+		name      string
+		privilege model.PrivilegeLevel
+		want      int
+	}{
+		{"el superusuario pasa", model.PrivilegeSuperuser, http.StatusOK},
+		{"un usuario comun recibe 403 y no 401", model.PrivilegeUser, http.StatusForbidden},
+		{"un privilegio desconocido recibe 403", model.PrivilegeUnknown, http.StatusForbidden},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			reached := false
+			routes := []route{{
+				pattern: "GET /solo-superusuario",
+				access:  AccessSuperuser,
+				endpoint: func(w http.ResponseWriter, _ *http.Request) error {
+					reached = true
+					return httphandler.Encode(w, http.StatusOK, map[string]string{"status": "ok"})
+				},
+			}}
+
+			mux := buildMux(
+				routes,
+				slog.New(slog.NewTextHandler(io.Discard, nil)),
+				middleware.NewContainer(stubVerifier{privilege: c.privilege}),
+			)
+
+			recorder := httptest.NewRecorder()
+			request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/solo-superusuario", nil)
+			request.Header.Set("Authorization", "Bearer una-credencial")
+			mux.ServeHTTP(recorder, request)
+
+			if recorder.Code != c.want {
+				t.Errorf("status = %d, se esperaba %d: %s", recorder.Code, c.want, recorder.Body.String())
+			}
+			if reached != (c.want == http.StatusOK) {
+				t.Errorf("la operacion %s corrio", map[bool]string{true: "si", false: "no"}[reached])
+			}
+		})
+	}
+}
+
+// Y sin credencial la misma cadena da 401, que es el otro lado de FR-011.
+func TestSuperuserChainRefusesWithoutACredential(t *testing.T) {
+	routes := []route{{
+		pattern:  "GET /solo-superusuario",
+		access:   AccessSuperuser,
+		endpoint: stubController{}.endpoint(),
+	}}
+
+	mux := buildMux(
+		routes,
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		middleware.NewContainer(stubVerifier{privilege: model.PrivilegeSuperuser}),
+	)
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/solo-superusuario", nil)
+	mux.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, se esperaba 401", recorder.Code)
 	}
 }

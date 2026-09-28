@@ -19,6 +19,7 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/configuration"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/middleware"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/dao"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/server"
@@ -92,6 +93,7 @@ func startPostgres(t *testing.T) *sql.DB {
 type stack struct {
 	db     *sql.DB
 	server *httptest.Server
+	auth   *service.Auth
 }
 
 func newStack(t *testing.T) *stack {
@@ -127,7 +129,30 @@ func newStackWithAccessTTL(t *testing.T, accessTTL time.Duration) *stack {
 	))
 	t.Cleanup(httpServer.Close)
 
-	return &stack{db: db, server: httpServer}
+	return &stack{db: db, server: httpServer, auth: services.Auth}
+}
+
+// ensureSuperuser aprovisiona el superusuario como lo hace cmd al arrancar.
+func (s *stack) ensureSuperuser(t *testing.T, email, password string) {
+	t.Helper()
+
+	if err := s.auth.EnsureSuperuser(t.Context(), email, password); err != nil {
+		t.Fatalf("no se pudo aprovisionar el superusuario: %v", err)
+	}
+}
+
+// countSuperusers es como se comprueba FR-019: exactamente uno.
+func (s *stack) countSuperusers(t *testing.T) int {
+	t.Helper()
+
+	var count int
+	if err := s.db.QueryRowContext(t.Context(),
+		"SELECT COUNT(*) FROM users WHERE privilege = $1", int16(model.PrivilegeSuperuser),
+	).Scan(&count); err != nil {
+		t.Fatalf("no se pudieron contar los superusuarios: %v", err)
+	}
+
+	return count
 }
 
 // countUsers es como se comprueba que una petición rechazada no dejó nada
