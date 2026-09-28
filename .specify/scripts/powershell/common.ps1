@@ -135,7 +135,7 @@ function Save-FeatureJson {
     # Read current value and skip write when unchanged
     if (Test-Path -LiteralPath $fjPath -PathType Leaf) {
         try {
-            $raw = [System.IO.File]::ReadAllText($fjPath, [System.Text.Encoding]::UTF8)
+            $raw = Get-Content -LiteralPath $fjPath -Raw
             $cfg = $raw | ConvertFrom-Json
             if ($cfg.feature_directory -eq $FeatureDirectory) {
                 return
@@ -187,7 +187,7 @@ function Get-FeaturePathsEnv {
             Save-FeatureJson -RepoRoot $repoRoot -FeatureDirectory $env:SPECIFY_FEATURE_DIRECTORY
         }
     } elseif (Test-Path $featureJson) {
-        $featureJsonRaw = [System.IO.File]::ReadAllText($featureJson, [System.Text.Encoding]::UTF8)
+        $featureJsonRaw = Get-Content -LiteralPath $featureJson -Raw
         try {
             $featureConfig = $featureJsonRaw | ConvertFrom-Json
         } catch {
