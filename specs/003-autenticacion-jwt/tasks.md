@@ -157,9 +157,28 @@ persistence and the route table. Every user story below consumes something from 
 
 **Independent Test**: Add a route with no `access` field and confirm the table test names it; register a route directly on the mux and confirm the AST test names the file and line.
 
-- [ ] T057 [US4] Create `backend/internal/server/routes_test.go` — the table test over `routes()`: every entry has a level other than `AccessUndeclared`, and this delivery's five routes carry exactly the levels FR-015 fixes — register and login anonymous, the catalog and logout authenticated, refresh renewal. Depends on T028.
-- [ ] T058 [US4] Extend `backend/internal/server/routes_test.go` with the source-level check — parse `backend/internal/server/` with `go/ast` and fail, naming file and line, when `Handle` or `HandleFunc` is called on a `*http.ServeMux` outside `buildMux` (R7, FR-014). Depends on T057.
-- [ ] T059 [US4] Demonstrate SC-002 — temporarily add a route with no declared level and one registered straight onto the mux, confirm each test fails and names the offender, then revert. Record the observed failure messages in the task notes; commit nothing from this step. Depends on T058.
+- [X] T057 [US4] Create `backend/internal/server/routes_test.go` — the table test over `routes()`: every entry has a level other than `AccessUndeclared`, and this delivery's five routes carry exactly the levels FR-015 fixes — register and login anonymous, the catalog and logout authenticated, refresh renewal. Depends on T028.
+- [X] T058 [US4] Extend `backend/internal/server/routes_test.go` with the source-level check — parse `backend/internal/server/` with `go/ast` and fail, naming file and line, when `Handle` or `HandleFunc` is called on a `*http.ServeMux` outside `buildMux` (R7, FR-014). Depends on T057.
+- [X] T059 [US4] Demonstrate SC-002 — **done, and this is what the checks actually printed.** Nothing from this step was committed; `routes.go` was restored with `git checkout`.
+
+  **Violation 1 — a route literal with no `access` field.** Three things fired, which is more than SC-002 asks for: the table test named it, the specification test named it, and `buildMux` refused to build the router at all.
+
+  ```text
+  --- FAIL: TestEveryRouteDeclaresAnAccessLevel
+      routes_test.go:53: la ruta "GET /endpoint-que-alguien-olvido-declarar" no declara su nivel de acceso
+  --- FAIL: TestDeclaredLevelsMatchTheSpecification
+      routes_test.go:95: la ruta "GET /endpoint-que-alguien-olvido-declarar" está declarada como undeclared
+                         y no figura en la especificación
+  panic: la ruta "GET /endpoint-que-alguien-olvido-declarar" no declara su nivel de acceso
+  ```
+
+  **Violation 2 — a route registered straight onto the mux, the case the table cannot see because the route never entered it.** The AST test named the file, the line and the function:
+
+  ```text
+  --- FAIL: TestNoRouteIsRegisteredOutsideBuildMux
+      routes.go:99:  registrarUnaRutaAEscondidas llama a Handle por fuera de buildMux
+      routes.go:100: registrarUnaRutaAEscondidas llama a HandleFunc por fuera de buildMux
+  ```
 
 **Checkpoint**: the protection US3 delivered can no longer decay silently as the API grows.
 
