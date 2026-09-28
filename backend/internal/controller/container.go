@@ -12,6 +12,8 @@ type PlayerController interface {
 type AuthController interface {
 	Register() httphandler.Endpoint
 	Login() httphandler.Endpoint
+	Refresh() httphandler.Endpoint
+	Logout() httphandler.Endpoint
 }
 
 type Container struct {

@@ -98,12 +98,24 @@ type stack struct {
 
 func newStack(t *testing.T) *stack {
 	t.Helper()
-	return newStackWithAccessTTL(t, 15*time.Minute)
+	return newStackWith(t, 15*time.Minute, 168*time.Hour)
 }
 
 // newStackWithAccessTTL es para los casos que necesitan ver expirar una
-// credencial de verdad, sin esperar quince minutos.
+// credencial de acceso de verdad, sin esperar quince minutos.
 func newStackWithAccessTTL(t *testing.T, accessTTL time.Duration) *stack {
+	t.Helper()
+	return newStackWith(t, accessTTL, 168*time.Hour)
+}
+
+// newStackWithRefreshTTL hace lo mismo con la de renovación, que por defecto
+// vive una semana.
+func newStackWithRefreshTTL(t *testing.T, refreshTTL time.Duration) *stack {
+	t.Helper()
+	return newStackWith(t, 15*time.Minute, refreshTTL)
+}
+
+func newStackWith(t *testing.T, accessTTL, refreshTTL time.Duration) *stack {
 	t.Helper()
 
 	db := startPostgres(t)
@@ -111,7 +123,7 @@ func newStackWithAccessTTL(t *testing.T, accessTTL time.Duration) *stack {
 	cfg := &configuration.Cfg{
 		JWTSecret:  testJWTSecret,
 		AccessTTL:  accessTTL,
-		RefreshTTL: 168 * time.Hour,
+		RefreshTTL: refreshTTL,
 		BcryptCost: testBcryptCost,
 	}
 
@@ -150,6 +162,21 @@ func (s *stack) countSuperusers(t *testing.T) int {
 		"SELECT COUNT(*) FROM users WHERE privilege = $1", int16(model.PrivilegeSuperuser),
 	).Scan(&count); err != nil {
 		t.Fatalf("no se pudieron contar los superusuarios: %v", err)
+	}
+
+	return count
+}
+
+// countLiveRefreshTokens es como se comprueba que la respuesta al robo dejó la
+// cuenta sin credenciales usables.
+func (s *stack) countLiveRefreshTokens(t *testing.T) int {
+	t.Helper()
+
+	var count int
+	if err := s.db.QueryRowContext(t.Context(),
+		"SELECT COUNT(*) FROM refresh_tokens WHERE used_at IS NULL AND revoked_at IS NULL AND expires_at > NOW()",
+	).Scan(&count); err != nil {
+		t.Fatalf("no se pudieron contar las credenciales vivas: %v", err)
 	}
 
 	return count

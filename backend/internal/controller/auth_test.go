@@ -26,13 +26,18 @@ const fakeAccessToken = "una-credencial" //nolint:gosec // valor de prueba, no u
 // mockAuthService devuelve lo que el caso necesite. Lo que se prueba acá es el
 // borde HTTP: los status, la forma del cuerpo y qué llega al service.
 type mockAuthService struct {
-	gotEmail       string
-	gotPassword    string
-	err            error
-	session        model.Session
-	user           model.User
-	registerCalled int
-	loginCalled    int
+	gotEmail        string
+	gotPassword     string
+	gotCredentialID string
+	gotSessionID    string
+	err             error
+	session         model.Session
+	user            model.User
+	gotUserID       int64
+	registerCalled  int
+	loginCalled     int
+	refreshCalled   int
+	logoutCalled    int
 }
 
 func (m *mockAuthService) Register(_ context.Context, email, password string) (model.User, error) {
@@ -47,6 +52,26 @@ func (m *mockAuthService) Login(_ context.Context, email, password string) (mode
 	m.gotEmail = email
 	m.gotPassword = password
 	return m.session, m.err
+}
+
+func (m *mockAuthService) Refresh(
+	_ context.Context,
+	presentedID string,
+	userID int64,
+	sessionID string,
+) (model.Session, error) {
+	m.refreshCalled++
+	m.gotCredentialID = presentedID
+	m.gotUserID = userID
+	m.gotSessionID = sessionID
+	return m.session, m.err
+}
+
+func (m *mockAuthService) Logout(_ context.Context, userID int64, sessionID string) error {
+	m.logoutCalled++
+	m.gotUserID = userID
+	m.gotSessionID = sessionID
+	return m.err
 }
 
 // callRegister corre el endpoint a través de Wrap, que es como lo ve un

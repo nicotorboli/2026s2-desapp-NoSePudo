@@ -10,9 +10,12 @@ import "time"
 // cadenas opacas, y quién las produce y con qué formato es cosa del adaptador.
 // Lo que el dominio afirma es que un inicio de sesión exitoso entrega esto.
 //
-// En esta entrega sólo lleva la credencial de acceso; la de renovación se
-// suma cuando exista el almacenamiento que permite revocarla.
+// Lleva las dos credenciales que un inicio de sesión entrega: la de acceso, que
+// es corta y se verifica sola, y la de renovación, que es larga y está
+// persistida justamente para poder cortarla antes de que expire.
 type Session struct {
-	AccessExpiresAt time.Time
-	AccessToken     string
+	AccessExpiresAt  time.Time
+	RefreshExpiresAt time.Time
+	AccessToken      string
+	RefreshToken     string
 }

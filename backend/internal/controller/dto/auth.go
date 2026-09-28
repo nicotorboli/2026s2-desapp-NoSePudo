@@ -95,18 +95,22 @@ func AccountResponseDesdeModelo(user model.User) AccountResponse {
 //
 // Es un objeto con campos nombrados y no la credencial pelada, para que las
 // entregas siguientes puedan agregarle campos sin romper a los clientes que ya
-// existan (FR-006). La credencial de renovación se suma cuando exista.
+// existan (FR-006).
 type SessionResponse struct {
-	AccessExpiresAt time.Time `json:"access_expires_at"`
-	AccessToken     string    `json:"access_token"`
-	TokenType       string    `json:"token_type"`
+	AccessExpiresAt  time.Time `json:"access_expires_at"`
+	RefreshExpiresAt time.Time `json:"refresh_expires_at"`
+	AccessToken      string    `json:"access_token"`
+	RefreshToken     string    `json:"refresh_token"`
+	TokenType        string    `json:"token_type"`
 }
 
 func SessionResponseDesdeModelo(session model.Session) SessionResponse {
 	return SessionResponse{
-		AccessExpiresAt: session.AccessExpiresAt,
-		AccessToken:     session.AccessToken,
-		TokenType:       tokenTypeBearer,
+		AccessExpiresAt:  session.AccessExpiresAt,
+		RefreshExpiresAt: session.RefreshExpiresAt,
+		AccessToken:      session.AccessToken,
+		RefreshToken:     session.RefreshToken,
+		TokenType:        tokenTypeBearer,
 	}
 }
 

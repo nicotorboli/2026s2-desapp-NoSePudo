@@ -44,6 +44,21 @@ func (s *Server) routes() []route {
 			endpoint: s.controllers.Auth.Login(),
 		},
 		{
+			// FR-015 lo declara renewal, y no authenticated, porque acá la
+			// credencial es el token de refresco: el middleware rechaza uno de
+			// acceso, así que el nivel tiene algo detrás y no es una etiqueta.
+			pattern:  "POST /auth/refresh",
+			access:   AccessRenewal,
+			endpoint: s.controllers.Auth.Refresh(),
+		},
+		{
+			// Authenticated por FR-015: su credencial es el token de acceso, y
+			// la sesión que cierra la nombra el claim sid de ese mismo token.
+			pattern:  "POST /auth/logout",
+			access:   AccessAuthenticated,
+			endpoint: s.controllers.Auth.Logout(),
+		},
+		{
 			// FR-015: el catálogo exige credencial. Es el único otro endpoint
 			// que esta entrega expone, así que dejarlo anónimo significaría
 			// que la credencial no gobierna nada.

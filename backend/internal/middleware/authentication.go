@@ -78,9 +78,10 @@ func (a *Authentication) require(kind adapters.TokenKind) Decorator {
 			}
 
 			actor := Actor{
-				SessionID: claims.SessionID,
-				ID:        claims.Subject,
-				Privilege: claims.Privilege,
+				SessionID:    claims.SessionID,
+				CredentialID: claims.ID,
+				ID:           claims.Subject,
+				Privilege:    claims.Privilege,
 			}
 
 			ctx := WithActor(req.Context(), actor)

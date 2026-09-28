@@ -7,6 +7,7 @@ import (
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/middleware"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
@@ -14,6 +15,8 @@ import (
 type AuthService interface {
 	Register(ctx context.Context, email, password string) (model.User, error)
 	Login(ctx context.Context, email, password string) (model.Session, error)
+	Refresh(ctx context.Context, presentedID string, userID int64, sessionID string) (model.Session, error)
+	Logout(ctx context.Context, userID int64, sessionID string) error
 }
 
 type RestAuthController struct {
@@ -75,3 +78,74 @@ func (c *RestAuthController) Login() httphandler.Endpoint {
 		return httphandler.Encode(w, http.StatusOK, dto.SessionResponseDesdeModelo(session))
 	}
 }
+
+// Refresh cambia la credencial de renovación por una sesión nueva.
+//
+// No toma cuerpo: los tres datos que el service necesita salen del actor que el
+// middleware publicó, es decir de una credencial que ya verificó. Un valor que
+// el cliente manda es un valor que hay que validar, testear y desconfiar, y la
+// forma más barata de tratarlo es no aceptarlo.
+func (c *RestAuthController) Refresh() httphandler.Endpoint {
+	return func(w http.ResponseWriter, req *http.Request) error {
+		actor, err := actorOf(req)
+		if err != nil {
+			return err
+		}
+
+		session, err := c.authService.Refresh(req.Context(), actor.CredentialID, actor.ID, actor.SessionID)
+		if err != nil {
+			// El reuso y la expiración se responden igual, con 401: al que
+			// presentó una credencial que no sirve no se le explica por qué.
+			// Que el reuso además haya cortado toda la cuenta es una decisión
+			// interna y no algo que se le cuente.
+			if errors.Is(err, model.ErrRefreshTokenReused) ||
+				errors.Is(err, model.ErrRefreshTokenExpired) ||
+				errors.Is(err, model.ErrRefreshTokenRevoked) {
+				return httphandler.NewError(http.StatusUnauthorized, "authentication required", err)
+			}
+			return err
+		}
+
+		return httphandler.Encode(w, http.StatusOK, dto.SessionResponseDesdeModelo(session))
+	}
+}
+
+// Logout cierra la sesión que nombra la credencial de acceso presentada.
+//
+// Tampoco toma cuerpo, y por eso no hay comparación de propiedad que hacer ni
+// un 403 que testear: la familia sale de un claim verificado y no puede
+// pertenecer a otro.
+func (c *RestAuthController) Logout() httphandler.Endpoint {
+	return func(w http.ResponseWriter, req *http.Request) error {
+		actor, err := actorOf(req)
+		if err != nil {
+			return err
+		}
+
+		if err := c.authService.Logout(req.Context(), actor.ID, actor.SessionID); err != nil {
+			return err
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+
+		return nil
+	}
+}
+
+// actorOf saca el actor del contexto. Que falte significa que la ruta se
+// registró sin autenticación delante, y eso se responde 401 en vez de seguir
+// con una cuenta cero.
+func actorOf(req *http.Request) (middleware.Actor, error) {
+	actor, authenticated := middleware.ActorFromContext(req.Context())
+	if !authenticated {
+		return middleware.Actor{}, httphandler.NewError(
+			http.StatusUnauthorized,
+			"authentication required",
+			errMissingActor,
+		)
+	}
+
+	return actor, nil
+}
+
+var errMissingActor = errors.New("la operación necesita un actor y la petición no fue autenticada")

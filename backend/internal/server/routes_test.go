@@ -38,6 +38,8 @@ func (stubController) endpoint() httphandler.Endpoint {
 func (s stubController) GetPlayers() httphandler.Endpoint { return s.endpoint() }
 func (s stubController) Register() httphandler.Endpoint   { return s.endpoint() }
 func (s stubController) Login() httphandler.Endpoint      { return s.endpoint() }
+func (s stubController) Refresh() httphandler.Endpoint    { return s.endpoint() }
+func (s stubController) Logout() httphandler.Endpoint     { return s.endpoint() }
 
 func routesUnderTest() []route {
 	server := &Server{
@@ -74,6 +76,8 @@ func TestDeclaredLevelsMatchTheSpecification(t *testing.T) {
 	expected := map[string]AccessLevel{
 		"POST /auth/register": AccessAnonymous,
 		"POST /auth/login":    AccessAnonymous,
+		"POST /auth/refresh":  AccessRenewal,
+		"POST /auth/logout":   AccessAuthenticated,
 		"GET /players":        AccessAuthenticated,
 	}
 

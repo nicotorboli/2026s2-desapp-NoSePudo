@@ -37,6 +37,19 @@ func (m *mockAuthController) Login() httphandler.Endpoint {
 	}
 }
 
+func (m *mockAuthController) Refresh() httphandler.Endpoint {
+	return func(w http.ResponseWriter, req *http.Request) error {
+		return httphandler.Encode(w, http.StatusOK, map[string]string{"status": "renewed"})
+	}
+}
+
+func (m *mockAuthController) Logout() httphandler.Endpoint {
+	return func(w http.ResponseWriter, req *http.Request) error {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+}
+
 // stubTokenVerifier acepta o rechaza sin firmar nada. Lo que estos casos
 // prueban es el ruteo y la cadena que se le aplica a cada nivel, no cómo se
 // verifica una credencial.

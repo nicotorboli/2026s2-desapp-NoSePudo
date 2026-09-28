@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -38,23 +39,45 @@ type PasswordHasher interface {
 // recibe la cadena y cuándo deja de valer.
 type TokenIssuer interface {
 	IssueAccess(subject int64, privilege model.PrivilegeLevel, sessionID string) (string, adapters.Claims, error)
+	IssueRefresh(subject int64, sessionID string) (string, adapters.Claims, error)
 }
 
+// RefreshTokenRepository es lo que el service necesita para que una credencial
+// de renovación sea revocable. Es la diferencia de fondo con la de acceso: esta
+// se persiste justamente para poder cortarla antes de que expire.
+type RefreshTokenRepository interface {
+	Insert(ctx context.Context, token model.RefreshToken) error
+	GetByID(ctx context.Context, id string) (model.RefreshToken, error)
+	Rotate(ctx context.Context, presentedID string, replacement model.RefreshToken) error
+	RevokeFamily(ctx context.Context, familyID string, userID int64) error
+	RevokeAllLiveForUser(ctx context.Context, userID int64) error
+}
+
+// Clock es el reloj del service, inyectado para que los casos que miran la
+// expiración de una fila puedan escribirse.
+type Clock func() time.Time
+
 type Auth struct {
-	userRepository UserRepository
-	passwordHasher PasswordHasher
-	tokenIssuer    TokenIssuer
+	userRepository         UserRepository
+	passwordHasher         PasswordHasher
+	tokenIssuer            TokenIssuer
+	refreshTokenRepository RefreshTokenRepository
+	now                    Clock
 }
 
 func NewAuthService(
 	userRepository UserRepository,
 	passwordHasher PasswordHasher,
 	tokenIssuer TokenIssuer,
+	refreshTokenRepository RefreshTokenRepository,
+	now Clock,
 ) *Auth {
 	return &Auth{
-		userRepository: userRepository,
-		passwordHasher: passwordHasher,
-		tokenIssuer:    tokenIssuer,
+		userRepository:         userRepository,
+		passwordHasher:         passwordHasher,
+		tokenIssuer:            tokenIssuer,
+		refreshTokenRepository: refreshTokenRepository,
+		now:                    now,
 	}
 }
 
@@ -77,20 +100,42 @@ func (a *Auth) Login(ctx context.Context, email, password string) (model.Session
 		return model.Session{}, model.ErrInvalidCredentials
 	}
 
-	// Cada inicio de sesión abre una familia propia. Todavía no hay nada que
-	// la consuma, pero es lo que va a permitir cerrar una sesión sin tocar las
-	// de los otros dispositivos, y ponerla desde ahora evita cambiarle los
-	// claims a la credencial más adelante.
-	sessionID := uuid.NewString()
+	// Cada inicio de sesión abre una familia propia, y es lo que permite cerrar
+	// una sesión sin tocar las de los otros dispositivos.
+	return a.openSession(ctx, user, uuid.NewString())
+}
 
-	accessToken, claims, err := a.tokenIssuer.IssueAccess(user.ID, user.Privilege, sessionID)
+// openSession emite las dos credenciales de una sesión y persiste la de
+// renovación. La comparten el inicio de sesión, que abre una familia nueva, y
+// la renovación, que hereda la que ya venía.
+func (a *Auth) openSession(ctx context.Context, user model.User, sessionID string) (model.Session, error) {
+	accessToken, accessClaims, err := a.tokenIssuer.IssueAccess(user.ID, user.Privilege, sessionID)
 	if err != nil {
 		return model.Session{}, fmt.Errorf("emitir la credencial de acceso: %w", err)
 	}
 
+	refreshToken, refreshClaims, err := a.tokenIssuer.IssueRefresh(user.ID, sessionID)
+	if err != nil {
+		return model.Session{}, fmt.Errorf("emitir la credencial de renovación: %w", err)
+	}
+
+	// La fila se guarda antes de devolver la credencial: una que el sistema no
+	// pueda revocar no es aceptable (FR-035).
+	err = a.refreshTokenRepository.Insert(ctx, model.RefreshToken{
+		ExpiresAt: refreshClaims.ExpiresAt,
+		ID:        refreshClaims.ID,
+		FamilyID:  sessionID,
+		UserID:    user.ID,
+	})
+	if err != nil {
+		return model.Session{}, fmt.Errorf("persistir la credencial de renovación: %w", err)
+	}
+
 	return model.Session{
-		AccessExpiresAt: claims.ExpiresAt,
-		AccessToken:     accessToken,
+		AccessExpiresAt:  accessClaims.ExpiresAt,
+		RefreshExpiresAt: refreshClaims.ExpiresAt,
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
 	}, nil
 }
 
@@ -185,6 +230,130 @@ func (a *Auth) EnsureSuperuser(ctx context.Context, email, password string) erro
 			return nil
 		}
 		return fmt.Errorf("crear la cuenta de superusuario: %w", err)
+	}
+
+	return nil
+}
+
+// Refresh cambia una credencial de renovación por una sesión nueva.
+//
+// Los tres datos que recibe salen del actor que el middleware publicó, es decir
+// de una credencial ya verificada, y no de nada que el cliente haya mandado. Se
+// pasan como argumentos explícitos para que el service no tenga que importar el
+// paquete del middleware.
+func (a *Auth) Refresh(
+	ctx context.Context,
+	presentedID string,
+	userID int64,
+	sessionID string,
+) (model.Session, error) {
+	presented, err := a.refreshTokenRepository.GetByID(ctx, presentedID)
+	if err != nil {
+		// Una credencial correctamente firmada cuya fila no existe es una que
+		// ya fue consumida, o una emitida con una clave que se perdió. En
+		// cualquiera de los dos casos se responde como reuso.
+		if errors.Is(err, model.ErrRefreshTokenNotFound) {
+			return model.Session{}, a.respondToTheft(ctx, userID)
+		}
+		return model.Session{}, fmt.Errorf("buscar la credencial de renovación: %w", err)
+	}
+
+	// Expirada no es lo mismo que robada: el titular simplemente vuelve a
+	// entrar, y cortarle el resto de las sesiones sería castigarlo por dejar
+	// pasar una semana.
+	if presented.IsExpired(a.now()) {
+		return model.Session{}, model.ErrRefreshTokenExpired
+	}
+
+	// Usada es evidencia de robo: el poseedor legítimo ya la canjeó, así que
+	// quien la presenta ahora es un segundo poseedor (FR-037).
+	if presented.IsUsed() {
+		return model.Session{}, a.respondToTheft(ctx, userID)
+	}
+
+	// Revocada, en cambio, se rechaza y nada más. FR-037 dice "usada o
+	// invalidada", pero el cuarto escenario de la historia dice sólo "usada", y
+	// el caso borde de la especificación exige que dos sesiones sean
+	// independientes: si el teléfono reintenta renovar después de haber cerrado
+	// sesión, eso no puede tirarle abajo la sesión del escritorio. Se resuelve
+	// a favor de los escenarios porque son más específicos, y porque una
+	// credencial revocada que reaparece no es evidencia de un segundo poseedor.
+	if presented.IsRevoked() {
+		return model.Session{}, model.ErrRefreshTokenRevoked
+	}
+
+	// El privilegio se relee de la cuenta en este momento, no se hereda de la
+	// credencial anterior: una sesión larga no puede congelar un nivel viejo.
+	user, err := a.userRepository.GetByID(ctx, userID)
+	if err != nil {
+		return model.Session{}, fmt.Errorf("buscar la cuenta a renovar: %w", err)
+	}
+
+	accessToken, accessClaims, err := a.tokenIssuer.IssueAccess(user.ID, user.Privilege, sessionID)
+	if err != nil {
+		return model.Session{}, fmt.Errorf("emitir la credencial de acceso: %w", err)
+	}
+
+	refreshToken, refreshClaims, err := a.tokenIssuer.IssueRefresh(user.ID, sessionID)
+	if err != nil {
+		return model.Session{}, fmt.Errorf("emitir la credencial de renovación: %w", err)
+	}
+
+	// La rotación es la que decide de verdad: su UPDATE lleva las condiciones
+	// de "está viva" en el WHERE, así que si dos peticiones llegan con la misma
+	// credencial sólo una gana. Los chequeos de arriba existen para poder
+	// distinguir expirada de consumida, no para tomar la decisión.
+	replacement := model.RefreshToken{
+		ExpiresAt: refreshClaims.ExpiresAt,
+		ID:        refreshClaims.ID,
+		FamilyID:  sessionID,
+		UserID:    user.ID,
+	}
+
+	if err := a.refreshTokenRepository.Rotate(ctx, presentedID, replacement); err != nil {
+		if errors.Is(err, model.ErrRefreshTokenReused) {
+			return model.Session{}, a.respondToTheft(ctx, userID)
+		}
+		return model.Session{}, fmt.Errorf("rotar la credencial de renovación: %w", err)
+	}
+
+	return model.Session{
+		AccessExpiresAt:  accessClaims.ExpiresAt,
+		RefreshExpiresAt: refreshClaims.ExpiresAt,
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
+	}, nil
+}
+
+// respondToTheft corta todas las credenciales de renovación de la cuenta y
+// devuelve el reuso.
+//
+// El alcance es la cuenta entera y no la familia afectada, porque quien tiene
+// una credencial robada de una familia puede tener otra, y el costo de
+// equivocarse es un inicio de sesión extra.
+//
+// Si la revocación falla, se devuelve ese error y no el de reuso: dejar
+// credenciales vivas después de detectar un robo es peor que responder 500.
+func (a *Auth) respondToTheft(ctx context.Context, userID int64) error {
+	if err := a.refreshTokenRepository.RevokeAllLiveForUser(ctx, userID); err != nil {
+		return fmt.Errorf("revocar las credenciales tras detectar un reuso: %w", err)
+	}
+
+	return model.ErrRefreshTokenReused
+}
+
+// Logout cierra la sesión que la credencial de acceso presentada nombra.
+//
+// No recibe parámetros del cliente: la familia sale del claim sid de una
+// credencial que el middleware ya verificó. Un valor que el cliente manda es un
+// valor que hay que validar, testear y desconfiar, y la forma más barata de
+// tratarlo es no aceptarlo.
+//
+// La credencial de acceso no se invalida: expira sola, y es lo bastante corta
+// para que eso alcance.
+func (a *Auth) Logout(ctx context.Context, userID int64, sessionID string) error {
+	if err := a.refreshTokenRepository.RevokeFamily(ctx, sessionID, userID); err != nil {
+		return fmt.Errorf("cerrar la sesión: %w", err)
 	}
 
 	return nil

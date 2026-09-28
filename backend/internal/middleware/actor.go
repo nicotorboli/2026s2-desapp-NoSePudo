@@ -14,6 +14,13 @@ import "github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 // haber datos personales (FR-028).
 type Actor struct {
 	SessionID string
+
+	// CredentialID es el jti de la credencial que identificó a este actor.
+	// El data-model no lo listaba, y hace falta: la renovación tiene que
+	// marcar usada exactamente la fila que le presentaron, y sin el jti no hay
+	// forma de nombrarla.
+	CredentialID string
+
 	ID        int64
 	Privilege model.PrivilegeLevel
 }

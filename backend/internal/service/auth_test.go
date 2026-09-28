@@ -96,12 +96,125 @@ func (m *mockPasswordHasher) CompareWithDummy(string) {
 // mockTokenIssuer devuelve una credencial reconocible y registra con qué se la
 // pidieron, que es lo que el service tiene que haber sacado de la cuenta.
 type mockTokenIssuer struct {
-	expiresAt    time.Time
-	err          error
-	sessionIDs   []string
-	gotSubject   int64
-	issued       int
-	gotPrivilege model.PrivilegeLevel
+	expiresAt        time.Time
+	refreshExpiresAt time.Time
+	err              error
+	sessionIDs       []string
+	gotSubject       int64
+	issued           int
+	refreshesIssued  int
+	gotPrivilege     model.PrivilegeLevel
+}
+
+// mockRefreshTokenRepository guarda las filas en memoria y replica lo que hace
+// el SQL de verdad: Rotate sólo tiene éxito si la fila está viva, que es la
+// condición que el WHERE del UPDATE lleva adentro.
+type mockRefreshTokenRepository struct {
+	byID          map[string]model.RefreshToken
+	now           func() time.Time
+	rotateErr     error
+	revokeAllErr  error
+	revokedAllFor []int64
+	revokedFamily []string
+}
+
+func newMockRefreshTokenRepository(now func() time.Time) *mockRefreshTokenRepository {
+	return &mockRefreshTokenRepository{byID: map[string]model.RefreshToken{}, now: now}
+}
+
+func (m *mockRefreshTokenRepository) Insert(_ context.Context, token model.RefreshToken) error {
+	token.IssuedAt = m.now()
+	m.byID[token.ID] = token
+	return nil
+}
+
+func (m *mockRefreshTokenRepository) GetByID(_ context.Context, id string) (model.RefreshToken, error) {
+	if token, found := m.byID[id]; found {
+		return token, nil
+	}
+	return model.RefreshToken{}, model.ErrRefreshTokenNotFound
+}
+
+func (m *mockRefreshTokenRepository) Rotate(
+	ctx context.Context,
+	presentedID string,
+	replacement model.RefreshToken,
+) error {
+	if m.rotateErr != nil {
+		return m.rotateErr
+	}
+
+	presented, found := m.byID[presentedID]
+	if !found || !presented.IsLive(m.now()) {
+		return model.ErrRefreshTokenReused
+	}
+
+	used := m.now()
+	presented.UsedAt = &used
+	m.byID[presentedID] = presented
+
+	return m.Insert(ctx, replacement)
+}
+
+func (m *mockRefreshTokenRepository) RevokeFamily(_ context.Context, familyID string, userID int64) error {
+	m.revokedFamily = append(m.revokedFamily, familyID)
+
+	revoked := m.now()
+	for id, token := range m.byID {
+		if token.FamilyID == familyID && token.UserID == userID && token.RevokedAt == nil {
+			token.RevokedAt = &revoked
+			m.byID[id] = token
+		}
+	}
+
+	return nil
+}
+
+func (m *mockRefreshTokenRepository) RevokeAllLiveForUser(_ context.Context, userID int64) error {
+	if m.revokeAllErr != nil {
+		return m.revokeAllErr
+	}
+
+	m.revokedAllFor = append(m.revokedAllFor, userID)
+
+	revoked := m.now()
+	for id, token := range m.byID {
+		if token.UserID == userID && token.RevokedAt == nil {
+			token.RevokedAt = &revoked
+			m.byID[id] = token
+		}
+	}
+
+	return nil
+}
+
+func (m *mockRefreshTokenRepository) countLive() int {
+	live := 0
+	for _, token := range m.byID {
+		if token.IsLive(m.now()) {
+			live++
+		}
+	}
+	return live
+}
+
+func (m *mockTokenIssuer) IssueRefresh(subject int64, sessionID string) (string, adapters.Claims, error) {
+	m.refreshesIssued++
+	m.sessionIDs = append(m.sessionIDs, sessionID)
+
+	if m.err != nil {
+		return "", adapters.Claims{}, m.err
+	}
+
+	id := fmt.Sprintf("jti-%d", m.refreshesIssued)
+
+	return "refresh-token-" + id, adapters.Claims{
+		ExpiresAt: m.refreshExpiresAt,
+		ID:        id,
+		SessionID: sessionID,
+		Subject:   subject,
+		Kind:      adapters.KindRefresh,
+	}, nil
 }
 
 func (m *mockTokenIssuer) IssueAccess(
@@ -127,18 +240,55 @@ func (m *mockTokenIssuer) IssueAccess(
 	}, nil
 }
 
+// serviceClock es el reloj de los casos: fijo, movible cuando hace falta ver
+// expirar una fila.
+var serviceNow = time.Date(2026, time.September, 28, 12, 0, 0, 0, time.UTC)
+
+type authFixture struct {
+	auth           *service.Auth
+	userRepository *mockUserRepository
+	passwordHasher *mockPasswordHasher
+	tokenIssuer    *mockTokenIssuer
+	refreshTokens  *mockRefreshTokenRepository
+	clock          *serviceClock
+}
+
+type serviceClock struct {
+	instant time.Time
+}
+
+func (c *serviceClock) now() time.Time { return c.instant }
+
+func newAuthFixture() authFixture {
+	clock := &serviceClock{instant: serviceNow}
+	userRepository := newMockUserRepository()
+	passwordHasher := &mockPasswordHasher{}
+	tokenIssuer := &mockTokenIssuer{
+		expiresAt:        serviceNow.Add(15 * time.Minute),
+		refreshExpiresAt: serviceNow.Add(168 * time.Hour),
+	}
+	refreshTokens := newMockRefreshTokenRepository(clock.now)
+
+	return authFixture{
+		auth: service.NewAuthService(
+			userRepository, passwordHasher, tokenIssuer, refreshTokens, clock.now,
+		),
+		userRepository: userRepository,
+		passwordHasher: passwordHasher,
+		tokenIssuer:    tokenIssuer,
+		refreshTokens:  refreshTokens,
+		clock:          clock,
+	}
+}
+
 func newAuthService() (*service.Auth, *mockUserRepository, *mockPasswordHasher) {
-	auth, userRepository, passwordHasher, _ := newAuthServiceWithIssuer()
-	return auth, userRepository, passwordHasher
+	fixture := newAuthFixture()
+	return fixture.auth, fixture.userRepository, fixture.passwordHasher
 }
 
 func newAuthServiceWithIssuer() (*service.Auth, *mockUserRepository, *mockPasswordHasher, *mockTokenIssuer) {
-	userRepository := newMockUserRepository()
-	passwordHasher := &mockPasswordHasher{}
-	tokenIssuer := &mockTokenIssuer{expiresAt: time.Date(2026, time.September, 28, 12, 15, 0, 0, time.UTC)}
-
-	return service.NewAuthService(userRepository, passwordHasher, tokenIssuer),
-		userRepository, passwordHasher, tokenIssuer
+	fixture := newAuthFixture()
+	return fixture.auth, fixture.userRepository, fixture.passwordHasher, fixture.tokenIssuer
 }
 
 func TestRegisterStoresANormalizedEmailAndAHash(t *testing.T) {
@@ -404,15 +554,29 @@ func TestLoginOpensAFreshSessionFamilyEachTime(t *testing.T) {
 		}
 	}
 
-	if len(tokenIssuer.sessionIDs) != 2 {
-		t.Fatalf("se emitieron %d credenciales, se esperaban 2", len(tokenIssuer.sessionIDs))
+	// Cada inicio de sesión pide dos credenciales, de acceso y de renovación,
+	// así que son cuatro entradas para dos sesiones.
+	if len(tokenIssuer.sessionIDs) != 4 {
+		t.Fatalf("se emitieron %d credenciales, se esperaban 4", len(tokenIssuer.sessionIDs))
 	}
 	for i, sessionID := range tokenIssuer.sessionIDs {
 		if sessionID == "" {
 			t.Errorf("la credencial %d no lleva familia de sesión", i)
 		}
 	}
-	if tokenIssuer.sessionIDs[0] == tokenIssuer.sessionIDs[1] {
+
+	// Las dos credenciales de un mismo inicio de sesión comparten familia: es
+	// lo que permite que el cierre de sesión nombre la familia con el token de
+	// acceso que el cliente ya presenta.
+	if tokenIssuer.sessionIDs[0] != tokenIssuer.sessionIDs[1] {
+		t.Error("el acceso y la renovación del primer inicio de sesión no comparten familia")
+	}
+	if tokenIssuer.sessionIDs[2] != tokenIssuer.sessionIDs[3] {
+		t.Error("el acceso y la renovación del segundo inicio de sesión no comparten familia")
+	}
+
+	// Y los dos inicios de sesión abren familias distintas.
+	if tokenIssuer.sessionIDs[0] == tokenIssuer.sessionIDs[2] {
 		t.Error("los dos inicios de sesión comparten familia: cerrar uno cerraría el otro")
 	}
 }
