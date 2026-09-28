@@ -55,21 +55,21 @@ func startServer() error {
 	}
 	logger.Info("Database connection successful")
 
-	playerDao := dao.NewPlayerDao(db)
-	playerRepo := repository.NewPlayerRepository(playerDao)
-	playerService := service.NewPlayerService(playerRepo)
-	playerController := controller.NewPlayerController(playerService)
+	daos := dao.NewContainer(db)
+	repos := repository.NewContainer(daos)
+	services := service.NewContainer(repos)
+	controllers := controller.NewContainer(services)
+	middlewares := middleware.NewContainer()
 
-	handler := server.NewServer(
+	srv := server.NewServer(
 		logger,
-		cfg,
-		controller.NewContainer(playerController),
-		middleware.NewContainer(),
+		controllers,
+		middlewares,
 	)
 
 	server := &http.Server{
 		Addr:         cfg.GetServerAddress(),
-		Handler:      handler,
+		Handler:      srv,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
 )
 
 type PlayerController interface {
@@ -12,8 +13,8 @@ type Container struct {
 	Player PlayerController
 }
 
-func NewContainer(p PlayerController) *Container {
+func NewContainer(services *service.Container) *Container {
 	return &Container{
-		Player: p,
+		Player: NewPlayerController(services.Player),
 	}
 }
