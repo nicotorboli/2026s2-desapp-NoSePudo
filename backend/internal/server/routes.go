@@ -16,6 +16,6 @@ func addRoutes(
 	middleware *middleware.Container,
 ) {
 
-	mux.Handle("GET /player/", httphandler.Wrap(controllers.Player.GetPlayers(), logger))
+	mux.Handle("GET /players", httphandler.Wrap(controllers.Player.GetPlayers(), logger))
 
 }

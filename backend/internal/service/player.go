@@ -1,17 +1,21 @@
 package service
 
-import "github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
+import (
+	"context"
+
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
+)
 
 type PlayerRepository interface {
-	GetPlayer() []model.Player
+	GetPlayer(ctx context.Context) ([]model.Player, error)
 }
 
 type Player struct {
 	repo PlayerRepository
 }
 
-func (p *Player) ListPlayers() []model.Player {
-	return p.repo.GetPlayer()
+func (p *Player) ListPlayers(ctx context.Context) ([]model.Player, error) {
+	return p.repo.GetPlayer(ctx)
 }
 
 func NewPlayerService(r PlayerRepository) *Player {

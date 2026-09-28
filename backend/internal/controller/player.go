@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller/dto"
@@ -9,7 +10,7 @@ import (
 )
 
 type PlayerService interface {
-	ListPlayers() []model.Player
+	ListPlayers(ctx context.Context) ([]model.Player, error)
 }
 
 type RestPlayerController struct {
@@ -24,10 +25,14 @@ func NewPlayerController(svc PlayerService) *RestPlayerController {
 
 func (c *RestPlayerController) GetPlayers() httphandler.Endpoint {
 	return func(w http.ResponseWriter, req *http.Request) error {
-		players := c.svc.ListPlayers()
+		players, err := c.svc.ListPlayers(req.Context())
+		if err != nil {
+			return err
+		}
+
 		playersDto := make([]dto.Player, len(players))
 		for i := range players {
-			playersDto[i] = dto.FromModel(players[i])
+			playersDto[i] = dto.DesdeModelo(players[i])
 		}
 
 		if err := httphandler.Encode(w, http.StatusOK, playersDto); err != nil {
