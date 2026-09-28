@@ -21,14 +21,35 @@ func (m *mockPlayerController) GetPlayers() httphandler.Endpoint {
 	}
 }
 
-func TestServer_ServeHTTP_GetPlayers(t *testing.T) {
-	log := logger.NewLog()
-	ctrls := &controller.Container{
-		Player: &mockPlayerController{},
-	}
-	mid := middleware.NewContainer()
+type mockAuthController struct{}
 
-	srv := server.NewServer(log, ctrls, mid)
+func (m *mockAuthController) Register() httphandler.Endpoint {
+	return func(w http.ResponseWriter, req *http.Request) error {
+		return httphandler.Encode(w, http.StatusCreated, map[string]string{"status": "created"})
+	}
+}
+
+func (m *mockAuthController) Login() httphandler.Endpoint {
+	return func(w http.ResponseWriter, req *http.Request) error {
+		return httphandler.Encode(w, http.StatusOK, map[string]string{"status": "signed in"})
+	}
+}
+
+// newTestServer arma el servidor con todos los controllers mockeados. Todo
+// caso lo usa, así que agregar un controller se arregla en un solo lugar.
+func newTestServer() *server.Server {
+	return server.NewServer(
+		logger.NewLog(),
+		&controller.Container{
+			Player: &mockPlayerController{},
+			Auth:   &mockAuthController{},
+		},
+		middleware.NewContainer(),
+	)
+}
+
+func TestServer_ServeHTTP_GetPlayers(t *testing.T) {
+	srv := newTestServer()
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players", nil)
 	w := httptest.NewRecorder()
@@ -41,13 +62,7 @@ func TestServer_ServeHTTP_GetPlayers(t *testing.T) {
 }
 
 func TestServer_ServeHTTP_NotFound(t *testing.T) {
-	log := logger.NewLog()
-	ctrls := &controller.Container{
-		Player: &mockPlayerController{},
-	}
-	mid := middleware.NewContainer()
-
-	srv := server.NewServer(log, ctrls, mid)
+	srv := newTestServer()
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/unknown-route", nil)
 	w := httptest.NewRecorder()

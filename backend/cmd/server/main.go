@@ -8,11 +8,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	_ "github.com/lib/pq"
 
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/configuration"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/logger"
@@ -30,8 +32,46 @@ func main() {
 	}
 }
 
+// expectedTables son las tablas sin las cuales el servicio no puede trabajar.
+// La lista y la decisión de abortar viven acá y no en el DAO: el DAO sólo
+// corre la consulta.
+var expectedTables = []string{"players", "users", "refresh_tokens"}
+
+// ensureSchema se niega a arrancar cuando falta alguna tabla, por la misma
+// razón por la que el servicio se niega a arrancar sin secreto de firma: es
+// una precondición de infraestructura, y conviene fallar temprano y claro en
+// vez de tarde y confuso.
+//
+// El síntoma que evita es concreto: init.sql sólo corre cuando el volumen de
+// Postgres está vacío, así que editarlo no cambia nada hasta recrear el
+// volumen. Sin esto, quien hace git pull y arranca se come un 500 con
+// 'relation "users" does not exist' desde tres capas abajo, sin ninguna pista
+// de que lo que cambió fue un .sql que su base nunca leyó.
+func ensureSchema(ctx context.Context, schema *dao.SchemaSql) error {
+	missing, err := schema.MissingTables(ctx, expectedTables)
+	if err != nil {
+		return fmt.Errorf("verificar el esquema de la base: %w", err)
+	}
+
+	if len(missing) > 0 {
+		return fmt.Errorf(
+			"faltan tablas en la base: %s\n"+
+				"db/init.sql sólo se ejecuta cuando el volumen de Postgres está vacío, "+
+				"así que editarlo no cambia nada hasta recrear el volumen.\n"+
+				"Desde backend/: docker compose down -v && docker compose up -d",
+			strings.Join(missing, ", "),
+		)
+	}
+
+	return nil
+}
+
 func startServer() error {
-	cfg := configuration.LoadCfg()
+	cfg, err := configuration.LoadCfg()
+	if err != nil {
+		return fmt.Errorf("configuración inválida: %w", err)
+	}
+
 	logger := logger.NewLog()
 
 	logger.Info("Initializing DB connection")
@@ -56,8 +96,15 @@ func startServer() error {
 	logger.Info("Database connection successful")
 
 	daos := dao.NewContainer(db)
+
+	if err = ensureSchema(ctx, daos.Schema); err != nil {
+		return err
+	}
+	logger.Info("Database schema verified")
+
 	repos := repository.NewContainer(daos)
-	services := service.NewContainer(repos)
+	adapterContainer := adapters.NewContainer(cfg)
+	services := service.NewContainer(repos, adapterContainer)
 	controllers := controller.NewContainer(services)
 	middlewares := middleware.NewContainer()
 
