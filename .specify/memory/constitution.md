@@ -1,3 +1,17 @@
+<!--
+Sync Impact Report:
+- Version change: 2.0.0 → 2.1.0
+- List of modified principles:
+  - Principle III. Arquitectura en capas: se detalla la estructura de la aplicación en internal/ incorporando server (inicialización y ruteo), middleware (lógica transversal y autenticación entre endpoints), logger (configuración de logging) y httphandler (utilidades como encode/decode JSON y endpoint wrapper).
+  - Principle V. DTOs en el borde: se especifica el uso de httphandler para la codificación y decodificación JSON de DTOs.
+  - Principle VIII. Seguridad: autenticación y autorización JWT: se explicita la aplicación de controles de acceso a través de middleware.
+- Modified sections:
+  - Technical Constraints: especificación explícita de los paquetes internal/server, internal/middleware, internal/httphandler e internal/logger dentro de la estructura de capas.
+- Added sections: Ninguna.
+- Removed sections: Ninguna.
+- Follow-up TODOs: Ninguno.
+-->
+
 # NoSePudo Constitution
 
 ## Core Principles
@@ -17,33 +31,54 @@ dockerizada en todos los entornos (desarrollo, CI y test).
 
 ### III. Arquitectura en capas
 
-El código se organiza en `cmd` (main que levanta el servidor) e `internal`,
-separado en capas:
+El código se organiza en `cmd` (main que levanta el servidor y arma el grafo de
+dependencias) e `internal`, separado en paquetes con responsabilidades claras:
 
-- controller: sirve los endpoints REST y traduce los datos externos al
-  servicio y los resultados del servicio al cliente.
+- server: define las funciones de inicialización del servidor HTTP y la
+  configuración del ruteo (`mux`) de la aplicación.
+- middleware: define las funciones middleware que se aplican entre medio de los
+  endpoints para lógica transversal, como autenticación y autorización.
+- httphandler: provee utilidades estandarizadas para el manejo HTTP, incluyendo
+  codificación y decodificación de JSON (`Encode`, `Decode`) y wrappers para el
+  manejo centralizado de respuestas y errores.
+- logger: centraliza la inicialización y configuración del logger (`log/slog`
+  con handler de Zerolog) utilizado por toda la aplicación.
+- controller: sirve los endpoints REST y traduce los datos externos al servicio
+  y los resultados del servicio al cliente.
 - service: orquesta el modelo de negocio con la persistencia y los adapters.
-- repository: capa de persistencia; traduce entre la base de datos y el
-  modelo de dominio, y no conoce reglas de negocio ni HTTP.
-- model (dominio): contiene la lógica del negocio.
+- persistence: capa de persistencia compuesta por `repository` (abstracción por
+  concepto del dominio que traduce entre base de datos y modelos) y `dao` (DAOs
+  por tabla que ejecutan el SQL).
+- model (dominio): contiene los modelos y la lógica pura del negocio.
 - adapters: integración con servicios externos.
 
 Hay un repository por concepto del dominio —jugador, cotización, usuario,
 orden—, no uno por tabla, y lo que cruza su borde son modelos, nunca filas.
-Adentro delega en DAOs, uno por tabla, que ejecutan el SQL y viven en el
-paquete del repository sin exportarse. Si una operación abarca varias tablas
-las coordina el repository; el service nunca usa un DAO.
+Adentro delega en DAOs, uno por tabla, que ejecutan el SQL. Los DAOs son
+públicos dentro del paquete de persistencia ya que necesitan ser instanciados
+e inyectados con su respectiva base de datos (por ejemplo, desde `cmd`). Si una
+operación abarca varias tablas las coordina el repository; el service nunca usa
+un DAO directamente.
+
+Se propaga obligatoriamente el contexto `context.Context` a todas las capas que
+requieran del uso de acciones de I/O como pueden ser controller, service,
+persistence (repository y DAO) y adapters. Esto garantiza la cancelación oportuna
+de operaciones, el manejo riguroso de timeouts y deadlines, y la propagación de
+metadatos y trazabilidad a lo largo de todo el ciclo de vida del request.
 
 ### IV. Inyección de dependencias
 
 Ninguna capa construye sus propias dependencias: las recibe por constructor.
 Cada repository y cada adapter expone una interfaz y el service depende de
-ella, nunca del tipo concreto. La interfaz se declara junto a su
-implementación, en el paquete de su capa.
+ella, nunca del tipo concreto. Asimismo, los repositories reciben sus DAOs
+(o interfaces de estos) por constructor. La interfaz se declara junto a su
+implementación o consumidor según corresponda en el paquete de su capa.
 
-El único lugar donde se instancian implementaciones concretas y se arma el
-grafo de dependencias es `cmd`. Sin eso el service no se puede testear con el
-repository mockeado, como exige el principio de Testing.
+El único lugar donde se instancian implementaciones concretas (conexión a base de
+datos, DAOs, repositories, services, adapters y controllers) y se arma el grafo
+de dependencias es `cmd`. Sin eso el service no se puede testear con el
+repository mockeado, ni el repository con el DAO mockeado, como exige el
+principio de Testing.
 
 ### V. DTOs en el borde
 
@@ -56,7 +91,9 @@ opcionales.
 La conversión es explícita y vive en el DTO: `DesdeModelo` construye el DTO a
 partir del modelo y `AModelo` hace el camino inverso. El DTO nunca consulta la
 persistencia: `AModelo` recibe por parámetro los colaboradores ya resueltos.
-No se arman conversiones a mano en el controller.
+No se arman conversiones a mano en el controller. La codificación y
+decodificación JSON de los DTOs en las peticiones y respuestas HTTP se realiza
+mediante las utilidades centralizadas de `internal/httphandler`.
 
 ### VI. Frontend React + TypeScript
 
@@ -79,21 +116,25 @@ cada cambio de endpoints.
 
 La autenticación y autorización se implementan con JWT, diferenciando los
 privilegios entre usuario común y superusuario al gestionar el acceso a los
-recursos. Todas las entradas de datos deben validarse; las entradas inválidas
-se rechazan sin ejecutar lógica de negocio.
+recursos. Estas validaciones se aplican mediante funciones de `internal/middleware`
+que interceptan las llamadas entre medio de los endpoints protegidos. Todas las
+entradas de datos deben validarse; las entradas inválidas se rechazan sin
+ejecutar lógica de negocio.
 
 ### IX. Observabilidad
 
-Los logs se emiten con zerolog como única librería de logging, son
-estructurados en JSON, un evento por línea, y todo evento incluye como mínimo
-timestamp, nivel, correlation ID, operación y, en las operaciones
-autenticadas, el actor. Los nombres de los campos son comunes a todo el
-sistema: un log que no se puede filtrar no facilita ningún análisis.
+Los logs se emiten por medio de `log/slog` de la librería estándar configurado a
+partir de un handler de la librería Zerolog. Son estructurados en JSON, un evento
+por línea, y todo evento incluye como mínimo timestamp, nivel, correlation ID,
+operación y, en las operaciones autenticadas, el actor. Los nombres de los campos
+son comunes a todo el sistema: un log que no se puede filtrar no facilita ningún
+análisis.
 
 El correlation ID se genera en el borde HTTP cuando el cliente no lo provee,
-viaja por el `context` y aparece en todos los eventos de la operación,
-incluidos los de los adapters: filtrar por un ID devuelve la solicitud
-completa de principio a fin.
+viaja por el `context.Context` (el cual se propaga obligatoriamente en todas las
+capas de I/O) y aparece en todos los eventos de la operación, incluidos los de
+los adapters: filtrar por un ID devuelve la solicitud completa de principio a
+fin.
 
 Se registran obligatoriamente cada request con su latencia y su status, todo
 error con su causa, y toda llamada a un servicio externo con su resultado y su
@@ -159,22 +200,40 @@ revisiones en los Pull Requests.
   módulo vive en `backend/` y su `go.mod` es fuente de verdad de la versión.
   Se debe incluir una versión de la aplicación dockerizada para permitir tanto
   la ejecución local como por medio de un contenedor.
-- Capas: el repository traduce entre la base de datos y el modelo delegando
-  en DAOs; el service es el único orquestador de modelo, persistencia y
-  adapters y depende de interfaces, no de implementaciones; el controller
-  solo traduce datos; el grafo de dependencias se arma en `cmd`.
+- Estructura de la aplicación y capas (`internal/`):
+  - `internal/server/`: inicialización del servidor HTTP (`NewServer`) y ruteo
+    de la aplicación (`routes`).
+  - `internal/middleware/`: funciones middleware aplicadas entre medio de los
+    endpoints (autenticación, autorización, validaciones transversales).
+  - `internal/httphandler/`: funciones de utilidad HTTP, incluyendo codificación
+    y decodificación de JSON (`Encode`, `Decode`) y wrappers de endpoints.
+  - `internal/logger/`: inicialización centralizada del logger (`log/slog` con
+    handler de Zerolog).
+  - `internal/controller/`: controladores de endpoints REST y traducción de DTOs.
+  - `internal/service/`: orquestación de lógica de negocio y dependencias.
+  - `internal/persistence/`: capas de acceso a datos compuestas por `repository`
+    (interfaz con dominio) y `dao` (DAOs públicos con SQL por tabla e inyección
+    de base de datos).
+  - `internal/model/`: modelos y lógica pura de dominio.
+  - `internal/adapters/`: integración con servicios externos.
+  - El grafo de dependencias de todas las capas e infraestructura se ensambla en `cmd/`.
+- Propagación de Context: se propaga `context.Context` a todas las capas que
+  requieran del uso de acciones de I/O (controller, service, persistence —repositories
+  y DAOs— y adapters) garantizando soporte para timeouts, cancelación y trazabilidad.
 - Frontend: vive en `frontend/`, organizado por páginas y componentes, con CSS
   por página/componente siguiendo BEM; axios se usa únicamente dentro del
   módulo de abstracción HTTP.
-- Base de datos: PostgreSQL dockerizada de forma obligatoria y separada del contenedor de backend.
+- Base de datos: PostgreSQL dockerizada de forma obligatoria y separada del
+  contenedor de backend.
 
 ## Security, Observability & Data Integrity
 
 - Privilegios: usuario común vs superusuario vía JWT; disparar un job a mano
   y modificar las reglas de valuación requieren superusuario.
 - Validación de entradas: obligatoria en todos los endpoints.
-- Observabilidad: logs estructurados, correlation ID, health check y métricas
-  de latencia y tasa de error.
+- Observabilidad: logs estructurados emitidos mediante `log/slog` configurado a
+  partir de un handler de Zerolog, correlation ID propagado por `context.Context`,
+  health check y métricas de latencia y tasa de error.
 - Auditoría: registro con autor, timestamp, cambios y diff entre estado
   anterior y posterior.
 - Datos: operaciones transaccionales por defecto e indexación del esquema.
@@ -194,7 +253,6 @@ Linters habilitados explícitamente:
   (G104, errores sin chequear, queda excluido porque lo cubre `errcheck`)
 - `nilerr`: devolver `nil` después de haber comprobado que el error no era nil
 - `noctx`: requests HTTP sin contexto explícito
-- `revive`: estilo y legibilidad, incluido el package comment en cada archivo
 - `rowserrcheck`: chequear `Err()` en database result sets
 - `sqlclosecheck`: cerrar SQL statements y rows
 - `unconvert`: conversiones de tipo innecesarias
@@ -243,10 +301,8 @@ práctica o implementación que la contradiga debe corregirse.
   versión según semver (MAJOR: remoción o redefinición de principios; MINOR:
   nuevo principio o expansión material; PATCH: clarificaciones y correcciones
   no semánticas). La documentación de cada enmienda se escribe en el mensaje
-  de su commit, y el PR la repite para quien revisa. Este archivo no lleva
-  historial de cambios ni Sync Impact Report: describe únicamente lo que rige
-  hoy.
+  de su commit, y el PR la repite para quien revisa.
 - Cumplimiento: toda PR o revisión verifica la conformidad con esta
   constitución; la complejidad adicional debe justificarse.
 
-**Version**: 1.3.0 | **Ratified**: 2026-09-05 | **Last Amended**: 2026-09-15
+**Version**: 2.1.0 | **Ratified**: 2026-09-05 | **Last Amended**: 2026-09-27
