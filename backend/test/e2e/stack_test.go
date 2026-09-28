@@ -3,10 +3,11 @@ package e2e_test
 import (
 	"context"
 	"database/sql"
-	"io"
 	"log/slog"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -94,6 +95,42 @@ type stack struct {
 	db     *sql.DB
 	server *httptest.Server
 	auth   *service.Auth
+	logs   *capturedLogs
+}
+
+// capturedLogs junta lo que el servidor escribe, para poder revisarlo después.
+// Lleva mutex porque los eventos salen de las goroutines que atienden cada
+// petición.
+type capturedLogs struct {
+	builder strings.Builder
+	mutex   sync.Mutex
+}
+
+func (c *capturedLogs) Write(p []byte) (int, error) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	return c.builder.Write(p)
+}
+
+// lines devuelve los eventos emitidos hasta ahora, uno por línea.
+func (c *capturedLogs) lines() []string {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	emitted := strings.TrimSpace(c.builder.String())
+	if emitted == "" {
+		return nil
+	}
+
+	return strings.Split(emitted, "\n")
+}
+
+func (c *capturedLogs) text() string {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	return c.builder.String()
 }
 
 func newStack(t *testing.T) *stack {
@@ -134,14 +171,16 @@ func newStackWith(t *testing.T, accessTTL, refreshTTL time.Duration) *stack {
 	controllers := controller.NewContainer(services)
 	middlewares := middleware.NewContainer(adapterContainer.JWT)
 
+	logs := &capturedLogs{}
+
 	httpServer := httptest.NewServer(server.NewServer(
-		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
 		controllers,
 		middlewares,
 	))
 	t.Cleanup(httpServer.Close)
 
-	return &stack{db: db, server: httpServer, auth: services.Auth}
+	return &stack{db: db, server: httpServer, auth: services.Auth, logs: logs}
 }
 
 // ensureSuperuser aprovisiona el superusuario como lo hace cmd al arrancar.

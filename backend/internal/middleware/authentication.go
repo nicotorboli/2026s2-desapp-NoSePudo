@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -61,20 +62,22 @@ func (a *Authentication) RequireRefreshToken() Decorator {
 func (a *Authentication) require(kind adapters.TokenKind) Decorator {
 	return func(next httphandler.Endpoint) httphandler.Endpoint {
 		return func(w http.ResponseWriter, req *http.Request) error {
+			ctx := req.Context()
+
 			raw, err := bearerToken(req.Header.Get("Authorization"))
 			if err != nil {
-				return unauthenticated(err)
+				return a.refuse(ctx, err)
 			}
 
 			claims, err := a.tokenVerifier.Verify(raw)
 			if err != nil {
-				return unauthenticated(err)
+				return a.refuse(ctx, err)
 			}
 
 			// El tipo se comprueba después de verificar la firma: hasta ese
 			// momento nada de lo que dice la credencial es digno de confianza.
 			if claims.Kind != kind {
-				return unauthenticated(errWrongTokenKind)
+				return a.refuse(ctx, errWrongTokenKind)
 			}
 
 			actor := Actor{
@@ -84,7 +87,7 @@ func (a *Authentication) require(kind adapters.TokenKind) Decorator {
 				Privilege:    claims.Privilege,
 			}
 
-			ctx := WithActor(req.Context(), actor)
+			ctx = WithActor(ctx, actor)
 			ctx = logger.Into(ctx, logger.FromContext(ctx).With("actor", actor.ID))
 
 			return next(w, req.WithContext(ctx))
@@ -121,6 +124,25 @@ func bearerToken(header string) (string, error) {
 	}
 
 	return token, nil
+}
+
+// refuse registra el rechazo y lo devuelve.
+//
+// FR-029 pide que toda autenticación refutada quede logueada con su razón, y
+// que se loguee incluso cuando no se pudo identificar ninguna cuenta —que es
+// justamente el caso normal acá: si la credencial no verifica, no hay sujeto que
+// nombrar. El evento sale sin campo actor y no con uno vacío.
+//
+// La razón es la causa interna, no el mensaje que ve el cliente, y no lleva la
+// credencial: FR-027 prohíbe escribirla en un log.
+func (a *Authentication) refuse(ctx context.Context, cause error) error {
+	logger.FromContext(ctx).Warn(
+		"authentication refused",
+		"operation", "authenticate",
+		"reason", cause.Error(),
+	)
+
+	return unauthenticated(cause)
 }
 
 // unauthenticated envuelve la causa para que quede en el log, y le responde al

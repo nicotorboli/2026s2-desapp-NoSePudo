@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/logger"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
@@ -91,18 +92,39 @@ func (a *Auth) Login(ctx context.Context, email, password string) (model.Session
 	if err != nil {
 		if errors.Is(err, model.ErrUserNotFound) {
 			a.passwordHasher.CompareWithDummy(password)
+			// Se loguea el intento aunque no haya cuenta que nombrar (FR-029),
+			// y sin la dirección que se envió, que es dato personal (FR-028).
+			// Por eso el evento no lleva sujeto: no hay ninguno que sea seguro
+			// escribir.
+			logRefusedSignIn(ctx, "no existe una cuenta con ese identificador")
+
 			return model.Session{}, model.ErrInvalidCredentials
 		}
 		return model.Session{}, fmt.Errorf("buscar la cuenta: %w", err)
 	}
 
 	if err = a.passwordHasher.Compare(user.PasswordHash, password); err != nil {
+		// Acá sí se sabe de qué cuenta se trata, y se la nombra por su
+		// identidad y nunca por su email.
+		logRefusedSignIn(ctx, "la contraseña no coincide", "actor", user.ID)
+
 		return model.Session{}, model.ErrInvalidCredentials
 	}
 
 	// Cada inicio de sesión abre una familia propia, y es lo que permite cerrar
 	// una sesión sin tocar las de los otros dispositivos.
 	return a.openSession(ctx, user, uuid.NewString())
+}
+
+// logRefusedSignIn registra un inicio de sesión refutado con su razón.
+//
+// La razón describe qué falló del lado del sistema y nunca repite lo que llegó
+// en la petición: ni la contraseña (FR-027) ni la dirección (FR-028).
+func logRefusedSignIn(ctx context.Context, reason string, attributes ...any) {
+	logger.FromContext(ctx).Warn(
+		"sign-in refused",
+		append([]any{"operation", "login", "reason", reason}, attributes...)...,
+	)
 }
 
 // openSession emite las dos credenciales de una sesión y persiste la de
@@ -335,6 +357,13 @@ func (a *Auth) Refresh(
 // Si la revocación falla, se devuelve ese error y no el de reuso: dejar
 // credenciales vivas después de detectar un robo es peor que responder 500.
 func (a *Auth) respondToTheft(ctx context.Context, userID int64) error {
+	logger.FromContext(ctx).Warn(
+		"refresh credential reused",
+		"operation", "refresh",
+		"actor", userID,
+		"reason", "se presentó una credencial de renovación ya consumida",
+	)
+
 	if err := a.refreshTokenRepository.RevokeAllLiveForUser(ctx, userID); err != nil {
 		return fmt.Errorf("revocar las credenciales tras detectar un reuso: %w", err)
 	}

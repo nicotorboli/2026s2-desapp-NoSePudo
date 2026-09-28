@@ -242,13 +242,21 @@ persistence and the route table. Every user story below consumes something from 
 > tasks below are the part of US6 that is this feature's own; the two marked ⛔ are
 > **not to be implemented here**.
 
-- [ ] T082 [US6] Modify `backend/internal/middleware/authentication.go` and `backend/internal/middleware/authorization.go` — log every refusal through `logger.FromContext(ctx)` with a `reason` field, and still log it when no account could be identified, with no subject (FR-029, US6 scenario 4). Depends on T051, T060.
-- [ ] T083 [US6] Modify `backend/internal/service/auth.go` — log a failed sign-in with its reason and without the submitted address, which is personal data (FR-028, FR-029). Depends on T043.
-- [ ] T084 [US6] Create `backend/test/e2e/logging_test.go` — capture the log output of a complete run through an `slog` handler installed by the test, and assert zero occurrences of the submitted password, either token, the signing secret and the account's email across every event, error events included (FR-027, FR-028). Depends on T082, T083.
+- [X] T082 [US6] Modify `backend/internal/middleware/authentication.go` and `backend/internal/middleware/authorization.go` — log every refusal through `logger.FromContext(ctx)` with a `reason` field, and still log it when no account could be identified, with no subject (FR-029, US6 scenario 4). Depends on T051, T060.
+- [X] T083 [US6] Modify `backend/internal/service/auth.go` — log a failed sign-in with its reason and without the submitted address, which is personal data (FR-028, FR-029). Depends on T043.
+- [X] T084 [US6] Create `backend/test/e2e/logging_test.go` — capture the log output of a complete run through an `slog` handler installed by the test, and assert zero occurrences of the submitted password, either token, the signing secret and the account's email across every event, error events included (FR-027, FR-028). Depends on T082, T083.
 - [ ] T085 [US6] ⛔ **BLOCKED — do not implement in this feature.** JSON log output replacing `zerolog.ConsoleWriter` in `backend/internal/logger/logger.go` (FR-030, SC-004, SC-005). Belongs to the observability feature.
 - [ ] T086 [US6] ⛔ **BLOCKED — do not implement in this feature.** A correlation identifier generated at the HTTP border and carried on the context logger (FR-026), which is what `actor` is meant to sit beside. Belongs to the observability feature.
 
 **Checkpoint**: the feature writes nothing it must not write; the rest of US6 waits on the observability feature.
+
+**One prerequisite the plan did not foresee.** `logger.FromContext` falls back to
+`slog.Default()` when the context carries no logger, and nothing was putting the server's
+logger in there — so every event these tasks emit would have gone to the default logger
+instead of the injected one, and the e2e could not have captured them. `httphandler.Wrap`
+now publishes it: it already receives the logger and is the outermost decorator of the
+chain, so it is the one place that has both. The deferred observability feature replaces
+what `FromContext` returns; it no longer has to arrange for it to be reachable.
 
 ---
 
