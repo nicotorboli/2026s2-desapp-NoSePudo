@@ -1,6 +1,7 @@
 package httphandler
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 )
@@ -20,7 +21,11 @@ func Wrap(endpoint Endpoint, logger *slog.Logger) http.HandlerFunc {
 		if err != nil {
 			logger.Error("Endpoint error", "error", err.Error())
 
-			if apiErr, ok := err.(APIError); ok {
+			// Se recorre la cadena de %w en vez de mirar sólo el error de
+			// arriba: cualquier capa intermedia que decore con
+			// fmt.Errorf("...: %w", err) convertiría un 401 intencional en un
+			// 500 si se usara una type assertion pelada.
+			if apiErr, ok := errors.AsType[APIError](err); ok {
 				if encodeErr := Encode(w, apiErr.StatusCode(), map[string]string{"error": apiErr.Message()}); encodeErr != nil {
 					logger.Error("Error encoding API error", "error", encodeErr.Error())
 				}
