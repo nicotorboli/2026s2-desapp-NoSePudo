@@ -96,12 +96,19 @@ type stack struct {
 
 func newStack(t *testing.T) *stack {
 	t.Helper()
+	return newStackWithAccessTTL(t, 15*time.Minute)
+}
+
+// newStackWithAccessTTL es para los casos que necesitan ver expirar una
+// credencial de verdad, sin esperar quince minutos.
+func newStackWithAccessTTL(t *testing.T, accessTTL time.Duration) *stack {
+	t.Helper()
 
 	db := startPostgres(t)
 
 	cfg := &configuration.Cfg{
 		JWTSecret:  testJWTSecret,
-		AccessTTL:  15 * time.Minute,
+		AccessTTL:  accessTTL,
 		RefreshTTL: 168 * time.Hour,
 		BcryptCost: testBcryptCost,
 	}
@@ -111,7 +118,7 @@ func newStack(t *testing.T) *stack {
 	adapterContainer := adapters.NewContainer(cfg)
 	services := service.NewContainer(repos, adapterContainer)
 	controllers := controller.NewContainer(services)
-	middlewares := middleware.NewContainer()
+	middlewares := middleware.NewContainer(adapterContainer.JWT)
 
 	httpServer := httptest.NewServer(server.NewServer(
 		slog.New(slog.NewTextHandler(io.Discard, nil)),

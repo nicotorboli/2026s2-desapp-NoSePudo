@@ -43,12 +43,11 @@ func (s *Server) routes() []route {
 			endpoint: s.controllers.Auth.Login(),
 		},
 		{
-			pattern: "GET /players",
-			// Se declara anónimo porque hoy es la verdad: el middleware de
-			// autenticación todavía no existe. FR-015 lo quiere autenticado y
-			// pasa a serlo en la misma tarea que trae el middleware, para que
-			// la declaración y lo que se aplica nunca digan cosas distintas.
-			access:   AccessAnonymous,
+			// FR-015: el catálogo exige credencial. Es el único otro endpoint
+			// que esta entrega expone, así que dejarlo anónimo significaría
+			// que la credencial no gobierna nada.
+			pattern:  "GET /players",
+			access:   AccessAuthenticated,
 			endpoint: s.controllers.Player.GetPlayers(),
 		},
 	}
@@ -73,10 +72,14 @@ func buildMux(routes []route, logger *slog.Logger, middlewares *middleware.Conta
 // declarada no es una condición que el servidor deba tolerar sirviendo: es un
 // error de programación, y la alternativa de arrancar igual es exactamente el
 // agujero que esta feature existe para cerrar.
-func chainFor(r route, _ *middleware.Container) httphandler.Endpoint {
+func chainFor(r route, middlewares *middleware.Container) httphandler.Endpoint {
 	switch r.access {
 	case AccessAnonymous:
 		return r.endpoint
+	case AccessAuthenticated:
+		return middlewares.Authentication.RequireAccessToken()(r.endpoint)
+	case AccessRenewal:
+		return middlewares.Authentication.RequireRefreshToken()(r.endpoint)
 	case AccessUndeclared:
 		panic(fmt.Sprintf("la ruta %q no declara su nivel de acceso", r.pattern))
 	default:

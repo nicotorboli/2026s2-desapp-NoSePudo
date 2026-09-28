@@ -106,7 +106,7 @@ func startServer() error {
 	adapterContainer := adapters.NewContainer(cfg)
 	services := service.NewContainer(repos, adapterContainer)
 	controllers := controller.NewContainer(services)
-	middlewares := middleware.NewContainer()
+	middlewares := middleware.NewContainer(adapterContainer.JWT)
 
 	srv := server.NewServer(
 		logger,
