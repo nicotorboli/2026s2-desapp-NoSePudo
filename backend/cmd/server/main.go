@@ -48,6 +48,7 @@ func run() error {
 			return fmt.Errorf("open postgres database: %w", sqlErr)
 		}
 		defer db.Close() //nolint:errcheck
+		// Normalmente no se handlea este error en particular
 
 		db.SetMaxOpenConns(25)
 		db.SetMaxIdleConns(25)
@@ -64,10 +65,8 @@ func run() error {
 		appLogger.Warn("No database DSN provided; database connection is nil")
 	}
 
-	// Adapters
 	footballDataAdapter := footballdata.NewClient(cfg.FootballDataAPIKey, 6*time.Second)
 
-	// Dependency Injection Wiring
 	daoContainer := dao.NewContainer(db)
 	repoContainer := repository.NewContainer(db, daoContainer)
 	serviceContainer := service.NewContainer(repoContainer, footballDataAdapter, appLogger)
