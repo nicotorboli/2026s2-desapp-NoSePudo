@@ -13,7 +13,7 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
 )
 
 type mockPlayerService struct {
@@ -105,7 +105,7 @@ func TestPlayerController_GetPlayerByID_Success(t *testing.T) {
 					Active:     true,
 				}, nil
 			}
-			return dto.PlayerDetailResponse{}, model.ErrNotFound
+			return dto.PlayerDetailResponse{}, service.ErrNotFound
 		},
 	}
 
@@ -137,7 +137,7 @@ func TestPlayerController_GetPlayerByID_NotFound(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mockSvc := &mockPlayerService{
 		getPlayerByIDFn: func(ctx context.Context, id int64) (dto.PlayerDetailResponse, error) {
-			return dto.PlayerDetailResponse{}, model.ErrNotFound
+			return dto.PlayerDetailResponse{}, service.ErrNotFound
 		},
 	}
 

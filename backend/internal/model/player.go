@@ -1,14 +1,7 @@
 package model
 
 import (
-	"errors"
 	"time"
-)
-
-var (
-	ErrNotFound          = errors.New("player not found")
-	ErrInvalidInput      = errors.New("invalid input")
-	ErrRateLimitExceeded = errors.New("rate limit exceeded")
 )
 
 type Player struct {

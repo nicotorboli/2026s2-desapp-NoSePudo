@@ -11,6 +11,8 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/dao"
 )
 
+var ErrNotFound = errors.New("player not found")
+
 type PlayerRepository interface {
 	ListPlayers(ctx context.Context, filter model.PlayerFilter) (model.PageResult[model.Player], error)
 	GetPlayerByID(ctx context.Context, id int64) (model.Player, error)
@@ -63,6 +65,9 @@ func (r *PlayerRepositoryImpl) ListPlayers(ctx context.Context, filter model.Pla
 func (r *PlayerRepositoryImpl) GetPlayerByID(ctx context.Context, id int64) (model.Player, error) {
 	player, err := r.playerDAO.GetPlayerByID(ctx, id)
 	if err != nil {
+		if errors.Is(err, dao.ErrNotFound) {
+			return model.Player{}, ErrNotFound
+		}
 		return model.Player{}, err
 	}
 	return player, nil
@@ -91,7 +96,7 @@ func (r *PlayerRepositoryImpl) SavePlayers(ctx context.Context, players []model.
 		existingPlayer, getErr := r.playerDAO.GetPlayerByExternalID(ctx, p.ExternalID)
 		isNew := false
 		if getErr != nil {
-			if errors.Is(getErr, model.ErrNotFound) {
+			if errors.Is(getErr, dao.ErrNotFound) {
 				isNew = true
 			} else {
 				return 0, 0, 0, fmt.Errorf("check existing player %d: %w", p.ExternalID, getErr)

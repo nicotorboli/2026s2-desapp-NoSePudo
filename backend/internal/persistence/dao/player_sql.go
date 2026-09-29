@@ -11,6 +11,8 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
+var ErrNotFound = errors.New("player not found")
+
 type PlayerDAO interface {
 	ListPlayers(ctx context.Context, f model.PlayerFilter) ([]model.Player, int64, error)
 	GetPlayerByID(ctx context.Context, id int64) (model.Player, error)
@@ -157,7 +159,7 @@ func (d *PlayerSql) GetPlayerByID(ctx context.Context, id int64) (model.Player, 
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return model.Player{}, model.ErrNotFound
+			return model.Player{}, ErrNotFound
 		}
 		return model.Player{}, fmt.Errorf("get player by id: %w", err)
 	}
@@ -191,7 +193,7 @@ func (d *PlayerSql) GetPlayerByExternalID(ctx context.Context, externalID int64)
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return model.Player{}, model.ErrNotFound
+			return model.Player{}, ErrNotFound
 		}
 		return model.Player{}, fmt.Errorf("get player by external id: %w", err)
 	}

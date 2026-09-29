@@ -167,7 +167,7 @@ func TestClient_FetchLeaguePlayers_RateLimitExceeded(t *testing.T) {
 
 	client := footballdata.NewClient("test-api-key", 0, footballdata.WithBaseURL(ts.URL))
 	_, err := client.FetchLeaguePlayers(context.Background(), "PL")
-	if !errors.Is(err, model.ErrRateLimitExceeded) {
+	if !errors.Is(err, footballdata.ErrRateLimitExceeded) {
 		t.Fatalf("expected ErrRateLimitExceeded, got %v", err)
 	}
 }

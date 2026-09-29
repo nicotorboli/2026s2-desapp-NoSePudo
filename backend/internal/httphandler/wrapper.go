@@ -4,8 +4,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
 type APIError interface {
@@ -45,6 +43,22 @@ func NewHTTPError(statusCode int, errorType, message string) *HTTPError {
 	}
 }
 
+func NewBadRequestError(message string) *HTTPError {
+	return NewHTTPError(http.StatusBadRequest, "Bad Request", message)
+}
+
+func NewNotFoundError(message string) *HTTPError {
+	return NewHTTPError(http.StatusNotFound, "Not Found", message)
+}
+
+func NewRateLimitError(message string) *HTTPError {
+	return NewHTTPError(http.StatusTooManyRequests, "Rate Limit Exceeded", message)
+}
+
+func NewInternalServerError(message string) *HTTPError {
+	return NewHTTPError(http.StatusInternalServerError, "Internal Server Error", message)
+}
+
 type Endpoint func(w http.ResponseWriter, req *http.Request) error
 
 type ErrorResponseBody struct {
@@ -72,33 +86,6 @@ func Wrap(endpoint Endpoint, logger *slog.Logger) http.HandlerFunc {
 			_ = Encode(w, apiErr.StatusCode(), ErrorResponseBody{
 				Error:   apiErr.ErrorType(),
 				Message: apiErr.Message(),
-			})
-			return
-		}
-
-		if errors.Is(err, model.ErrNotFound) {
-			logger.WarnContext(ctx, "Resource not found", "error", err.Error())
-			_ = Encode(w, http.StatusNotFound, ErrorResponseBody{
-				Error:   "Not Found",
-				Message: "The requested resource was not found",
-			})
-			return
-		}
-
-		if errors.Is(err, model.ErrInvalidInput) {
-			logger.WarnContext(ctx, "Invalid input", "error", err.Error())
-			_ = Encode(w, http.StatusBadRequest, ErrorResponseBody{
-				Error:   "Bad Request",
-				Message: err.Error(),
-			})
-			return
-		}
-
-		if errors.Is(err, model.ErrRateLimitExceeded) {
-			logger.WarnContext(ctx, "Rate limit exceeded", "error", err.Error())
-			_ = Encode(w, http.StatusTooManyRequests, ErrorResponseBody{
-				Error:   "Rate Limit Exceeded",
-				Message: "External provider rate limit hit; existing data is intact",
 			})
 			return
 		}

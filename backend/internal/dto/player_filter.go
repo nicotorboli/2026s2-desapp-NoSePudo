@@ -19,7 +19,6 @@ type PlayerFilterDTO struct {
 	IncludeInactive bool
 }
 
-// PlayerFilterDesdeQuery parses and validates query parameters from an HTTP request.
 func PlayerFilterDesdeQuery(r *http.Request) (PlayerFilterDTO, error) {
 	q := r.URL.Query()
 
@@ -36,7 +35,7 @@ func PlayerFilterDesdeQuery(r *http.Request) (PlayerFilterDTO, error) {
 	if pageStr := q.Get("page"); pageStr != "" {
 		page, err := strconv.Atoi(pageStr)
 		if err != nil || page < 1 {
-			return dto, fmt.Errorf("%w: invalid query parameter 'page'", model.ErrInvalidInput)
+			return dto, fmt.Errorf("invalid query parameter 'page'")
 		}
 		dto.Page = page
 	}
@@ -44,7 +43,7 @@ func PlayerFilterDesdeQuery(r *http.Request) (PlayerFilterDTO, error) {
 	if limitStr := q.Get("limit"); limitStr != "" {
 		limit, err := strconv.Atoi(limitStr)
 		if err != nil || limit < 1 || limit > 100 {
-			return dto, fmt.Errorf("%w: invalid query parameter 'limit'", model.ErrInvalidInput)
+			return dto, fmt.Errorf("invalid query parameter 'limit'")
 		}
 		dto.Limit = limit
 	}
@@ -52,7 +51,7 @@ func PlayerFilterDesdeQuery(r *http.Request) (PlayerFilterDTO, error) {
 	if incStr := q.Get("includeInactive"); incStr != "" {
 		inc, err := strconv.ParseBool(incStr)
 		if err != nil {
-			return dto, fmt.Errorf("%w: invalid query parameter 'includeInactive'", model.ErrInvalidInput)
+			return dto, fmt.Errorf("invalid query parameter 'includeInactive'")
 		}
 		dto.IncludeInactive = inc
 	}
@@ -60,15 +59,14 @@ func PlayerFilterDesdeQuery(r *http.Request) (PlayerFilterDTO, error) {
 	return dto, nil
 }
 
-// PlayerFilterAModelo maps DTO to domain PlayerFilter model.
 func PlayerFilterAModelo(d PlayerFilterDTO) model.PlayerFilter {
 	return model.PlayerFilter{
+		Search:          d.Search,
 		League:          d.League,
 		Club:            d.Club,
 		Position:        d.Position,
-		Search:          d.Search,
-		IncludeInactive: d.IncludeInactive,
 		Page:            d.Page,
 		Limit:           d.Limit,
+		IncludeInactive: d.IncludeInactive,
 	}
 }

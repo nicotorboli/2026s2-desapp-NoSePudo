@@ -33,7 +33,6 @@ func NewContainer(l *slog.Logger) *Container {
 	}
 }
 
-// CorrelationID extracts or generates an X-Correlation-ID and stores it in context.
 func CorrelationID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		corrID := r.Header.Get("X-Correlation-ID")
@@ -49,7 +48,6 @@ func CorrelationID(next http.Handler) http.Handler {
 	})
 }
 
-// RequestLogger logs incoming requests with status code, duration, and correlation ID.
 func RequestLogger(l *slog.Logger) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +67,6 @@ func RequestLogger(l *slog.Logger) Middleware {
 	}
 }
 
-// CORS provides permissive CORS headers for development.
 func CORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -85,7 +82,6 @@ func CORS(next http.Handler) http.Handler {
 	})
 }
 
-// Chain applies middlewares in standard execution order.
 func Chain(h http.Handler, middlewares ...Middleware) http.Handler {
 	for i := len(middlewares) - 1; i >= 0; i-- {
 		h = middlewares[i](h)

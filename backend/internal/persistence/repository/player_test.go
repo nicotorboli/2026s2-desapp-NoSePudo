@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/dao"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 )
 
@@ -98,7 +99,7 @@ func TestPlayerRepository_GetPlayerByID(t *testing.T) {
 			if id == 100 {
 				return model.Player{ID: 100, Name: "Lionel Messi"}, nil
 			}
-			return model.Player{}, model.ErrNotFound
+			return model.Player{}, dao.ErrNotFound
 		},
 	}
 	mockADAO := &mockAuditDAO{}
@@ -114,7 +115,7 @@ func TestPlayerRepository_GetPlayerByID(t *testing.T) {
 	}
 
 	_, err = repo.GetPlayerByID(context.Background(), 999)
-	if !errors.Is(err, model.ErrNotFound) {
-		t.Errorf("expected ErrNotFound, got %v", err)
+	if !errors.Is(err, repository.ErrNotFound) {
+		t.Errorf("expected repository.ErrNotFound, got %v", err)
 	}
 }

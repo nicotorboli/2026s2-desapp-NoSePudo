@@ -2,11 +2,14 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 )
+
+var ErrNotFound = errors.New("player not found")
 
 type PlayerService interface {
 	ListPlayers(ctx context.Context, filter dto.PlayerFilterDTO) (dto.PaginatedResponse[dto.PlayerListItemResponse], error)
@@ -45,6 +48,9 @@ func (s *PlayerServiceImpl) ListPlayers(ctx context.Context, filter dto.PlayerFi
 func (s *PlayerServiceImpl) GetPlayerByID(ctx context.Context, id int64) (dto.PlayerDetailResponse, error) {
 	player, err := s.repo.GetPlayerByID(ctx, id)
 	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return dto.PlayerDetailResponse{}, ErrNotFound
+		}
 		return dto.PlayerDetailResponse{}, err
 	}
 

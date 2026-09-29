@@ -13,7 +13,7 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
 )
 
 type mockPlayerSyncService struct {
@@ -67,7 +67,7 @@ func TestSyncController_SyncPlayers_RateLimit(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mockSvc := &mockPlayerSyncService{
 		syncPlayersFn: func(ctx context.Context, actor string) (dto.SyncPlayersResponse, error) {
-			return dto.SyncPlayersResponse{}, model.ErrRateLimitExceeded
+			return dto.SyncPlayersResponse{}, service.ErrRateLimitExceeded
 		},
 	}
 

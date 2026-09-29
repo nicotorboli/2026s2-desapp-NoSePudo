@@ -8,11 +8,13 @@ import (
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters/footballdata"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 )
 
-var defaultLeagues = []string{"PL", "BL1", "PD", "SA", "FL1"}
+var (
+	defaultLeagues       = []string{"PL", "BL1", "PD", "SA", "FL1"}
+	ErrRateLimitExceeded = errors.New("rate limit exceeded")
+)
 
 type PlayerSyncService interface {
 	SyncPlayers(ctx context.Context, actor string) (dto.SyncPlayersResponse, error)
@@ -48,7 +50,7 @@ func (s *PlayerSyncServiceImpl) SyncPlayers(ctx context.Context, actor string) (
 
 		players, err := s.adapter.FetchLeaguePlayers(ctx, code)
 		if err != nil {
-			if errors.Is(err, model.ErrRateLimitExceeded) {
+			if errors.Is(err, footballdata.ErrRateLimitExceeded) {
 				s.logger.WarnContext(ctx, "Rate limit hit while syncing league", "league_code", code, "error", err.Error())
 				if totalProcessed > 0 {
 					return dto.SyncPlayersResponse{
@@ -59,7 +61,7 @@ func (s *PlayerSyncServiceImpl) SyncPlayers(ctx context.Context, actor string) (
 						TotalDeactivated: totalDeactivated,
 					}, nil
 				}
-				return dto.SyncPlayersResponse{}, model.ErrRateLimitExceeded
+				return dto.SyncPlayersResponse{}, ErrRateLimitExceeded
 			}
 			s.logger.ErrorContext(ctx, "Failed to fetch league players", "league_code", code, "error", err.Error())
 			return dto.SyncPlayersResponse{}, fmt.Errorf("sync league %s: %w", code, err)

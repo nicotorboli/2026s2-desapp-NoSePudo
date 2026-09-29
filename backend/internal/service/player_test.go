@@ -8,8 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters/footballdata"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
 )
 
@@ -111,7 +113,7 @@ func TestPlayerService_GetPlayerByID_Success(t *testing.T) {
 					UpdatedAt:   now,
 				}, nil
 			}
-			return model.Player{}, model.ErrNotFound
+			return model.Player{}, repository.ErrNotFound
 		},
 	}
 
@@ -132,6 +134,20 @@ func TestPlayerService_GetPlayerByID_Success(t *testing.T) {
 	}
 	if res.ShirtNumber == nil || *res.ShirtNumber != num {
 		t.Errorf("expected shirtNumber %d, got %v", num, res.ShirtNumber)
+	}
+}
+
+func TestPlayerService_GetPlayerByID_NotFound(t *testing.T) {
+	mockRepo := &mockPlayerRepository{
+		getPlayerFn: func(ctx context.Context, id int64) (model.Player, error) {
+			return model.Player{}, repository.ErrNotFound
+		},
+	}
+
+	svc := service.NewPlayerService(mockRepo)
+	_, err := svc.GetPlayerByID(context.Background(), 999)
+	if !errors.Is(err, service.ErrNotFound) {
+		t.Fatalf("expected service.ErrNotFound, got %v", err)
 	}
 }
 
@@ -177,7 +193,7 @@ func TestPlayerSyncService_SyncPlayers_RateLimitHandling(t *testing.T) {
 			if callCount == 1 {
 				return []model.Player{{ExternalID: 1, Name: "Player 1"}}, nil
 			}
-			return nil, model.ErrRateLimitExceeded
+			return nil, footballdata.ErrRateLimitExceeded
 		},
 	}
 
@@ -205,14 +221,14 @@ func TestPlayerSyncService_SyncPlayers_TotalRateLimitFailure(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mockAdapter := &mockFootballDataClient{
 		fetchLeaguePlayersFn: func(ctx context.Context, leagueCode string) ([]model.Player, error) {
-			return nil, model.ErrRateLimitExceeded
+			return nil, footballdata.ErrRateLimitExceeded
 		},
 	}
 	mockRepo := &mockPlayerRepository{}
 
 	syncSvc := service.NewPlayerSyncService(mockAdapter, mockRepo, logger)
 	_, err := syncSvc.SyncPlayers(context.Background(), "system/test")
-	if !errors.Is(err, model.ErrRateLimitExceeded) {
-		t.Fatalf("expected ErrRateLimitExceeded, got %v", err)
+	if !errors.Is(err, service.ErrRateLimitExceeded) {
+		t.Fatalf("expected service.ErrRateLimitExceeded, got %v", err)
 	}
 }

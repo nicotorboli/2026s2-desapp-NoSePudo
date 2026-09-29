@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
@@ -18,6 +19,9 @@ func NewSyncController(svc service.PlayerSyncService) *SyncController {
 func (c *SyncController) SyncPlayers(w http.ResponseWriter, r *http.Request) error {
 	resp, err := c.svc.SyncPlayers(r.Context(), "system/sync")
 	if err != nil {
+		if errors.Is(err, service.ErrRateLimitExceeded) {
+			return httphandler.NewRateLimitError("External provider rate limit hit; existing data is intact")
+		}
 		return err
 	}
 

@@ -1,13 +1,12 @@
 package controller
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
 )
 
@@ -22,7 +21,7 @@ func NewPlayerController(svc service.PlayerService) *PlayerController {
 func (c *PlayerController) GetPlayers(w http.ResponseWriter, r *http.Request) error {
 	filterDTO, err := dto.PlayerFilterDesdeQuery(r)
 	if err != nil {
-		return err
+		return httphandler.NewBadRequestError(err.Error())
 	}
 
 	result, err := c.svc.ListPlayers(r.Context(), filterDTO)
@@ -36,16 +35,19 @@ func (c *PlayerController) GetPlayers(w http.ResponseWriter, r *http.Request) er
 func (c *PlayerController) GetPlayerByID(w http.ResponseWriter, r *http.Request) error {
 	idParam := r.PathValue("id")
 	if idParam == "" {
-		return fmt.Errorf("%w: missing player id", model.ErrInvalidInput)
+		return httphandler.NewBadRequestError("missing player id")
 	}
 
 	id, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil || id <= 0 {
-		return fmt.Errorf("%w: invalid player ID format", model.ErrInvalidInput)
+		return httphandler.NewBadRequestError("invalid player ID format")
 	}
 
 	player, err := c.svc.GetPlayerByID(r.Context(), id)
 	if err != nil {
+		if errors.Is(err, service.ErrNotFound) {
+			return httphandler.NewNotFoundError("player not found")
+		}
 		return err
 	}
 

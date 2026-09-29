@@ -15,7 +15,8 @@ import (
 )
 
 var (
-	ErrMissingAPIKey = errors.New("missing football-data.org API key")
+	ErrMissingAPIKey     = errors.New("missing football-data.org API key")
+	ErrRateLimitExceeded = errors.New("rate limit exceeded")
 )
 
 type Client interface {
@@ -160,7 +161,7 @@ func (c *FootballDataClient) doRequest(ctx context.Context, url string, dest any
 			_ = res.Body.Close()
 			retries++
 			if retries > maxRetries {
-				return model.ErrRateLimitExceeded
+				return ErrRateLimitExceeded
 			}
 
 			waitTime := time.Duration(1<<retries) * time.Second
