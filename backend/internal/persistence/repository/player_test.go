@@ -10,7 +10,7 @@ import (
 )
 
 type mockPlayerSql struct {
-	err     error
+	err error
 	players []model.Player
 }
 
@@ -48,3 +48,4 @@ func TestPlayerRepository_GetPlayer_Error(t *testing.T) {
 		t.Fatalf("expected error %v, got %v", expectedErr, err)
 	}
 }
+

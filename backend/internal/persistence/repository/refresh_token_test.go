@@ -1,4 +1,4 @@
-package repository_test
+﻿package repository_test
 
 import (
 	"database/sql"
@@ -17,8 +17,8 @@ import (
 // credenciales tienen una clave foránea contra users, así que no hay forma de
 // probarlas sin una cuenta real.
 type refreshTokenFixture struct {
-	repo   *repository.RefreshTokenRepository
-	db     *sql.DB
+	repo *repository.RefreshTokenRepository
+	db *sql.DB
 	userID int64
 }
 
@@ -34,8 +34,8 @@ func newRefreshTokenFixture(t *testing.T) refreshTokenFixture {
 	}
 
 	return refreshTokenFixture{
-		repo:   repository.NewRefreshTokenRepository(dao.NewRefreshTokenDao(db)),
-		db:     db,
+		repo: repository.NewRefreshTokenRepository(dao.NewRefreshTokenDao(db)),
+		db: db,
 		userID: user.ID,
 	}
 }
@@ -43,9 +43,9 @@ func newRefreshTokenFixture(t *testing.T) refreshTokenFixture {
 func (f refreshTokenFixture) aToken(familyID string) model.RefreshToken {
 	return model.RefreshToken{
 		ExpiresAt: time.Now().Add(168 * time.Hour),
-		ID:        uuid.NewString(),
-		FamilyID:  familyID,
-		UserID:    f.userID,
+		ID: uuid.NewString(),
+		FamilyID: familyID,
+		UserID: f.userID,
 	}
 }
 
@@ -114,7 +114,7 @@ func TestRefreshTokenGetByIDReportsAMiss(t *testing.T) {
 	}
 }
 
-// FR-036: la rotación deja la presentada usada y su reemplazo vivo, heredando
+// el requerimiento: la rotación deja la presentada usada y su reemplazo vivo, heredando
 // la misma familia.
 func TestRefreshTokenRotateConsumesTheOldAndIssuesTheNew(t *testing.T) {
 	fixture := newRefreshTokenFixture(t)
@@ -154,7 +154,7 @@ func TestRefreshTokenRotateConsumesTheOldAndIssuesTheNew(t *testing.T) {
 	}
 }
 
-// FR-037: presentar una credencial ya usada se rechaza. El UPDATE lleva las
+// el requerimiento: presentar una credencial ya usada se rechaza. El UPDATE lleva las
 // condiciones en su WHERE, así que es esa operación la que decide y no un
 // chequeo previo.
 func TestRefreshTokenRotateRefusesAConsumedToken(t *testing.T) {
@@ -221,7 +221,7 @@ func TestRefreshTokenRotateRefusesAnExpiredToken(t *testing.T) {
 	}
 }
 
-// FR-039 y el caso borde de la spec: cerrar una sesión no cierra las otras.
+// el requerimiento y el caso borde: cerrar una sesión no cierra las otras.
 func TestRefreshTokenRevokeFamilyTouchesOneFamilyOnly(t *testing.T) {
 	fixture := newRefreshTokenFixture(t)
 
@@ -256,7 +256,7 @@ func TestRefreshTokenRevokeFamilyTouchesOneFamilyOnly(t *testing.T) {
 	}
 }
 
-// SC-012: la respuesta al robo deja cero credenciales usables en la cuenta, y
+// el criterio: la respuesta al robo deja cero credenciales usables en la cuenta, y
 // alcanza a todas las familias y no sólo a la afectada.
 func TestRefreshTokenRevokeAllLiveForUserLeavesNoneUsable(t *testing.T) {
 	fixture := newRefreshTokenFixture(t)
@@ -291,9 +291,9 @@ func TestRefreshTokenRevokeAllLiveForUserLeavesOtherAccountsAlone(t *testing.T) 
 
 	otherToken := model.RefreshToken{
 		ExpiresAt: time.Now().Add(168 * time.Hour),
-		ID:        uuid.NewString(),
-		FamilyID:  uuid.NewString(),
-		UserID:    other.ID,
+		ID: uuid.NewString(),
+		FamilyID: uuid.NewString(),
+		UserID: other.ID,
 	}
 	if err = fixture.repo.Insert(t.Context(), otherToken); err != nil {
 		t.Fatalf("no se pudo insertar la credencial de la otra cuenta: %v", err)
@@ -352,3 +352,4 @@ func TestRefreshTokenConcurrentRotationsLeaveOneWinner(t *testing.T) {
 		t.Errorf("hay %d credenciales vivas, se esperaba 1", live)
 	}
 }
+

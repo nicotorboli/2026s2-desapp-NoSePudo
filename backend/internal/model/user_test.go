@@ -1,4 +1,4 @@
-package model_test
+﻿package model_test
 
 import (
 	"testing"
@@ -8,17 +8,17 @@ import (
 
 func TestNormalizeEmail(t *testing.T) {
 	cases := []struct {
-		name  string
+		name string
 		input string
-		want  string
+		want string
 	}{
 		{"ya normalizado queda igual", "nico@nosepudo.ar", "nico@nosepudo.ar"},
 		{"mayúsculas se bajan", "Nico@NoSePudo.AR", "nico@nosepudo.ar"},
-		{"espacios alrededor se recortan", "  nico@nosepudo.ar  ", "nico@nosepudo.ar"},
+		{"espacios alrededor se recortan", " nico@nosepudo.ar ", "nico@nosepudo.ar"},
 		{"tabs y saltos de línea se recortan", "\t\nnico@nosepudo.ar\n", "nico@nosepudo.ar"},
-		{"mayúsculas y espacios juntos", "  NICO@NoSePudo.ar\t", "nico@nosepudo.ar"},
+		{"mayúsculas y espacios juntos", " NICO@NoSePudo.ar\t", "nico@nosepudo.ar"},
 		{"cadena vacía queda vacía", "", ""},
-		{"sólo espacios queda vacía", "   \t ", ""},
+		{"sólo espacios queda vacía", " \t ", ""},
 		{"los espacios internos no se tocan", "ni co@nosepudo.ar", "ni co@nosepudo.ar"},
 	}
 
@@ -31,10 +31,10 @@ func TestNormalizeEmail(t *testing.T) {
 	}
 }
 
-// Es el caso borde que la spec nombra: dos formas de la misma dirección tienen
+// Es el caso borde previsto: dos formas de la misma dirección tienen
 // que resolver a la misma cuenta, o el índice único no protege nada.
 func TestNormalizeEmailCollapsesTheSpecEdgeCase(t *testing.T) {
-	registered := model.NormalizeEmail("  Nico@NoSePudo.AR ")
+	registered := model.NormalizeEmail(" Nico@NoSePudo.AR ")
 	signingIn := model.NormalizeEmail("nico@nosepudo.ar")
 
 	if registered != signingIn {
@@ -43,7 +43,7 @@ func TestNormalizeEmailCollapsesTheSpecEdgeCase(t *testing.T) {
 }
 
 func TestNormalizeEmailIsIdempotent(t *testing.T) {
-	inputs := []string{"  Nico@NoSePudo.AR ", "nico@nosepudo.ar", "", "   "}
+	inputs := []string{" Nico@NoSePudo.AR ", "nico@nosepudo.ar", "", " "}
 
 	for _, input := range inputs {
 		once := model.NormalizeEmail(input)
@@ -63,3 +63,4 @@ func TestAccountErrorsAreDistinct(t *testing.T) {
 		t.Error("ErrEmailTaken y ErrInvalidCredentials son el mismo error: el controller no podría darles status distintos")
 	}
 }
+

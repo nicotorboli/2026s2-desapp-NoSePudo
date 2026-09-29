@@ -17,9 +17,6 @@ func NewRefreshTokenDao(db *sql.DB) *RefreshTokenSql {
 	return &RefreshTokenSql{Db: db}
 }
 
-// Las columnas del SELECT. gosec ve un nombre con "token" al lado de una
-// cadena y sospecha una credencial embebida; es una lista de columnas.
-const refreshTokenColumns = "id, family_id, user_id, issued_at, expires_at, used_at, revoked_at" //nolint:gosec // lista de columnas SQL, no una credencial
 
 func (dao *RefreshTokenSql) Insert(ctx context.Context, token model.RefreshToken) error {
 	if dao.Db == nil {
@@ -42,7 +39,10 @@ func (dao *RefreshTokenSql) GetByID(ctx context.Context, id string) (model.Refre
 		return model.RefreshToken{}, errNilDatabase
 	}
 
-	query := "SELECT " + refreshTokenColumns + " FROM refresh_tokens WHERE id = $1"
+	const query = `
+		SELECT id, family_id, user_id, issued_at, expires_at, used_at, revoked_at
+		FROM refresh_tokens
+		WHERE id = $1`
 
 	var token model.RefreshToken
 	err := dao.Db.QueryRowContext(ctx, query, id).Scan(
@@ -64,16 +64,7 @@ func (dao *RefreshTokenSql) GetByID(ctx context.Context, id string) (model.Refre
 	return token, nil
 }
 
-// Rotate marca usada la credencial presentada e inserta su reemplazo, las dos
-// cosas en una transacción (Principio XI): o queda la vieja consumida y la
-// nueva viva, o no cambia nada.
-//
-// El UPDATE lleva las condiciones de "está viva" en su WHERE, y eso es lo que
-// hace de esta operación la que decide. Dos peticiones simultáneas con la misma
-// credencial compiten por la misma fila: una afecta una fila y la otra cero, y
-// la que afectó cero se entera de que llegó tarde. Chequear antes con un SELECT
-// no alcanzaría, porque entre el SELECT y el UPDATE las dos verían la
-// credencial viva.
+
 func (dao *RefreshTokenSql) Rotate(ctx context.Context, presentedID string, replacement model.RefreshToken) error {
 	if dao.Db == nil {
 		return errNilDatabase
@@ -100,8 +91,7 @@ func (dao *RefreshTokenSql) Rotate(ctx context.Context, presentedID string, repl
 		return fmt.Errorf("leer el resultado de la rotación: %w", err)
 	}
 	if affected == 0 {
-		// La fila no estaba viva: ya se usó, la revocaron, o expiró. Quien
-		// llama decide qué significa mirando su estado.
+
 		return model.ErrRefreshTokenReused
 	}
 
@@ -122,10 +112,7 @@ func (dao *RefreshTokenSql) Rotate(ctx context.Context, presentedID string, repl
 	return nil
 }
 
-// RevokeFamily corta una sesión y nada más. El predicado sobre user_id es
-// redundante —el identificador de familia viene de una credencial ya
-// verificada— y se queda como guarda barata por si un error con la clave de
-// firma alguna vez lo volviera load-bearing.
+
 func (dao *RefreshTokenSql) RevokeFamily(ctx context.Context, familyID string, userID int64) error {
 	if dao.Db == nil {
 		return errNilDatabase
@@ -143,10 +130,6 @@ func (dao *RefreshTokenSql) RevokeFamily(ctx context.Context, familyID string, u
 	return nil
 }
 
-// RevokeAllLiveForUser es la respuesta al robo: corta todas las credenciales de
-// la cuenta, no sólo las de la familia afectada. Quien tiene una credencial
-// robada de una familia puede tener otra, y el costo de equivocarse es un
-// inicio de sesión extra.
 func (dao *RefreshTokenSql) RevokeAllLiveForUser(ctx context.Context, userID int64) error {
 	if dao.Db == nil {
 		return errNilDatabase

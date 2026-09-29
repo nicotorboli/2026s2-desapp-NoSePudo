@@ -34,10 +34,10 @@ func TestPrivilegeUnknownRendersAsUnknown(t *testing.T) {
 
 func TestPrivilegeSatisfiesDecisionTable(t *testing.T) {
 	cases := []struct {
-		name     string
-		held     model.PrivilegeLevel
+		name string
+		held model.PrivilegeLevel
 		required model.PrivilegeLevel
-		want     bool
+		want bool
 	}{
 		{"usuario alcanza para usuario", model.PrivilegeUser, model.PrivilegeUser, true},
 		{"superusuario alcanza para usuario", model.PrivilegeSuperuser, model.PrivilegeUser, true},
@@ -69,3 +69,4 @@ func TestPrivilegeZeroValueIsUnknown(t *testing.T) {
 		t.Error("el valor cero satisface PrivilegeUser: un campo olvidado daría acceso")
 	}
 }
+

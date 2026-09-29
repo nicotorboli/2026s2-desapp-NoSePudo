@@ -48,13 +48,13 @@ var (
 //
 // Los campos van de mayor a menor tamaño porque govet corre con fieldalignment.
 type RefreshToken struct {
-	IssuedAt  time.Time
+	IssuedAt time.Time
 	ExpiresAt time.Time
-	UsedAt    *time.Time
+	UsedAt *time.Time
 	RevokedAt *time.Time
-	ID        string
-	FamilyID  string
-	UserID    int64
+	ID string
+	FamilyID string
+	UserID int64
 }
 
 // IsLive es un método y no una columna, así que los tres indicadores no pueden
@@ -87,3 +87,4 @@ func (t RefreshToken) IsUsed() bool {
 func (t RefreshToken) IsRevoked() bool {
 	return t.RevokedAt != nil
 }
+

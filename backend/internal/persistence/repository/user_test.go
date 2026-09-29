@@ -1,4 +1,4 @@
-package repository_test
+﻿package repository_test
 
 import (
 	"errors"
@@ -30,10 +30,10 @@ func TestFixtureHashMatchesTheColumnWidth(t *testing.T) {
 
 func aUser(email string) model.User {
 	return model.User{
-		Email:        email,
+		Email: email,
 		PasswordHash: fakeBcryptHash,
-		Privilege:    model.PrivilegeUser,
-		Active:       true,
+		Privilege: model.PrivilegeUser,
+		Active: true,
 	}
 }
 
@@ -75,7 +75,7 @@ func TestUserRepositoryInsertAssignsAnIdentifierAndReadsBack(t *testing.T) {
 	}
 }
 
-// FR-021: es el índice único el que decide, no un chequeo previo del service.
+// el requerimiento: es el índice único el que decide, no un chequeo previo del service.
 func TestUserRepositoryInsertRefusesADuplicateEmail(t *testing.T) {
 	repo := newUserRepository(t)
 	ctx := t.Context()
@@ -160,12 +160,12 @@ func TestUserRepositoryPreservesTheSuperuserPrivilege(t *testing.T) {
 
 // La columna guarda valores ya normalizados, así que dos formas de la misma
 // dirección chocan contra el índice único. Es lo que cierra el caso borde de
-// la spec sobre mayúsculas y espacios.
+// el diseño sobre mayúsculas y espacios.
 func TestUserRepositoryNormalizedEmailsCollide(t *testing.T) {
 	repo := newUserRepository(t)
 	ctx := t.Context()
 
-	if _, err := repo.Insert(ctx, aUser(model.NormalizeEmail("  Nico@NoSePudo.AR "))); err != nil {
+	if _, err := repo.Insert(ctx, aUser(model.NormalizeEmail(" Nico@NoSePudo.AR "))); err != nil {
 		t.Fatalf("la primera inserción devolvió error: %v", err)
 	}
 
@@ -174,3 +174,4 @@ func TestUserRepositoryNormalizedEmailsCollide(t *testing.T) {
 		t.Errorf("Insert devolvió %v, se esperaba ErrEmailTaken: una dirección se volvió dos cuentas", err)
 	}
 }
+
