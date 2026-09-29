@@ -1,4 +1,4 @@
-package e2e_test
+﻿package e2e_test
 
 import (
 	"encoding/json"
@@ -55,7 +55,7 @@ func tokensOf(t *testing.T, session map[string]any) (accessToken, refreshToken s
 	return accessToken, refreshToken
 }
 
-// US7, escenario 1: el inicio de sesión entrega las dos credenciales, y la de
+// Escenario: el inicio de sesión entrega las dos credenciales, y la de
 // renovación vive más que la de acceso.
 func TestSignInDeliversBothCredentials(t *testing.T) {
 	stack := newStack(t)
@@ -90,7 +90,7 @@ func TestSignInDeliversBothCredentials(t *testing.T) {
 	}
 }
 
-// US7, escenarios 2 y 3: la renovación entrega una credencial nueva sin
+// Escenario:escenarios 2 y 3: la renovación entrega una credencial nueva sin
 // reenviar la contraseña, e invalida la que se usó.
 func TestRefreshIssuesANewSessionAndConsumesTheOldCredential(t *testing.T) {
 	stack := newStack(t)
@@ -119,7 +119,7 @@ func TestRefreshIssuesANewSessionAndConsumesTheOldCredential(t *testing.T) {
 	}
 }
 
-// US7, escenario 2, del todo: con la credencial de acceso ya vencida, la
+// Escenario:, del todo: con la credencial de acceso ya vencida, la
 // aplicación sigue funcionando sin volver a pedir la contraseña.
 func TestRefreshKeepsTheSessionAliveAfterTheAccessCredentialExpires(t *testing.T) {
 	stack := newStackWithAccessTTL(t, time.Second)
@@ -146,7 +146,7 @@ func TestRefreshKeepsTheSessionAliveAfterTheAccessCredentialExpires(t *testing.T
 	}
 }
 
-// US7, escenario 4 y SC-012: presentar dos veces la misma credencial se rechaza
+// Escenario: y el criterio: presentar dos veces la misma credencial se rechaza
 // y deja la cuenta sin ninguna credencial de renovación usable.
 func TestReusingARefreshCredentialRevokesTheWholeAccount(t *testing.T) {
 	stack := newStack(t)
@@ -182,7 +182,7 @@ func TestReusingARefreshCredentialRevokesTheWholeAccount(t *testing.T) {
 	// Ni la que la renovación había emitido ni la de la otra sesión sirven.
 	for name, token := range map[string]string{
 		"la que emitió la renovación": renewedToken,
-		"la de la otra sesión":        secondRefreshToken,
+		"la de la otra sesión": secondRefreshToken,
 	} {
 		if status, _ := stack.postWithBearer(t, "/auth/refresh", token); status != http.StatusUnauthorized {
 			t.Errorf("%s sigue sirviendo: %d", name, status)
@@ -190,7 +190,7 @@ func TestReusingARefreshCredentialRevokesTheWholeAccount(t *testing.T) {
 	}
 }
 
-// US7, escenario 5: una credencial de renovación expirada se rechaza y el
+// Escenario: una credencial de renovación expirada se rechaza y el
 // titular vuelve a iniciar sesión.
 func TestAnExpiredRefreshCredentialIsRefused(t *testing.T) {
 	stack := newStackWithRefreshTTL(t, time.Second)
@@ -213,7 +213,7 @@ func TestAnExpiredRefreshCredentialIsRefused(t *testing.T) {
 	}
 }
 
-// US7, escenario 6 y SC-013: al cerrar sesión la credencial de renovación queda
+// Escenario: y el criterio: al cerrar sesión la credencial de renovación queda
 // invalidada y no se puede usar de nuevo.
 func TestSignOutInvalidatesTheRefreshCredential(t *testing.T) {
 	stack := newStack(t)
@@ -236,7 +236,7 @@ func TestSignOutInvalidatesTheRefreshCredential(t *testing.T) {
 	}
 }
 
-// El caso borde de la spec: cerrar una sesión no cierra las otras.
+// El caso borde: cerrar una sesión no cierra las otras.
 func TestSignOutClosesOneSessionOnly(t *testing.T) {
 	stack := newStack(t)
 
@@ -267,7 +267,7 @@ func TestSignOutClosesOneSessionOnly(t *testing.T) {
 	}
 }
 
-// US7, escenarios 7 y 8, y FR-038: las dos credenciales no son intercambiables
+// Escenario:escenarios 7 y 8, y el requerimiento: las dos credenciales no son intercambiables
 // en ninguna dirección.
 func TestTheTwoCredentialsAreNotInterchangeable(t *testing.T) {
 	stack := newStack(t)
@@ -339,3 +339,4 @@ func TestSuccessiveRenewalsStayInOneChain(t *testing.T) {
 		}
 	}
 }
+

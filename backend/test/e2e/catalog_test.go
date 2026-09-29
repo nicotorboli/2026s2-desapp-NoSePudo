@@ -1,4 +1,4 @@
-package e2e_test
+﻿package e2e_test
 
 import (
 	"encoding/json"
@@ -50,7 +50,7 @@ func (s *stack) accessTokenFor(t *testing.T, email, password string) string {
 	return token
 }
 
-// US3, escenario 5: con credencial válida el catálogo se sirve.
+// Escenario: con credencial válida el catálogo se sirve.
 func TestCatalogIsServedWithAValidCredential(t *testing.T) {
 	stack := newStack(t)
 	token := stack.accessTokenFor(t, "nico@nosepudo.ar", "una-contraseña")
@@ -70,7 +70,7 @@ func TestCatalogIsServedWithAValidCredential(t *testing.T) {
 	}
 }
 
-// US3, escenarios 1, 3 y 4, y SC-001: sin credencial, con una alterada, o con
+// Escenario:escenarios 1, 3 y 4, y el criterio: sin credencial, con una alterada, o con
 // una presentada de forma inesperada, el catálogo se niega.
 func TestCatalogIsRefusedWithoutAUsableCredential(t *testing.T) {
 	stack := newStack(t)
@@ -82,7 +82,7 @@ func TestCatalogIsRefusedWithoutAUsableCredential(t *testing.T) {
 	}
 
 	cases := []struct {
-		name          string
+		name string
 		authorization string
 	}{
 		{"sin credencial", ""},
@@ -118,7 +118,7 @@ func TestCatalogIsRefusedWithoutAUsableCredential(t *testing.T) {
 	}
 }
 
-// US3, escenario 2: una credencial expirada se niega. Se consigue de verdad
+// Escenario: una credencial expirada se niega. Se consigue de verdad
 // levantando el stack con un tiempo de vida de un instante.
 func TestCatalogIsRefusedWithAnExpiredCredential(t *testing.T) {
 	stack := newStackWithAccessTTL(t, time.Second)
@@ -137,8 +137,8 @@ func TestCatalogIsRefusedWithAnExpiredCredential(t *testing.T) {
 	}
 }
 
-// SC-001: el estado del sistema es idéntico antes y después de cada intento
-// rechazado, y FR-008 exige que se rechace antes de tocar la persistencia.
+// el criterio: el estado del sistema es idéntico antes y después de cada intento
+// rechazado, y el requerimiento exige que se rechace antes de tocar la persistencia.
 func TestRefusedRequestsLeaveNoTrace(t *testing.T) {
 	stack := newStack(t)
 	stack.accessTokenFor(t, "nico@nosepudo.ar", "una-contraseña")
@@ -156,7 +156,7 @@ func TestRefusedRequestsLeaveNoTrace(t *testing.T) {
 	}
 }
 
-// El caso borde de la spec: una credencial válida junto a un cuerpo malformado.
+// El caso borde: una credencial válida junto a un cuerpo malformado.
 // La credencial se comprueba primero, y el cuerpo se rechaza recién cuando ya
 // se sabe quién pide.
 func TestCredentialIsCheckedBeforeTheBody(t *testing.T) {
@@ -190,3 +190,4 @@ func TestAnonymousEndpointsNeedNoCredential(t *testing.T) {
 		t.Errorf("el login devolvió %d sin credencial: %v", status, body)
 	}
 }
+

@@ -1,4 +1,4 @@
-package e2e_test
+﻿package e2e_test
 
 import (
 	"encoding/json"
@@ -34,7 +34,7 @@ func (s *stack) postJSON(t *testing.T, path, body string) (int, map[string]any) 
 	return response.StatusCode, decoded
 }
 
-// US1, escenario 1: con datos válidos la cuenta existe y es de usuario común.
+// Escenario: con datos válidos la cuenta existe y es de usuario común.
 func TestRegisterCreatesACommonUserAccount(t *testing.T) {
 	stack := newStack(t)
 
@@ -46,9 +46,9 @@ func TestRegisterCreatesACommonUserAccount(t *testing.T) {
 	}
 
 	var (
-		email     string
+		email string
 		privilege int16
-		active    bool
+		active bool
 	)
 	err := stack.db.QueryRowContext(t.Context(),
 		"SELECT email, privilege, active FROM users WHERE id = $1", int64(body["id"].(float64)),
@@ -70,7 +70,7 @@ func TestRegisterCreatesACommonUserAccount(t *testing.T) {
 	}
 }
 
-// US1, escenario 2: un identificador ya en uso se rechaza y la cuenta
+// Escenario: un identificador ya en uso se rechaza y la cuenta
 // existente queda intacta.
 func TestRegisterRefusesADuplicateIdentifier(t *testing.T) {
 	stack := newStack(t)
@@ -103,7 +103,7 @@ func TestRegisterRefusesADuplicateIdentifier(t *testing.T) {
 	}
 }
 
-// El caso borde de la spec: mayúsculas y espacios resuelven a la misma cuenta.
+// El caso borde: mayúsculas y espacios resuelven a la misma cuenta.
 func TestRegisterNormalizesTheIdentifier(t *testing.T) {
 	stack := newStack(t)
 
@@ -113,7 +113,7 @@ func TestRegisterNormalizesTheIdentifier(t *testing.T) {
 	}
 
 	status, _ := stack.postJSON(t, "/auth/register",
-		`{"email":"  NICO@NoSePudo.AR  ","password":"otra-contraseña"}`)
+		`{"email":" NICO@NoSePudo.AR ","password":"otra-contraseña"}`)
 
 	if status != http.StatusConflict {
 		t.Errorf("status = %d, se esperaba 409: una dirección se volvió dos cuentas", status)
@@ -123,7 +123,7 @@ func TestRegisterNormalizesTheIdentifier(t *testing.T) {
 	}
 }
 
-// US1, escenario 3 y SC-003: toda entrada inválida se rechaza sin crear nada.
+// Escenario: y el criterio: toda entrada inválida se rechaza sin crear nada.
 func TestRegisterCreatesNothingForInvalidInput(t *testing.T) {
 	cases := []struct {
 		name string
@@ -157,7 +157,7 @@ func TestRegisterCreatesNothingForInvalidInput(t *testing.T) {
 	}
 }
 
-// US1, escenario 4: una petición que trae un nivel de privilegio se rechaza
+// Escenario: una petición que trae un nivel de privilegio se rechaza
 // como campo inesperado, y bajo ninguna circunstancia se crea una cuenta con
 // el privilegio que vino en el cuerpo.
 func TestRegisterRefusesARequestCarryingAPrivilege(t *testing.T) {
@@ -188,7 +188,7 @@ func TestRegisterRefusesARequestCarryingAPrivilege(t *testing.T) {
 	}
 }
 
-// US1, escenario 5: del registro guardado no se puede recuperar la contraseña.
+// Escenario: del registro guardado no se puede recuperar la contraseña.
 func TestRegisterStoresNoRecoverablePassword(t *testing.T) {
 	const password = "una-contraseña-reconocible" //nolint:gosec // valor de prueba, no una credencial real
 	stack := newStack(t)
@@ -226,3 +226,4 @@ func TestRegisterStoresNoRecoverablePassword(t *testing.T) {
 		t.Errorf("el hash mide %d caracteres, un digest de bcrypt mide 60", len(hash))
 	}
 }
+

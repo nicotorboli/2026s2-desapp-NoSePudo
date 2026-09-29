@@ -6,11 +6,11 @@ import (
 )
 
 const (
-	superuserEmail    = "admin@nosepudo.ar"
+	superuserEmail = "admin@nosepudo.ar"
 	superuserPassword = "la-del-superusuario" //nolint:gosec // valor de prueba, no una credencial real
 )
 
-// US5, escenarios 2 y 3: cada credencial declara el nivel de la cuenta que la
+// Escenario:escenarios 2 y 3: cada credencial declara el nivel de la cuenta que la
 // pidió, y ese nivel sale de la cuenta y nunca del cliente.
 func TestCredentialStatesTheAccountPrivilege(t *testing.T) {
 	stack := newStack(t)
@@ -35,7 +35,7 @@ func TestCredentialStatesTheAccountPrivilege(t *testing.T) {
 	}
 }
 
-// US5, escenario 4: después del aprovisionamiento hay exactamente un
+// Escenario: después del aprovisionamiento hay exactamente un
 // superusuario, y no se creó a través del alta.
 func TestExactlyOneSuperuserExists(t *testing.T) {
 	stack := newStack(t)
@@ -95,7 +95,7 @@ func (s *stack) superuserHash(t *testing.T) string {
 	return hash
 }
 
-// FR-019: no hay forma de conseguir privilegio de superusuario a través del
+// el requerimiento: no hay forma de conseguir privilegio de superusuario a través del
 // alta, ni pidiéndolo en el cuerpo con el nombre que sea.
 func TestRegistrationCannotReachSuperuserPrivilege(t *testing.T) {
 	stack := newStack(t)
@@ -125,7 +125,7 @@ func TestRegistrationCannotReachSuperuserPrivilege(t *testing.T) {
 	}
 }
 
-// US5, escenario 1: toda cuenta tiene exactamente uno de los dos niveles, y
+// Escenario: toda cuenta tiene exactamente uno de los dos niveles, y
 // ninguna queda con el valor cero, que no alcanza para nada.
 func TestEveryAccountHoldsExactlyOneOfTheTwoLevels(t *testing.T) {
 	stack := newStack(t)
@@ -141,7 +141,7 @@ func TestEveryAccountHoldsExactlyOneOfTheTwoLevels(t *testing.T) {
 	accounts := 0
 	for rows.Next() {
 		var (
-			email     string
+			email string
 			privilege int16
 		)
 		if err := rows.Scan(&email, &privilege); err != nil {
@@ -163,3 +163,4 @@ func TestEveryAccountHoldsExactlyOneOfTheTwoLevels(t *testing.T) {
 		t.Errorf("se examinaron %d cuentas, se esperaban 2", accounts)
 	}
 }
+

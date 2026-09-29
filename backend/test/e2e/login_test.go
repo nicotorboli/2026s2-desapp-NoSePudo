@@ -1,4 +1,4 @@
-package e2e_test
+﻿package e2e_test
 
 import (
 	"encoding/base64"
@@ -51,7 +51,7 @@ func (s *stack) registerAndLogin(t *testing.T, email, password string) map[strin
 	return response
 }
 
-// US2, escenario 1: credenciales correctas devuelven la credencial y cuándo expira.
+// Escenario: credenciales correctas devuelven la credencial y cuándo expira.
 func TestLoginReturnsASessionCredential(t *testing.T) {
 	stack := newStack(t)
 
@@ -73,7 +73,7 @@ func TestLoginReturnsASessionCredential(t *testing.T) {
 		t.Errorf("la credencial ya venía expirada: %v", expiresAt)
 	}
 
-	// US2, escenario 1: lleva la identidad de la cuenta, su privilegio y un vencimiento.
+	// Escenario: lleva la identidad de la cuenta, su privilegio y un vencimiento.
 	claims := claimsOf(t, accessToken)
 	if claims["sub"] == "" || claims["sub"] == nil {
 		t.Error("la credencial no nombra la cuenta")
@@ -92,7 +92,7 @@ func TestLoginReturnsASessionCredential(t *testing.T) {
 	}
 }
 
-// US2, escenarios 2 y 3: una contraseña incorrecta y una cuenta inexistente
+// Escenario:escenarios 2 y 3: una contraseña incorrecta y una cuenta inexistente
 // responden exactamente lo mismo, y ninguna emite credencial.
 func TestLoginAnswersIdenticallyForBothFailures(t *testing.T) {
 	stack := newStack(t)
@@ -118,7 +118,7 @@ func TestLoginAnswersIdenticallyForBothFailures(t *testing.T) {
 	}
 }
 
-// US2, escenario 4: una entrada inválida se rechaza sin buscar ni verificar nada.
+// Escenario: una entrada inválida se rechaza sin buscar ni verificar nada.
 func TestLoginRejectsInvalidInput(t *testing.T) {
 	stack := newStack(t)
 
@@ -145,7 +145,7 @@ func TestLoginRejectsInvalidInput(t *testing.T) {
 	}
 }
 
-// US2, escenario 5: cualquiera que tenga la credencial puede leer su
+// Escenario: cualquiera que tenga la credencial puede leer su
 // contenido, así que ahí no puede haber nada que duela divulgar.
 func TestLoginCredentialCarriesNothingDamaging(t *testing.T) {
 	const password = "una-contraseña-reconocible" //nolint:gosec // valor de prueba, no una credencial real
@@ -168,21 +168,21 @@ func TestLoginCredentialCarriesNothingDamaging(t *testing.T) {
 	}
 }
 
-// El caso borde de la spec, del lado del login: otra forma de la misma
+// El caso borde, del lado del login: otra forma de la misma
 // dirección resuelve a la misma cuenta.
 func TestLoginAcceptsTheIdentifierInAnotherCase(t *testing.T) {
 	stack := newStack(t)
 	stack.registerAndLogin(t, "nico@nosepudo.ar", "una-contraseña")
 
 	status, body := stack.postJSON(t, "/auth/login",
-		`{"email":"  NICO@NoSePudo.AR  ","password":"una-contraseña"}`)
+		`{"email":" NICO@NoSePudo.AR ","password":"una-contraseña"}`)
 
 	if status != http.StatusOK {
 		t.Fatalf("status = %d, se esperaba 200: %v", status, body)
 	}
 }
 
-// El caso borde de la spec: dos inicios de sesión de la misma cuenta funcionan
+// El caso borde: dos inicios de sesión de la misma cuenta funcionan
 // de forma independiente y ninguno invalida al otro.
 func TestTwoSignInsAreIndependent(t *testing.T) {
 	stack := newStack(t)
@@ -215,3 +215,4 @@ func TestTwoSignInsAreIndependent(t *testing.T) {
 		t.Error("las credenciales nombran cuentas distintas")
 	}
 }
+

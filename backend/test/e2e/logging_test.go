@@ -9,7 +9,7 @@ import (
 // Las credenciales de la corrida completa. Son valores reconocibles a propósito:
 // la gracia del caso es buscarlos después en lo que el servidor escribió.
 const (
-	logSubjectEmail    = "nico@nosepudo.ar"
+	logSubjectEmail = "nico@nosepudo.ar"
 	logSubjectPassword = "una-contraseña-muy-reconocible" //nolint:gosec // valor de prueba, no una credencial real
 )
 
@@ -64,7 +64,7 @@ func runCompleteFlow(t *testing.T, stack *stack) (accessToken, refreshToken stri
 	return accessToken, refreshToken
 }
 
-// SC-004: un barrido de los eventos de una corrida completa no encuentra
+// el criterio: un barrido de los eventos de una corrida completa no encuentra
 // ninguna contraseña, ninguna credencial, el secreto de firma ni ningún dato
 // personal.
 func TestCompleteRunLeaksNoSecretAndNoPersonalData(t *testing.T) {
@@ -78,11 +78,11 @@ func TestCompleteRunLeaksNoSecretAndNoPersonalData(t *testing.T) {
 	}
 
 	forbidden := map[string]string{
-		"la contraseña":                  logSubjectPassword,
-		"la contraseña equivocada":       "la-equivocada",
-		"la credencial de acceso":        accessToken,
-		"la credencial de renovación":    refreshToken,
-		"el secreto de firma":            testJWTSecret,
+		"la contraseña": logSubjectPassword,
+		"la contraseña equivocada": "la-equivocada",
+		"la credencial de acceso": accessToken,
+		"la credencial de renovación": refreshToken,
+		"el secreto de firma": testJWTSecret,
 		"el email, que es dato personal": logSubjectEmail,
 	}
 
@@ -98,7 +98,7 @@ func TestCompleteRunLeaksNoSecretAndNoPersonalData(t *testing.T) {
 	}
 }
 
-// FR-029: todo rechazo queda registrado con la razón por la que se rechazó.
+// el requerimiento: todo rechazo queda registrado con la razón por la que se rechazó.
 func TestRefusalsAreLoggedWithTheirReason(t *testing.T) {
 	stack := newStack(t)
 
@@ -109,8 +109,8 @@ func TestRefusalsAreLoggedWithTheirReason(t *testing.T) {
 	// Cada tipo de rechazo dejó su evento, y cada uno lleva razón.
 	//nolint:gosec // son mensajes de log, no credenciales
 	expected := map[string]string{
-		"autenticación refutada":            "authentication refused",
-		"inicio de sesión refutado":         "sign-in refused",
+		"autenticación refutada": "authentication refused",
+		"inicio de sesión refutado": "sign-in refused",
 		"reuso de credencial de renovación": "refresh credential reused",
 	}
 
@@ -133,7 +133,7 @@ func TestRefusalsAreLoggedWithTheirReason(t *testing.T) {
 	}
 }
 
-// El cuarto escenario de US6: cuando no se pudo identificar ninguna cuenta, el
+// El cuarto escenario de Escenario:: cuando no se pudo identificar ninguna cuenta, el
 // intento se registra igual, con su razón y sin sujeto.
 func TestRefusalsWithNoIdentifiableAccountAreStillLogged(t *testing.T) {
 	stack := newStack(t)
@@ -187,3 +187,4 @@ func TestRefusedSignInLogsNeitherTheAddressNorThePassword(t *testing.T) {
 		t.Error("el evento registró la contraseña que se envió")
 	}
 }
+
