@@ -1,44 +1,53 @@
 package controller
 
 import (
-	"context"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
 )
 
-type PlayerService interface {
-	ListPlayers(ctx context.Context) ([]model.Player, error)
+type PlayerController struct {
+	svc service.PlayerService
 }
 
-type RestPlayerController struct {
-	svc PlayerService
+func NewPlayerController(svc service.PlayerService) *PlayerController {
+	return &PlayerController{svc: svc}
 }
 
-func NewPlayerController(svc PlayerService) *RestPlayerController {
-	return &RestPlayerController{
-		svc: svc,
+func (c *PlayerController) GetPlayers(w http.ResponseWriter, r *http.Request) error {
+	filterDTO, err := dto.PlayerFilterDesdeQuery(r)
+	if err != nil {
+		return err
 	}
+
+	result, err := c.svc.ListPlayers(r.Context(), filterDTO)
+	if err != nil {
+		return err
+	}
+
+	return httphandler.Encode(w, http.StatusOK, result)
 }
 
-func (c *RestPlayerController) GetPlayers() httphandler.Endpoint {
-	return func(w http.ResponseWriter, req *http.Request) error {
-		players, err := c.svc.ListPlayers(req.Context())
-		if err != nil {
-			return err
-		}
-
-		playersDto := make([]dto.Player, len(players))
-		for i := range players {
-			playersDto[i] = dto.DesdeModelo(players[i])
-		}
-
-		if err := httphandler.Encode(w, http.StatusOK, playersDto); err != nil {
-			return err
-		}
-
-		return nil
+func (c *PlayerController) GetPlayerByID(w http.ResponseWriter, r *http.Request) error {
+	idParam := r.PathValue("id")
+	if idParam == "" {
+		return fmt.Errorf("%w: missing player id", model.ErrInvalidInput)
 	}
+
+	id, err := strconv.ParseInt(idParam, 10, 64)
+	if err != nil || id <= 0 {
+		return fmt.Errorf("%w: invalid player ID format", model.ErrInvalidInput)
+	}
+
+	player, err := c.svc.GetPlayerByID(r.Context(), id)
+	if err != nil {
+		return err
+	}
+
+	return httphandler.Encode(w, http.StatusOK, player)
 }

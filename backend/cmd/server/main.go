@@ -3,9 +3,8 @@ package main
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
-	"net/http"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,6 +12,7 @@ import (
 
 	_ "github.com/lib/pq"
 
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters/footballdata"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/configuration"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/logger"
@@ -24,81 +24,60 @@ import (
 )
 
 func main() {
-	if err := startServer(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error starting up server %v\n", err)
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error starting up server: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func startServer() error {
-	cfg := configuration.LoadCfg()
-	logger := logger.NewLog()
-
-	logger.Info("Initializing DB connection")
-
-	db, err := sql.Open("postgres", cfg.PostgresDataSource)
-
+func run() error {
+	cfg, err := configuration.Load()
 	if err != nil {
-		return fmt.Errorf("Invalid database credentials: %w", err)
-	}
-	defer db.Close() //nolint:errcheck
-	// Se suprime este chequeo en particular porque no es un error que se suela handlear
-	db.SetMaxOpenConns(20)
-	db.SetMaxIdleConns(20)
-	db.SetConnMaxLifetime(5 * time.Minute)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err = db.PingContext(ctx); err != nil {
-		return fmt.Errorf("Database unreachable: %w", err)
-	}
-	logger.Info("Database connection successful")
-
-	daos := dao.NewContainer(db)
-	repos := repository.NewContainer(daos)
-	services := service.NewContainer(repos)
-	controllers := controller.NewContainer(services)
-	middlewares := middleware.NewContainer()
-
-	srv := server.NewServer(
-		logger,
-		controllers,
-		middlewares,
-	)
-
-	server := &http.Server{
-		Addr:         cfg.GetServerAddress(),
-		Handler:      srv,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		return fmt.Errorf("load configuration: %w", err)
 	}
 
-	logger.Info(fmt.Sprintf("Starting server at %s", cfg.GetServerAddress()))
+	appLogger := logger.Init(slog.LevelInfo)
+	appLogger.Info("Initializing application...")
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(stop)
-
-	serverErr := make(chan error, 1)
-	go func() {
-		serverErr <- server.ListenAndServe()
-	}()
-
-	select {
-	case err = <-serverErr:
-		if !errors.Is(err, http.ErrServerClosed) && err != nil {
-			return fmt.Errorf("error starting server: %w", err)
+	var db *sql.DB
+	if cfg.PostgresDataSource != "" {
+		appLogger.Info("Connecting to PostgreSQL database")
+		var sqlErr error
+		db, sqlErr = sql.Open("postgres", cfg.PostgresDataSource)
+		if sqlErr != nil {
+			return fmt.Errorf("open postgres database: %w", sqlErr)
 		}
-	case <-stop:
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer db.Close() //nolint:errcheck
+
+		db.SetMaxOpenConns(25)
+		db.SetMaxIdleConns(25)
+		db.SetConnMaxLifetime(5 * time.Minute)
+
+		pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := server.Shutdown(shutdownCtx); err != nil {
-			return fmt.Errorf("error shutting down server: %w", err)
+		if pingErr := db.PingContext(pingCtx); pingErr != nil {
+			appLogger.Warn("Database ping failed on startup (continuing for stub/offline environments)", "error", pingErr.Error())
+		} else {
+			appLogger.Info("Database connection established successfully")
 		}
+	} else {
+		appLogger.Warn("No database DSN provided; database connection is nil")
 	}
 
-	logger.Info("Server stopped gracefully")
-	return nil
+	// Adapters
+	footballDataAdapter := footballdata.NewClient(cfg.FootballDataAPIKey, 6*time.Second)
+
+	// Dependency Injection Wiring
+	daoContainer := dao.NewContainer(db)
+	repoContainer := repository.NewContainer(db, daoContainer)
+	serviceContainer := service.NewContainer(repoContainer, footballDataAdapter, appLogger)
+	controllerContainer := controller.NewContainer(serviceContainer)
+	middlewareContainer := middleware.NewContainer(appLogger)
+
+	srv := server.NewServer(cfg.GetServerAddress(), appLogger, controllerContainer, middlewareContainer)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	return srv.Run(ctx)
 }

@@ -4,85 +4,191 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
 type mockPlayerService struct {
-	err     error
-	players []model.Player
+	listPlayersFn   func(ctx context.Context, filter dto.PlayerFilterDTO) (dto.PaginatedResponse[dto.PlayerListItemResponse], error)
+	getPlayerByIDFn func(ctx context.Context, id int64) (dto.PlayerDetailResponse, error)
 }
 
-func (m *mockPlayerService) ListPlayers(ctx context.Context) ([]model.Player, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockPlayerService) ListPlayers(ctx context.Context, filter dto.PlayerFilterDTO) (dto.PaginatedResponse[dto.PlayerListItemResponse], error) {
+	if m.listPlayersFn != nil {
+		return m.listPlayersFn(ctx, filter)
 	}
-	return m.players, nil
+	return dto.PaginatedResponse[dto.PlayerListItemResponse]{}, nil
 }
 
-func TestRestPlayerController_GetPlayers_Success(t *testing.T) {
+func (m *mockPlayerService) GetPlayerByID(ctx context.Context, id int64) (dto.PlayerDetailResponse, error) {
+	if m.getPlayerByIDFn != nil {
+		return m.getPlayerByIDFn(ctx, id)
+	}
+	return dto.PlayerDetailResponse{}, nil
+}
+
+func TestPlayerController_GetPlayers_Success(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mockSvc := &mockPlayerService{
-		players: []model.Player{
-			{ID: 10, Name: "Ernesto Provitillo", Position: 5},
-			{ID: 20, Name: "Alfre Montes de Oca", Position: 1},
+		listPlayersFn: func(ctx context.Context, filter dto.PlayerFilterDTO) (dto.PaginatedResponse[dto.PlayerListItemResponse], error) {
+			return dto.PaginatedResponse[dto.PlayerListItemResponse]{
+				Items: []dto.PlayerListItemResponse{
+					{ID: 1, Name: "Ernesto Provitillo", Club: "Arsenal", League: "Premier League", Position: "Midfielder"},
+				},
+				Page:       1,
+				Limit:      20,
+				Total:      1,
+				TotalPages: 1,
+			}, nil
 		},
 	}
+
 	c := controller.NewPlayerController(mockSvc)
-	endpoint := c.GetPlayers()
+	handler := httphandler.Wrap(c.GetPlayers, logger)
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players", nil)
-	w := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players?page=1&limit=20", nil)
+	rr := httptest.NewRecorder()
 
-	err := endpoint(w, req)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rr.Code)
 	}
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected status 200, got %d", w.Code)
-	}
-
-	var raw []map[string]any
-	if err := json.Unmarshal(w.Body.Bytes(), &raw); err != nil {
+	var resp dto.PaginatedResponse[dto.PlayerListItemResponse]
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if len(raw) != 2 {
-		t.Fatalf("expected 2 items, got %d", len(raw))
-	}
-
-	// Verify ID is NOT exposed in the output
-	for i, item := range raw {
-		if _, exists := item["id"]; exists {
-			t.Errorf("item %d contains 'id' field, but identifier should not be exposed", i)
-		}
-		if _, exists := item["ID"]; exists {
-			t.Errorf("item %d contains 'ID' field, but identifier should not be exposed", i)
-		}
-		if _, exists := item["name"]; !exists {
-			t.Errorf("item %d missing 'name' field", i)
-		}
-		if _, exists := item["position"]; !exists {
-			t.Errorf("item %d missing 'position' field", i)
-		}
+	if len(resp.Items) != 1 || resp.Items[0].Name != "Ernesto Provitillo" {
+		t.Errorf("unexpected response: %+v", resp)
 	}
 }
 
-func TestRestPlayerController_GetPlayers_Error(t *testing.T) {
-	expectedErr := errors.New("service failure")
-	mockSvc := &mockPlayerService{err: expectedErr}
+func TestPlayerController_GetPlayers_InvalidQuery(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	mockSvc := &mockPlayerService{}
 	c := controller.NewPlayerController(mockSvc)
-	endpoint := c.GetPlayers()
+	handler := httphandler.Wrap(c.GetPlayers, logger)
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players?page=invalid", nil)
+	rr := httptest.NewRecorder()
+
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rr.Code)
+	}
+}
+
+func TestPlayerController_GetPlayerByID_Success(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	mockSvc := &mockPlayerService{
+		getPlayerByIDFn: func(ctx context.Context, id int64) (dto.PlayerDetailResponse, error) {
+			if id == 7 {
+				return dto.PlayerDetailResponse{
+					ID:         7,
+					ExternalID: 7821,
+					Name:       "Bukayo Saka",
+					Club:       "Arsenal FC",
+					League:     "Premier League",
+					LeagueCode: "PL",
+					Position:   "Attacker",
+					Active:     true,
+				}, nil
+			}
+			return dto.PlayerDetailResponse{}, model.ErrNotFound
+		},
+	}
+
+	c := controller.NewPlayerController(mockSvc)
+
+	mux := http.NewServeMux()
+	mux.Handle("GET /players/{id}", httphandler.Wrap(c.GetPlayerByID, logger))
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players/7", nil)
+	rr := httptest.NewRecorder()
+
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", rr.Code)
+	}
+
+	var resp dto.PlayerDetailResponse
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if resp.Name != "Bukayo Saka" || resp.ID != 7 {
+		t.Errorf("unexpected response: %+v", resp)
+	}
+}
+
+func TestPlayerController_GetPlayerByID_NotFound(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	mockSvc := &mockPlayerService{
+		getPlayerByIDFn: func(ctx context.Context, id int64) (dto.PlayerDetailResponse, error) {
+			return dto.PlayerDetailResponse{}, model.ErrNotFound
+		},
+	}
+
+	c := controller.NewPlayerController(mockSvc)
+	mux := http.NewServeMux()
+	mux.Handle("GET /players/{id}", httphandler.Wrap(c.GetPlayerByID, logger))
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players/999", nil)
+	rr := httptest.NewRecorder()
+
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("expected status 404, got %d", rr.Code)
+	}
+}
+
+func TestPlayerController_GetPlayerByID_InvalidID(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	mockSvc := &mockPlayerService{}
+	c := controller.NewPlayerController(mockSvc)
+	mux := http.NewServeMux()
+	mux.Handle("GET /players/{id}", httphandler.Wrap(c.GetPlayerByID, logger))
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players/abc", nil)
+	rr := httptest.NewRecorder()
+
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", rr.Code)
+	}
+}
+
+func TestPlayerController_GetPlayers_InternalError(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	mockSvc := &mockPlayerService{
+		listPlayersFn: func(ctx context.Context, filter dto.PlayerFilterDTO) (dto.PaginatedResponse[dto.PlayerListItemResponse], error) {
+			return dto.PaginatedResponse[dto.PlayerListItemResponse]{}, errors.New("db error")
+		},
+	}
+
+	c := controller.NewPlayerController(mockSvc)
+	handler := httphandler.Wrap(c.GetPlayers, logger)
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players", nil)
-	w := httptest.NewRecorder()
+	rr := httptest.NewRecorder()
 
-	err := endpoint(w, req)
-	if !errors.Is(err, expectedErr) {
-		t.Fatalf("expected error %v, got %v", expectedErr, err)
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", rr.Code)
 	}
 }

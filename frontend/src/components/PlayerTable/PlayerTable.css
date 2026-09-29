@@ -1,0 +1,80 @@
+.player-table-container {
+  width: 100%;
+  overflow-x: auto;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.player-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.player-table__head {
+  background-color: #f7fafc;
+  border-bottom: 2px solid #edf2f7;
+}
+
+.player-table__cell {
+  padding: 1rem 1.25rem;
+  font-size: 0.9375rem;
+  color: #2d3748;
+}
+
+.player-table__cell--header {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #718096;
+}
+
+.player-table__cell--name {
+  font-weight: 600;
+  color: #2b6cb0;
+}
+
+.player-table__row {
+  border-bottom: 1px solid #edf2f7;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.player-table__row--interactive {
+  cursor: pointer;
+}
+
+.player-table__row--interactive:hover {
+  background-color: #ebf8ff;
+}
+
+.player-table__position {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: #edf2f7;
+  color: #4a5568;
+}
+
+.player-table__position--attacker {
+  background-color: #feebc8;
+  color: #c05621;
+}
+
+.player-table__position--midfielder {
+  background-color: #c6f6d5;
+  color: #22543d;
+}
+
+.player-table__position--defender {
+  background-color: #bee3f8;
+  color: #2b6cb0;
+}
+
+.player-table__position--goalkeeper {
+  background-color: #fed7d7;
+  color: #9b2c2c;
+}

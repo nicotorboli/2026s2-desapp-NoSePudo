@@ -1,19 +1,27 @@
-import React, { useEffect, useState } from 'react';
-import { getHealth, HealthResponseDTO } from './api/health';
+import React, { useState } from 'react';
+import { Navbar } from './components/Navbar/Navbar';
+import { PlayerListPage } from './pages/PlayerListPage/PlayerListPage';
+import { PlayerDetailPage } from './pages/PlayerDetailPage/PlayerDetailPage';
 
 const App: React.FC = () => {
-  const [health, setHealth] = useState<HealthResponseDTO | null>(null);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
 
-  useEffect(() => {
-    getHealth()
-      .then(setHealth)
-      .catch(() => setHealth({ status: 'offline', timestamp: '' }));
-  }, []);
+  const handleSelectPlayer = (id: number) => {
+    setSelectedPlayerId(id);
+  };
+
+  const handleBackToCatalog = () => {
+    setSelectedPlayerId(null);
+  };
 
   return (
-    <div className="app">
-      <h1>NoSePudo</h1>
-      <p>Status: {health ? health.status : 'loading...'}</p>
+    <div className="app-container">
+      <Navbar onNavigateHome={handleBackToCatalog} />
+      {selectedPlayerId === null ? (
+        <PlayerListPage onSelectPlayer={handleSelectPlayer} />
+      ) : (
+        <PlayerDetailPage playerId={selectedPlayerId} onBack={handleBackToCatalog} />
+      )}
     </div>
   );
 };
