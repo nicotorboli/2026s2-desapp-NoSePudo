@@ -19,10 +19,10 @@ func withSecret(t *testing.T) {
 	t.Setenv("NSP_JWT_SECRET", usableSecret)
 }
 
-// FR-032 y SC-009: sin un secreto usable el servicio no arranca.
+// el requerimiento y el criterio: sin un secreto usable el servicio no arranca.
 func TestLoadCfgRejectsAnUnusableSecret(t *testing.T) {
 	cases := []struct {
-		name   string
+		name string
 		secret string
 	}{
 		{"ausente", ""},
@@ -119,7 +119,7 @@ func TestLoadCfgPrefersTheEnvironmentOverTheDefaults(t *testing.T) {
 func TestLoadCfgRejectsAnUnparseableLifetime(t *testing.T) {
 	cases := []struct {
 		variable string
-		value    string
+		value string
 	}{
 		{"NSP_ACCESS_TTL", "quince minutos"},
 		{"NSP_ACCESS_TTL", "15"},
@@ -169,10 +169,10 @@ func TestLoadCfgRejectsAnUnusableBcryptCost(t *testing.T) {
 
 func TestHasSuperuserCredentialsNeedsBoth(t *testing.T) {
 	cases := []struct {
-		name     string
-		email    string
+		name string
+		email string
 		password string
-		want     bool
+		want bool
 	}{
 		{"ninguna de las dos", "", "", false},
 		{"sólo el email", "admin@nosepudo.ar", "", false},
@@ -196,3 +196,4 @@ func TestHasSuperuserCredentialsNeedsBoth(t *testing.T) {
 		})
 	}
 }
+

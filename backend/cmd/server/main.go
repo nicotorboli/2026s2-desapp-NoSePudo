@@ -81,8 +81,7 @@ func startServer() error {
 	if err != nil {
 		return fmt.Errorf("Invalid database credentials: %w", err)
 	}
-	defer db.Close() //nolint:errcheck
-	// Se suprime este chequeo en particular porque no es un error que se suela handlear
+	defer func() { _ = db.Close() }()
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(20)
 	db.SetConnMaxLifetime(5 * time.Minute)
@@ -122,11 +121,11 @@ func startServer() error {
 	)
 
 	server := &http.Server{
-		Addr:         cfg.GetServerAddress(),
-		Handler:      srv,
-		ReadTimeout:  10 * time.Second,
+		Addr: cfg.GetServerAddress(),
+		Handler: srv,
+		ReadTimeout: 10 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		IdleTimeout: 120 * time.Second,
 	}
 
 	logger.Info(fmt.Sprintf("Starting server at %s", cfg.GetServerAddress()))
@@ -156,3 +155,4 @@ func startServer() error {
 	logger.Info("Server stopped gracefully")
 	return nil
 }
+

@@ -12,7 +12,7 @@ import (
 
 type plainBody struct {
 	Email string `json:"email"`
-	Age   int    `json:"age"`
+	Age int `json:"age"`
 }
 
 type validatedBody struct {
@@ -31,7 +31,7 @@ func (b *validatedBody) Validate() error {
 // countingBody cuenta las invocaciones para probar que Decode llama a Validate
 // exactamente una vez.
 type countingBody struct {
-	Name  string
+	Name string
 	Calls int `json:"-"`
 }
 
@@ -83,7 +83,7 @@ func TestDecodeAcceptsAWellFormedBody(t *testing.T) {
 	}
 }
 
-// FR-024: un campo inesperado se rechaza, no se ignora en silencio. Es también
+// el requerimiento: un campo inesperado se rechaza, no se ignora en silencio. Es también
 // lo que hace imposible que un privilege del cliente llegue a una cuenta.
 func TestDecodeRejectsAnUnknownField(t *testing.T) {
 	_, err := httphandler.Decode[plainBody](requestWith(t, `{"email":"nico@nosepudo.ar","privilege":"superuser"}`))
@@ -113,7 +113,7 @@ func TestDecodeRejectsContentAfterTheFirstJSONValue(t *testing.T) {
 }
 
 func TestDecodeAllowsTrailingWhitespace(t *testing.T) {
-	if _, err := httphandler.Decode[plainBody](requestWith(t, "{\"email\":\"a@b.c\"}\n  \t\n")); err != nil {
+	if _, err := httphandler.Decode[plainBody](requestWith(t, "{\"email\":\"a@b.c\"}\n \t\n")); err != nil {
 		t.Errorf("un salto de línea final no debería ser un error: %v", err)
 	}
 }
@@ -180,3 +180,4 @@ func TestDecodeLeavesATypeWithoutValidatorAlone(t *testing.T) {
 		t.Errorf("Decode = %+v, se esperaban los valores cero", got)
 	}
 }
+

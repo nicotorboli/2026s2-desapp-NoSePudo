@@ -52,7 +52,7 @@ func TestWrapEncodesAnUndecoratedAPIError(t *testing.T) {
 	}
 }
 
-// Es SC-010 y FR-012: la refutación nace en una capa interna y sube decorada.
+// Es el criterio y el requerimiento: la refutación nace en una capa interna y sube decorada.
 // Con una type assertion pelada esto daba 500.
 func TestWrapUnwrapsAnAPIErrorDecoratedByInnerLayers(t *testing.T) {
 	endpoint := func(http.ResponseWriter, *http.Request) error {
@@ -129,3 +129,4 @@ func TestErrorUnwrapsToItsCause(t *testing.T) {
 		t.Error("errors.Is no encuentra la causa a través del error de borde")
 	}
 }
+

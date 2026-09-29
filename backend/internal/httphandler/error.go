@@ -8,21 +8,21 @@ import "fmt"
 // nunca se le responde al cliente.
 //
 // La separación importa: Message() es vocabulario de borde y no debe filtrar
-// nada de lo que el cliente mandó (FR-025), mientras que la causa es lo que
+// nada de lo que el cliente mandó, mientras que la causa es lo que
 // hace diagnosticable el error tres capas más abajo.
 type Error struct {
-	cause   error
+	cause error
 	message string
-	status  int
+	status int
 }
 
 // NewError construye un error de borde. cause puede ser nil cuando la
 // refutación nace acá mismo, que es el caso del middleware.
 func NewError(status int, message string, cause error) *Error {
 	return &Error{
-		cause:   cause,
+		cause: cause,
 		message: message,
-		status:  status,
+		status: status,
 	}
 }
 
@@ -47,3 +47,4 @@ func (e *Error) Message() string {
 func (e *Error) Unwrap() error {
 	return e.cause
 }
+
