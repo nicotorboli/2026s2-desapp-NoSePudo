@@ -9,7 +9,7 @@ import (
 
 type Container struct {
 	Player *Player
-	Auth   *Auth
+	Auth *Auth
 }
 
 func NewContainer(repos *repository.Container, adapterContainer *adapters.Container) *Container {
@@ -24,3 +24,4 @@ func NewContainer(repos *repository.Container, adapterContainer *adapters.Contai
 		),
 	}
 }
+

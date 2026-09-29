@@ -1,4 +1,4 @@
-package service_test
+﻿package service_test
 
 import (
 	"errors"
@@ -58,7 +58,7 @@ func (f authFixture) sessionFamily(t *testing.T, tokenID string) string {
 	return token.FamilyID
 }
 
-// FR-033: el inicio de sesión entrega las dos credenciales y dice cuándo vence
+// el requerimiento: el inicio de sesión entrega las dos credenciales y dice cuándo vence
 // cada una, y la de renovación queda persistida para poder cortarla.
 func TestLoginIssuesBothCredentialsAndPersistsTheRefreshOne(t *testing.T) {
 	fixture := newAuthFixture()
@@ -80,7 +80,7 @@ func TestLoginIssuesBothCredentialsAndPersistsTheRefreshOne(t *testing.T) {
 	}
 }
 
-// FR-034 y FR-036: la renovación entrega una sesión nueva y consume la anterior.
+// el requerimiento y el requerimiento: la renovación entrega una sesión nueva y consume la anterior.
 func TestRefreshRotatesTheCredential(t *testing.T) {
 	fixture := newAuthFixture()
 	session, tokenID := fixture.signIn(t, "nico@nosepudo.ar", "una-contraseña")
@@ -112,7 +112,7 @@ func TestRefreshRotatesTheCredential(t *testing.T) {
 	}
 }
 
-// FR-037 y SC-012: un segundo uso se rechaza y deja cero credenciales usables
+// el requerimiento y el criterio: un segundo uso se rechaza y deja cero credenciales usables
 // en la cuenta, no sólo en la familia afectada.
 func TestRefreshReuseRevokesEveryCredentialOfTheAccount(t *testing.T) {
 	fixture := newAuthFixture()
@@ -205,7 +205,7 @@ func TestRefreshRereadsThePrivilegeFromTheAccount(t *testing.T) {
 	}
 }
 
-// FR-039 y el caso borde de la spec: cerrar sesión corta esa sesión y no las
+// el requerimiento y el caso borde: cerrar sesión corta esa sesión y no las
 // de los otros dispositivos.
 func TestLogoutRevokesOnlyItsOwnFamily(t *testing.T) {
 	fixture := newAuthFixture()
@@ -228,7 +228,7 @@ func TestLogoutRevokesOnlyItsOwnFamily(t *testing.T) {
 	}
 }
 
-// SC-013: después de cerrar sesión, renovar con esa credencial se rechaza.
+// el criterio: después de cerrar sesión, renovar con esa credencial se rechaza.
 func TestRefreshAfterLogoutIsRefused(t *testing.T) {
 	fixture := newAuthFixture()
 	_, tokenID := fixture.signIn(t, "nico@nosepudo.ar", "una-contraseña")
@@ -290,3 +290,4 @@ func TestRefreshLosingTheRotationRaceIsTreatedAsReuse(t *testing.T) {
 		t.Error("perder la carrera no disparó la respuesta al robo")
 	}
 }
+
