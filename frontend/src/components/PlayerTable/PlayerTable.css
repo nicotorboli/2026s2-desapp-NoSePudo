@@ -1,7 +1,7 @@
 .player-table-container {
   width: 100%;
   overflow-x: auto;
-  background-color: color-mix(in srgb, var(--radiant-orange) 35%, transparent);
+  background-color: color-mix(in srgb, var(--radiant-orange) 15%, transparent);
   border-radius: 4px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
@@ -28,7 +28,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #7ebdc2;
+  color:var(--teal) 
 }
 
 .player-table__cell--name {
@@ -46,7 +46,7 @@
 }
 
 .player-table__row--interactive:hover {
-  background-color: #5f005f20;
+  background-color:color-mix(in srgb, var(--orange-green) 20%, transparent); 
 }
 
 .player-table__position {

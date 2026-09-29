@@ -16,9 +16,9 @@ type APIError interface {
 }
 
 type HTTPError struct {
-	Type    string `json:"error"`
-	Msg     string `json:"message"`
-	Code    int    `json:"-"`
+	Type string `json:"error"`
+	Msg  string `json:"message"`
+	Code int    `json:"-"`
 }
 
 func (e *HTTPError) Error() string {

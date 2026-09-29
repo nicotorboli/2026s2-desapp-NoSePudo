@@ -12,9 +12,9 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background-color: #ffffff;
+  background-color: #bee3f8c0;
   color: #2b6cb0;
-  border: 1px solid #cbd5e0;
+  border: 1px solid #bee3f8c0;
   border-radius: 6px;
   font-size: 0.9375rem;
   font-weight: 600;
@@ -24,8 +24,8 @@
 }
 
 .player-detail-page__back-button:hover {
-  background-color: #ebf8ff;
-  border-color: #bee3f8;
+  background-color: #bee3f8f0;
+  border-color: #bee3f8f0;
 }
 
 .player-detail-page__loading {

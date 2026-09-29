@@ -5,12 +5,16 @@
   --ink-blue: #131b23;
   --golden: #dfaf0f;
   --radiant-orange: #ff7f1f;
-  --green-forest: #114e04
+  --green-forest: #114e04;
+  --orange-green: #a7af1f;
+  --violet: #3f004f;
+  --teal: #7ebdc2;
 }
 
 body {
   margin: 0;
   place-items: center;
   min-width: 320px;
-  background-color: color-mix(in srgb, var(--golden) 39%, transparent);
+  background-color: color-mix(in srgb, var(--green-forest) 16%, var(--radiant-orange) 16%, transparent);
+
 }
