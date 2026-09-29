@@ -5,35 +5,28 @@ import (
 	"os"
 )
 
-type Config struct {
+type Configuration struct {
 	PostgresDataSource string
 	FootballDataAPIKey string
 	Host               string
 	Port               string
 }
 
-// Load loads configuration from environment variables.
-func Load() (*Config, error) {
+func Load() (*Configuration, error) {
 	dsn := os.Getenv("NSPPSQLDS")
-	if dsn == "" {
-		// Fallback for standard PG environment variable if set
-		dsn = os.Getenv("DATABASE_URL")
-	}
-
 	apiKey := os.Getenv("NSPFOOTBALLDATAAPIKEY")
 	host := os.Getenv("NSPHOST")
 	port := os.Getenv("NSPPORT")
-	if port == "" {
-		port = os.Getenv("PORT")
-	}
-	if port == "" {
-		port = "8080"
-	}
+
 	if host == "" {
 		host = "127.0.0.1"
 	}
 
-	return &Config{
+	if port == "" {
+		port = "8080"
+	}
+
+	return &Configuration{
 		PostgresDataSource: dsn,
 		FootballDataAPIKey: apiKey,
 		Host:               host,
@@ -41,20 +34,6 @@ func Load() (*Config, error) {
 	}, nil
 }
 
-// LoadCfg maintains backward compatibility with the initial stub.
-func LoadCfg() *Config {
-	cfg, _ := Load()
-	return cfg
-}
-
-func (c *Config) GetServerAddress() string {
-	host := c.Host
-	if host == "" {
-		host = "127.0.0.1"
-	}
-	port := c.Port
-	if port == "" {
-		port = "8080"
-	}
-	return fmt.Sprintf("%s:%s", host, port)
+func (c *Configuration) GetServerAddress() string {
+	return fmt.Sprintf("%s:%s", c.Host, c.Port)
 }

@@ -10,7 +10,6 @@ import (
 
 type correlationIDKey struct{}
 
-// CorrelationIDContextKey is the context key for correlation ID.
 var CorrelationIDContextKey = correlationIDKey{}
 
 type contextHandler struct {
@@ -34,15 +33,13 @@ func (h *contextHandler) WithGroup(name string) slog.Handler {
 	return &contextHandler{Handler: h.Handler.WithGroup(name)}
 }
 
-// Init creates a new structured JSON logger using zerolog as the underlying slog handler.
 func Init(level slog.Level) *slog.Logger {
-	zl := zerolog.New(os.Stdout).With().Timestamp().Logger()
+	zl := zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout}).With().Timestamp().Logger()
 	baseHandler := zerolog.NewSlogHandler(zl)
 	handler := &contextHandler{Handler: baseHandler}
 	return slog.New(handler)
 }
 
-// NewLog returns a default initialized logger.
 func NewLog() *slog.Logger {
 	return Init(slog.LevelInfo)
 }

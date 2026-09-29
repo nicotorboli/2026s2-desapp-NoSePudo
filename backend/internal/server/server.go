@@ -63,7 +63,7 @@ func (s *Server) Run(ctx context.Context) error {
 	serverErr := make(chan error, 1)
 
 	go func() {
-		s.logger.Info("HTTP server listening", "addr", s.httpServer.Addr)
+		s.logger.Info(fmt.Sprintf("HTTP server listening at %s", s.httpServer.Addr))
 		if err := s.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- fmt.Errorf("listen and serve: %w", err)
 		}
@@ -74,7 +74,7 @@ func (s *Server) Run(ctx context.Context) error {
 	case err := <-serverErr:
 		return err
 	case <-ctx.Done():
-		s.logger.Info("Shutting down HTTP server gracefully...")
+		s.logger.Info("Shutting down HTTP server gracefully")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := s.httpServer.Shutdown(shutdownCtx); err != nil {
