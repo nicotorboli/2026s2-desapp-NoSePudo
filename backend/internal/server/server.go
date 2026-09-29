@@ -26,15 +26,16 @@ func NewServer(
 	controllers *controller.Container,
 	middlewareContainer *middleware.Container,
 ) *Server {
-	router := http.NewServeMux()
 	s := &Server{
-		router:      router,
 		logger:      logger,
 		controllers: controllers,
 		middleware:  middlewareContainer,
 	}
 
-	s.routes()
+	// El router no existe hasta que buildMux corre sobre la descripción que
+	// devuelve routes(). Mientras tanto no hay ningún mux en alcance al que
+	// registrarle una ruta por fuera de la tabla.
+	s.router = buildMux(s.routes(), s.logger, s.middleware)
 
 	handler := middleware.Chain(
 		s.router,

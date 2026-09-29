@@ -42,9 +42,9 @@ func TestSyncController_SyncPlayers_Success(t *testing.T) {
 	}
 
 	c := controller.NewSyncController(mockSvc)
-	handler := httphandler.Wrap(c.SyncPlayers, logger)
+	handler := httphandler.Wrap(c.SyncPlayers(), logger)
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/players/sync", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/players/sync", nil)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -72,9 +72,9 @@ func TestSyncController_SyncPlayers_RateLimit(t *testing.T) {
 	}
 
 	c := controller.NewSyncController(mockSvc)
-	handler := httphandler.Wrap(c.SyncPlayers, logger)
+	handler := httphandler.Wrap(c.SyncPlayers(), logger)
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/players/sync", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/players/sync", nil)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -93,9 +93,9 @@ func TestSyncController_SyncPlayers_InternalError(t *testing.T) {
 	}
 
 	c := controller.NewSyncController(mockSvc)
-	handler := httphandler.Wrap(c.SyncPlayers, logger)
+	handler := httphandler.Wrap(c.SyncPlayers(), logger)
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/players/sync", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/players/sync", nil)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)

@@ -43,9 +43,13 @@ jobs:
       - name: Execute precommit hook script
         run: ./scripts/pre-commit.sh
 
+      # -coverpkg=./... instrumenta todos los paquetes del modulo, no solo aquel
+      # cuyos tests se estan corriendo. Sin el, lo que los tests e2e ejercitan del
+      # DAO y de los repositories contra el Postgres de testcontainers no se le
+      # acredita a esos paquetes, y hundian la cobertura que lee Sonar 
       - name: Execute backend tests
         working-directory: backend
-        run: go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
+        run: go test -v -race -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
 
       - name: Compile backend packages
         working-directory: backend

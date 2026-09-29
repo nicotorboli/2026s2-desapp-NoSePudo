@@ -52,9 +52,9 @@ func TestPlayerController_GetPlayers_Success(t *testing.T) {
 	}
 
 	c := controller.NewPlayerController(mockSvc)
-	handler := httphandler.Wrap(c.GetPlayers, logger)
+	handler := httphandler.Wrap(c.GetPlayers(), logger)
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players?page=1&limit=20", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players?page=1&limit=20", nil)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -77,9 +77,9 @@ func TestPlayerController_GetPlayers_InvalidQuery(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mockSvc := &mockPlayerService{}
 	c := controller.NewPlayerController(mockSvc)
-	handler := httphandler.Wrap(c.GetPlayers, logger)
+	handler := httphandler.Wrap(c.GetPlayers(), logger)
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players?page=invalid", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players?page=invalid", nil)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)
@@ -112,9 +112,9 @@ func TestPlayerController_GetPlayerByID_Success(t *testing.T) {
 	c := controller.NewPlayerController(mockSvc)
 
 	mux := http.NewServeMux()
-	mux.Handle("GET /players/{id}", httphandler.Wrap(c.GetPlayerByID, logger))
+	mux.Handle("GET /players/{id}", httphandler.Wrap(c.GetPlayerByID(), logger))
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players/7", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players/7", nil)
 	rr := httptest.NewRecorder()
 
 	mux.ServeHTTP(rr, req)
@@ -143,9 +143,9 @@ func TestPlayerController_GetPlayerByID_NotFound(t *testing.T) {
 
 	c := controller.NewPlayerController(mockSvc)
 	mux := http.NewServeMux()
-	mux.Handle("GET /players/{id}", httphandler.Wrap(c.GetPlayerByID, logger))
+	mux.Handle("GET /players/{id}", httphandler.Wrap(c.GetPlayerByID(), logger))
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players/999", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players/999", nil)
 	rr := httptest.NewRecorder()
 
 	mux.ServeHTTP(rr, req)
@@ -160,9 +160,9 @@ func TestPlayerController_GetPlayerByID_InvalidID(t *testing.T) {
 	mockSvc := &mockPlayerService{}
 	c := controller.NewPlayerController(mockSvc)
 	mux := http.NewServeMux()
-	mux.Handle("GET /players/{id}", httphandler.Wrap(c.GetPlayerByID, logger))
+	mux.Handle("GET /players/{id}", httphandler.Wrap(c.GetPlayerByID(), logger))
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players/abc", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players/abc", nil)
 	rr := httptest.NewRecorder()
 
 	mux.ServeHTTP(rr, req)
@@ -181,9 +181,9 @@ func TestPlayerController_GetPlayers_InternalError(t *testing.T) {
 	}
 
 	c := controller.NewPlayerController(mockSvc)
-	handler := httphandler.Wrap(c.GetPlayers, logger)
+	handler := httphandler.Wrap(c.GetPlayers(), logger)
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players", nil)
 	rr := httptest.NewRecorder()
 
 	handler.ServeHTTP(rr, req)

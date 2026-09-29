@@ -77,7 +77,7 @@ func TestPlayerRepository_ListPlayers(t *testing.T) {
 	mockADAO := &mockAuditDAO{}
 
 	repo := repository.NewPlayerRepository(nil, mockPDAO, mockADAO)
-	result, err := repo.ListPlayers(context.Background(), model.PlayerFilter{Page: 1, Limit: 10})
+	result, err := repo.ListPlayers(t.Context(), model.PlayerFilter{Page: 1, Limit: 10})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestPlayerRepository_GetPlayerByID(t *testing.T) {
 
 	repo := repository.NewPlayerRepository(nil, mockPDAO, mockADAO)
 
-	player, err := repo.GetPlayerByID(context.Background(), 100)
+	player, err := repo.GetPlayerByID(t.Context(), 100)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestPlayerRepository_GetPlayerByID(t *testing.T) {
 		t.Errorf("expected Lionel Messi, got %s", player.Name)
 	}
 
-	_, err = repo.GetPlayerByID(context.Background(), 999)
+	_, err = repo.GetPlayerByID(t.Context(), 999)
 	if !errors.Is(err, repository.ErrNotFound) {
 		t.Errorf("expected repository.ErrNotFound, got %v", err)
 	}

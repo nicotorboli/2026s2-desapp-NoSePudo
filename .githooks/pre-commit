@@ -1,2 +1,75 @@
 #!/usr/bin/env bash
+set -eo pipefail
+
+# Arregla lo que se puede arreglar solo y despues delega en el verificador
+# compartido, que es quien decide si el commit pasa.
+#
+# Los arreglos viven aca y no en scripts/pre-commit.sh a proposito: ese script
+# tambien lo corre el CI, y un CI que se auto-formatea daria verde sobre codigo
+# mal formateado en vez de rechazarlo. El hook arregla, el verificador verifica.
+
+BACKEND_DIR="backend"
+
+# Archivos .go en el indice (agregados, copiados, modificados o renombrados) y
+# sin cambios pendientes fuera de el. Los que tienen modificaciones sin stagear
+# quedan afuera: reescribirlos y re-agregarlos arrastraria al commit cambios que
+# el desarrollador dejo afuera a proposito.
+collect_fixable_files() {
+  local file
+  while IFS= read -r -d '' file; do
+    [ -f "${file}" ] || continue
+    if git diff --quiet -- "${file}"; then
+      printf '%s\0' "${file}"
+    else
+      echo "[WARN] ${file} tiene cambios fuera del indice: no se toca." >&2
+    fi
+  done < <(git diff --cached --name-only --diff-filter=ACMR -z -- '*.go')
+}
+
+mapfile -d '' -t FIXABLE_FILES < <(collect_fixable_files)
+
+if [ ${#FIXABLE_FILES[@]} -eq 0 ]; then
+  exec ./scripts/pre-commit.sh
+fi
+
+# Hash de cada archivo antes de tocarlo, para saber despues cuales cambiaron.
+declare -A HASH_BEFORE
+for file in "${FIXABLE_FILES[@]}"; do
+  HASH_BEFORE["${file}"]="$(git hash-object "${file}")"
+done
+
+# Paso 1: formato. gofmt solo mueve espacios, nunca cambia comportamiento.
+gofmt -w -- "${FIXABLE_FILES[@]}"
+
+# Paso 2: los linters que publican un fix sugerido (fieldalignment entre ellos).
+# golangci-lint trabaja por paquete, asi que puede tocar archivos que no estan
+# en este commit; esos quedan modificados en el working tree y se avisan abajo.
+# El exit code se ignora: lo que queda sin arreglar lo reporta el verificador,
+# que es la unica fuente de verdad sobre si el commit pasa o no.
+if command -v golangci-lint >/dev/null 2>&1; then
+  (cd "${BACKEND_DIR}" && golangci-lint run --fix ./... >/dev/null 2>&1) || true
+fi
+
+# Los archivos del commit que cambiaron vuelven al indice.
+fixed=()
+for file in "${FIXABLE_FILES[@]}"; do
+  if [ "$(git hash-object "${file}")" != "${HASH_BEFORE["${file}"]}" ]; then
+    git add -- "${file}"
+    fixed+=("${file}")
+  fi
+done
+
+if [ ${#fixed[@]} -gt 0 ]; then
+  echo "[INFO] Arreglados automaticamente e incluidos en el commit:"
+  printf '  %s\n' "${fixed[@]}"
+fi
+
+# Archivos que --fix toco pero que no son de este commit: quedan sin stagear y
+# conviene decirlo, porque aparecen como cambios que el desarrollador no hizo.
+collateral="$(git diff --name-only -- '*.go')"
+if [ -n "${collateral}" ]; then
+  echo "[WARN] Modificados fuera del commit, revisalos:"
+  printf '  %s\n' ${collateral}
+fi
+
 exec ./scripts/pre-commit.sh

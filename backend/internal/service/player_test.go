@@ -72,7 +72,7 @@ func TestPlayerService_ListPlayers_Success(t *testing.T) {
 	}
 
 	svc := service.NewPlayerService(mockRepo)
-	res, err := svc.ListPlayers(context.Background(), dto.PlayerFilterDTO{Page: 1, Limit: 20})
+	res, err := svc.ListPlayers(t.Context(), dto.PlayerFilterDTO{Page: 1, Limit: 20})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestPlayerService_GetPlayerByID_Success(t *testing.T) {
 	}
 
 	svc := service.NewPlayerService(mockRepo)
-	res, err := svc.GetPlayerByID(context.Background(), 42)
+	res, err := svc.GetPlayerByID(t.Context(), 42)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestPlayerService_GetPlayerByID_NotFound(t *testing.T) {
 	}
 
 	svc := service.NewPlayerService(mockRepo)
-	_, err := svc.GetPlayerByID(context.Background(), 999)
+	_, err := svc.GetPlayerByID(t.Context(), 999)
 	if !errors.Is(err, service.ErrNotFound) {
 		t.Fatalf("expected service.ErrNotFound, got %v", err)
 	}
@@ -168,7 +168,7 @@ func TestPlayerSyncService_SyncPlayers_Success(t *testing.T) {
 	}
 
 	syncSvc := service.NewPlayerSyncService(mockAdapter, mockRepo, logger)
-	resp, err := syncSvc.SyncPlayers(context.Background(), "system/test")
+	resp, err := syncSvc.SyncPlayers(t.Context(), "system/test")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestPlayerSyncService_SyncPlayers_RateLimitHandling(t *testing.T) {
 	}
 
 	syncSvc := service.NewPlayerSyncService(mockAdapter, mockRepo, logger)
-	resp, err := syncSvc.SyncPlayers(context.Background(), "system/test")
+	resp, err := syncSvc.SyncPlayers(t.Context(), "system/test")
 	if err != nil {
 		t.Fatalf("unexpected error on partial success: %v", err)
 	}
@@ -227,7 +227,7 @@ func TestPlayerSyncService_SyncPlayers_TotalRateLimitFailure(t *testing.T) {
 	mockRepo := &mockPlayerRepository{}
 
 	syncSvc := service.NewPlayerSyncService(mockAdapter, mockRepo, logger)
-	_, err := syncSvc.SyncPlayers(context.Background(), "system/test")
+	_, err := syncSvc.SyncPlayers(t.Context(), "system/test")
 	if !errors.Is(err, service.ErrRateLimitExceeded) {
 		t.Fatalf("expected service.ErrRateLimitExceeded, got %v", err)
 	}

@@ -50,7 +50,10 @@ dependencias) e `internal`, separado en paquetes con responsabilidades claras:
   concepto del dominio que traduce entre base de datos y modelos) y `dao` (DAOs
   por tabla que ejecutan el SQL).
 - model (dominio): contiene los modelos y la lógica pura del negocio.
-- adapters: integración con servicios externos.
+- adapters: conecta el core de la aplicación con cualquier dependencia
+  concreta con tecnología específica que se quiera aislar —no solo
+  servicios de red, sino también librerías de terceros. El consumidor
+  depende de la interfaz, nunca del tipo concreto.
 - dto: contiene las estructuras de datos que se comunican entre capas
 
 Hay un repository por concepto del dominio —jugador, cotización, usuario,
@@ -121,6 +124,16 @@ recursos. Estas validaciones se aplican mediante funciones de `internal/middlewa
 que interceptan las llamadas entre medio de los endpoints protegidos. Todas las
 entradas de datos deben validarse; las entradas inválidas se rechazan sin
 ejecutar lógica de negocio.
+Un token se acepta solo si su firma verifica con HS256 y no está expirado.
+
+El middleware deja el ID del usuario autenticado en el `context` y puede exigir
+un nivel de privilegio. Todo control que dependa de datos del dominio lo decide
+el service: si un endpoint recibe un ID de usuario en la URL o en el body, se
+compara contra el del `context` antes de usarlo.
+
+Todo endpoint expuesto tiene un nivel de acceso declarado; la ausencia de
+declaración es un error, no un endpoint público.
+
 
 ### IX. Observabilidad
 
@@ -172,8 +185,12 @@ qué se mockea:
 - service: con el repository y los adapters mockeados.
 - repository: contra una base real levantada con testcontainers, para no
   alterar la base de datos real.
-- adapters: contra respuestas guardadas; ningún test consulta el sitio o la
-  API externa.
+- adapters: sin conexión a servicios externos durante el test. Los que
+  envuelven un servicio externo se testean contra respuestas guardadas;
+  ningún test consulta el sitio o la API externa. Los que envuelven una
+  librería se testean contra la librería real con entradas fijas, y todo
+  lo que haga el resultado impredecible —el reloj, la fuente de
+  aleatoriedad— se inyecta para poder probar el valor límite.
 - controller: contra el contrato OpenAPI, incluidos los códigos de error.
 
 Cada caso de uso se cubre con su camino feliz, sus casos negativos y sus casos
@@ -216,7 +233,9 @@ revisiones en los Pull Requests.
     (interfaz con dominio) y `dao` (DAOs públicos con SQL por tabla e inyección
     de base de datos).
   - `internal/model/`: modelos y lógica pura de dominio.
-  - `internal/adapters/`: integración con servicios externos.
+  - `internal/adapters/`: integración con dependencias externas detrás de una
+    interfaz (servicios de red y librerías de terceros con configuración
+    inyectada).
   - El grafo de dependencias de todas las capas e infraestructura se ensambla en `cmd/`.
 - Propagación de Context: se propaga `context.Context` a todas las capas que
   requieran del uso de acciones de I/O (controller, service, persistence —repositories
@@ -226,18 +245,11 @@ revisiones en los Pull Requests.
   módulo de abstracción HTTP.
 - Base de datos: PostgreSQL dockerizada de forma obligatoria y separada del
   contenedor de backend.
+- Seguridad: `github.com/golang-jwt/jwt/v5` para JWT y
+  `golang.org/x/crypto/bcrypt` para hashing de passwords, una sola librería por
+  responsabilidad.
 
-## Security, Observability & Data Integrity
 
-- Privilegios: usuario común vs superusuario vía JWT; disparar un job a mano
-  y modificar las reglas de valuación requieren superusuario.
-- Validación de entradas: obligatoria en todos los endpoints.
-- Observabilidad: logs estructurados emitidos mediante `log/slog` configurado a
-  partir de un handler de Zerolog, correlation ID propagado por `context.Context`,
-  health check y métricas de latencia y tasa de error.
-- Auditoría: registro con autor, timestamp, cambios y diff entre estado
-  anterior y posterior.
-- Datos: operaciones transaccionales por defecto e indexación del esquema.
 
 ## Code Quality & Linting
 
