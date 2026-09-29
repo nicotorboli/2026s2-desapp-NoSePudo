@@ -62,14 +62,14 @@ func serveDecorated(t *testing.T, endpoint httphandler.Endpoint, authorization s
 }
 
 // La tabla de decisión del privilegio. Incluye las dos filas con
-// PrivilegeUnknown porque FR-018 exige que un nivel ausente o irreconocible
+// PrivilegeUnknown porque el requerimiento exige que un nivel ausente o irreconocible
 // sea insuficiente y nunca superusuario.
 func TestRequirePrivilegeDecisionTable(t *testing.T) {
 	cases := []struct {
-		name     string
-		held     model.PrivilegeLevel
+		name string
+		held model.PrivilegeLevel
 		required model.PrivilegeLevel
-		want     int
+		want int
 	}{
 		{"usuario donde se pide usuario", model.PrivilegeUser, model.PrivilegeUser, http.StatusOK},
 		{"superusuario donde se pide usuario", model.PrivilegeSuperuser, model.PrivilegeUser, http.StatusOK},
@@ -106,7 +106,7 @@ func TestRequirePrivilegeDecisionTable(t *testing.T) {
 	}
 }
 
-// FR-011: quien llama tiene que poder distinguir "no estás autenticado" de
+// el requerimiento: quien llama tiene que poder distinguir "no estás autenticado" de
 // "estás autenticado pero no te alcanza". Son dos status y dos mensajes.
 func TestUnauthenticatedAndUnprivilegedAreDistinguishable(t *testing.T) {
 	authentication := middleware.NewAuthentication(&mockTokenVerifier{claims: validAccessClaims()})
@@ -209,3 +209,4 @@ func TestSuperuserChainRefusesARefreshToken(t *testing.T) {
 		t.Error("la operación corrió con una credencial de refresco")
 	}
 }
+

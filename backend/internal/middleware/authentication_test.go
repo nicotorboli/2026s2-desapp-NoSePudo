@@ -20,9 +20,9 @@ import (
 // tener que firmar nada: lo que se prueba acá es qué hace el middleware con el
 // veredicto, no cómo se verifica una firma.
 type mockTokenVerifier struct {
-	err    error
+	err error
 	claims adapters.Claims
-	calls  int
+	calls int
 }
 
 func (m *mockTokenVerifier) Verify(string) (adapters.Claims, error) {
@@ -31,11 +31,11 @@ func (m *mockTokenVerifier) Verify(string) (adapters.Claims, error) {
 }
 
 // spyEndpoint registra si la operación de abajo llegó a correr, que es lo que
-// FR-008 exige: el rechazo ocurre antes de que corra lógica de negocio.
+// el requerimiento exige: el rechazo ocurre antes de que corra lógica de negocio.
 type spyEndpoint struct {
-	actor    middleware.Actor
+	actor middleware.Actor
 	hadActor bool
-	calls    int
+	calls int
 }
 
 func (s *spyEndpoint) endpoint() httphandler.Endpoint {
@@ -71,15 +71,15 @@ func serve(t *testing.T, decorator middleware.Decorator, spy *spyEndpoint, autho
 
 func validAccessClaims() adapters.Claims {
 	return adapters.Claims{
-		ID:        "un-jti",
+		ID: "un-jti",
 		SessionID: "una-familia",
-		Subject:   42,
+		Subject: 42,
 		Privilege: model.PrivilegeUser,
-		Kind:      adapters.KindAccess,
+		Kind: adapters.KindAccess,
 	}
 }
 
-// US3, escenario 5: con una credencial válida el catálogo se sirve y la cuenta
+// Escenario: con una credencial válida el catálogo se sirve y la cuenta
 // que pidió queda disponible para la operación.
 func TestRequireAccessTokenPublishesTheActor(t *testing.T) {
 	verifier := &mockTokenVerifier{claims: validAccessClaims()}
@@ -107,11 +107,11 @@ func TestRequireAccessTokenPublishesTheActor(t *testing.T) {
 	}
 }
 
-// US3, escenario 4: una credencial presentada con una forma inesperada se
+// Escenario: una credencial presentada con una forma inesperada se
 // rechaza en vez de intentar interpretarla.
 func TestRequireAccessTokenRefusesMalformedHeaders(t *testing.T) {
 	cases := []struct {
-		name          string
+		name string
 		authorization string
 	}{
 		{"sin cabecera", ""},
@@ -139,7 +139,7 @@ func TestRequireAccessTokenRefusesMalformedHeaders(t *testing.T) {
 				t.Errorf("error = %q, se esperaba el mensaje del contrato", body["error"])
 			}
 			if spy.calls != 0 {
-				t.Error("la operación corrió pese a que la credencial era inaceptable (FR-008)")
+				t.Error("la operación corrió pese a que la credencial era inaceptable")
 			}
 			if verifier.calls != 0 {
 				t.Error("se intentó verificar una cabecera que no tiene la forma esperada")
@@ -164,11 +164,11 @@ func TestRequireAccessTokenAcceptsTheSchemeInAnyCase(t *testing.T) {
 	}
 }
 
-// US3, escenarios 2 y 3: expirada o alterada, el rechazo es el mismo y no se
+// Escenario:escenarios 2 y 3: expirada o alterada, el rechazo es el mismo y no se
 // confía en nada de lo que la credencial diga.
 func TestRequireAccessTokenRefusesWhatTheVerifierRejects(t *testing.T) {
 	cases := []struct {
-		err  error
+		err error
 		name string
 	}{
 		{adapters.ErrTokenExpired, "expirada"},
@@ -198,14 +198,14 @@ func TestRequireAccessTokenRefusesWhatTheVerifierRejects(t *testing.T) {
 	}
 }
 
-// FR-038: la tabla de decisión de tipo de credencial contra nivel exigido.
+// el requerimiento: la tabla de decisión de tipo de credencial contra nivel exigido.
 // Las dos credenciales no son intercambiables en ninguna dirección.
 func TestTokenKindAgainstRequiredLevel(t *testing.T) {
 	cases := []struct {
-		name      string
+		name string
 		presented adapters.TokenKind
-		renewal   bool
-		accepted  bool
+		renewal bool
+		accepted bool
 	}{
 		{"acceso a un endpoint autenticado", adapters.KindAccess, false, true},
 		{"refresco a un endpoint autenticado", adapters.KindRefresh, false, false},
@@ -266,7 +266,7 @@ func TestActorFromContextReportsItsAbsence(t *testing.T) {
 }
 
 // El privilegio se lee de la credencial ya verificada, y uno que no se
-// reconoce llega como insuficiente y no como superusuario (FR-018).
+// reconoce llega como insuficiente y no como superusuario.
 func TestRequireAccessTokenCarriesAnUnknownPrivilegeAsInsufficient(t *testing.T) {
 	claims := validAccessClaims()
 	claims.Privilege = model.PrivilegeUnknown
@@ -287,3 +287,4 @@ func TestRequireAccessTokenCarriesAnUnknownPrivilegeAsInsufficient(t *testing.T)
 		t.Error("un privilegio irreconocible alcanza para usuario común")
 	}
 }
+

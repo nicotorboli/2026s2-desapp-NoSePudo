@@ -4,12 +4,13 @@ package middleware
 // router, que es el único que decide qué cadena le corresponde a cada ruta.
 type Container struct {
 	Authentication *Authentication
-	Authorization  *Authorization
+	Authorization *Authorization
 }
 
 func NewContainer(tokenVerifier TokenVerifier) *Container {
 	return &Container{
 		Authentication: NewAuthentication(tokenVerifier),
-		Authorization:  NewAuthorization(),
+		Authorization: NewAuthorization(),
 	}
 }
+
