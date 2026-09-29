@@ -270,7 +270,21 @@ what `FromContext` returns; it no longer has to arrange for it to be reachable.
 - [X] T089 [P] Document the new environment variables in `README.md`, matching the table in [quickstart.md](./quickstart.md) § 2.
 - [X] T090 Run `./scripts/pre-commit.sh` from the repository root — gofmt, `go vet` with `enable-all`, and golangci-lint at the version in `.golangci-version`. `fieldalignment` is the one that usually bites on new structs.
 - [ ] T091 ⚠️ **Not verifiable on this machine — left unchecked on purpose.** `go test -race` needs cgo and therefore a C compiler, and there is no gcc here (`cgo: C compiler "gcc" not found`). Every suite was run and passes **without** `-race`, repository and e2e ones included, against a real Postgres from testcontainers. The CI runs it with `-race` on Linux, which is where this gets closed.
-- [ ] T092 Walk [quickstart.md](./quickstart.md) § 4 end to end and confirm each user story's flow behaves as written, starting with SC-009 — the server refusing to start with `NSP_JWT_SECRET` unset. Depends on T090, T091.
+- [X] T092 Walk [quickstart.md](./quickstart.md) § 4 end to end — **done by hand against the real server and the docker-compose Postgres**, not against testcontainers. Depends on T090, T091.
+
+  | Flow | Observed |
+  |---|---|
+  | **US1** | Valid registration `201`; the same address in another case `409`; a body carrying `privilege` `400` naming the offending field; a 7-byte password and an `@`-less address `400` |
+  | **US2** | Login returns the five contract fields with `token_type: Bearer`; the readable claims are `sub`, `iat`, `exp`, `jti`, `typ`, `priv`, `sid` — **no email and no password**; a wrong password and an unknown account answer byte-identically |
+  | **US3** | Catalog served with a valid credential; `401` with none, with `Basic`, and with an altered signature |
+  | **US5** | The superuser's credential states `priv: superuser`, a common user's states `priv: user`, and the account table holds exactly one superuser |
+  | **US7** | A refresh token is refused at the catalog and an access token at renewal; after the access credential expires (TTL 5s) renewal issues a new one **in the same family** without resending the password; replaying the exchanged token is refused **and kills the replacement too** |
+  | **Sign-out** | `204`; that session's refresh token dies; **the second device's keeps working**; signing out twice is still `204` |
+  | **US6** | The run emitted `authentication refused`, `sign-in refused` and `refresh credential reused`, each with `operation` and `reason`. `sign-in refused` carries `actor=4` when the account is known and **no actor field at all** when it is not. A sweep for the password, both credentials, the signing secret, both email addresses and `$2a$` found **nothing** |
+  | **SC-009** | Started without `NSP_JWT_SECRET`: exits 1 naming the variable and its 32-byte minimum |
+  | **R14** | Pointed at a database without the tables: names all three and prints `docker compose down -v && docker compose up -d` |
+
+  The four accounts the walkthrough created were deleted afterwards, so the development database is back to its two seeded players. The one flow that stays only partly checkable is the machine-parseable half of US6: the events are human-readable console lines, which is exactly what T085 is blocked on.
 
 ---
 
