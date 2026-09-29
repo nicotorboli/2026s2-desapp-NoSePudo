@@ -28,7 +28,7 @@ func TestPlayerRepository_GetPlayer_Success(t *testing.T) {
 	mockSql := &mockPlayerSql{players: expected}
 	repo := repository.NewPlayerRepository(mockSql)
 
-	got, err := repo.GetPlayer(context.Background())
+	got, err := repo.GetPlayer(t.Context())
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -43,7 +43,7 @@ func TestPlayerRepository_GetPlayer_Error(t *testing.T) {
 	mockSql := &mockPlayerSql{err: expectedErr}
 	repo := repository.NewPlayerRepository(mockSql)
 
-	_, err := repo.GetPlayer(context.Background())
+	_, err := repo.GetPlayer(t.Context())
 	if !errors.Is(err, expectedErr) {
 		t.Fatalf("expected error %v, got %v", expectedErr, err)
 	}

@@ -34,7 +34,7 @@ func TestRestPlayerController_GetPlayers_Success(t *testing.T) {
 	c := controller.NewPlayerController(mockSvc)
 	endpoint := c.GetPlayers()
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players", nil)
 	w := httptest.NewRecorder()
 
 	err := endpoint(w, req)
@@ -78,7 +78,7 @@ func TestRestPlayerController_GetPlayers_Error(t *testing.T) {
 	c := controller.NewPlayerController(mockSvc)
 	endpoint := c.GetPlayers()
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players", nil)
 	w := httptest.NewRecorder()
 
 	err := endpoint(w, req)

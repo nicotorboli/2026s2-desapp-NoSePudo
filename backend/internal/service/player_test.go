@@ -29,7 +29,7 @@ func TestPlayerService_ListPlayers_Success(t *testing.T) {
 	mockRepo := &mockPlayerRepository{players: expectedPlayers}
 	svc := service.NewPlayerService(mockRepo)
 
-	players, err := svc.ListPlayers(context.Background())
+	players, err := svc.ListPlayers(t.Context())
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -50,7 +50,7 @@ func TestPlayerService_ListPlayers_Error(t *testing.T) {
 	mockRepo := &mockPlayerRepository{err: expectedErr}
 	svc := service.NewPlayerService(mockRepo)
 
-	_, err := svc.ListPlayers(context.Background())
+	_, err := svc.ListPlayers(t.Context())
 	if !errors.Is(err, expectedErr) {
 		t.Fatalf("expected error %v, got %v", expectedErr, err)
 	}
