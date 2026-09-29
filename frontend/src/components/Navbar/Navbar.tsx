@@ -13,7 +13,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigateHome }) => {
           type="button"
           className="navbar__brand-button"
           onClick={onNavigateHome}
-          aria-label="Go to players catalog"
+          aria-label="Ir al catálogo de jugadores"
         >
           <span className="navbar__logo">⚽</span>
           <span className="navbar__title">NoSePudo Market</span>

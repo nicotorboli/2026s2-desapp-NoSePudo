@@ -61,7 +61,7 @@ describe('PlayerListPage', () => {
     render(<PlayerListPage onSelectPlayer={vi.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByText('No players found')).toBeDefined();
+      expect(screen.getByText('No se encontraron jugadores')).toBeDefined();
     });
   });
 
@@ -74,10 +74,10 @@ describe('PlayerListPage', () => {
     render(<PlayerListPage onSelectPlayer={vi.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Unable to load players. Please try again later.')).toBeDefined();
+      expect(screen.getByText('No se pudieron cargar los jugadores. Por favor, intenta de nuevo más tarde.')).toBeDefined();
     });
 
-    const retryBtn = screen.getByRole('button', { name: /retry/i });
+    const retryBtn = screen.getByRole('button', { name: /reintentar/i });
     fireEvent.click(retryBtn);
 
     await waitFor(() => {

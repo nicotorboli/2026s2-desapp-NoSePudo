@@ -27,7 +27,7 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({ playerId, on
       })
       .catch(() => {
         if (isMounted) {
-          setError('Player not found or unable to load details.');
+          setError('Jugador no encontrado o no se pudieron cargar los detalles.');
           setIsLoading(false);
         }
       });
@@ -44,9 +44,9 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({ playerId, on
           type="button"
           className="player-detail-page__back-button"
           onClick={onBack}
-          aria-label="Back to player catalog"
+          aria-label="Volver al catálogo de jugadores"
         >
-          ← Back to Catalog
+          ← Volver al catálogo
         </button>
       </nav>
 
@@ -54,20 +54,20 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({ playerId, on
         {isLoading && (
           <div className="player-detail-page__loading" role="status">
             <span className="player-detail-page__spinner" />
-            <p>Loading player details...</p>
+            <p>Cargando detalles del jugador...</p>
           </div>
         )}
 
         {error && !isLoading && (
           <div className="player-detail-page__error" role="alert">
-            <h2 className="player-detail-page__error-title">Player Not Found</h2>
+            <h2 className="player-detail-page__error-title">Jugador no encontrado</h2>
             <p className="player-detail-page__error-desc">{error}</p>
             <button
               type="button"
               className="player-detail-page__back-button player-detail-page__back-button--error"
               onClick={onBack}
             >
-              Return to Catalog
+              Volver al catálogo
             </button>
           </div>
         )}

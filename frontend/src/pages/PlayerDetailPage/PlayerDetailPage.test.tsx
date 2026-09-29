@@ -38,10 +38,10 @@ describe('PlayerDetailPage', () => {
     });
 
     expect(screen.getByText('Arsenal FC')).toBeDefined();
-    expect(screen.getByText('Active')).toBeDefined();
-    expect(screen.getByText('Attacker')).toBeDefined();
-    expect(screen.getByText('Unassigned')).toBeDefined(); // Fallback for null shirtNumber
-    expect(screen.getByText('Unknown')).toBeDefined(); // Fallback for null nationality
+    expect(screen.getByText('Activo')).toBeDefined();
+    expect(screen.getByText('Delantero')).toBeDefined();
+    expect(screen.getByText('Sin asignar')).toBeDefined(); // Fallback for null shirtNumber
+    expect(screen.getByText('Desconocida')).toBeDefined(); // Fallback for null nationality
     expect(screen.getByText('—')).toBeDefined(); // Fallback for null dateOfBirth
   });
 
@@ -51,7 +51,7 @@ describe('PlayerDetailPage', () => {
     render(<PlayerDetailPage playerId={999} onBack={vi.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Player Not Found')).toBeDefined();
+      expect(screen.getByText('Jugador no encontrado')).toBeDefined();
     });
   });
 
@@ -81,7 +81,7 @@ describe('PlayerDetailPage', () => {
       expect(screen.getByText('Bukayo Saka')).toBeDefined();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /back to player catalog/i }));
+    fireEvent.click(screen.getByRole('button', { name: /volver al catálogo/i }));
     expect(handleBack).toHaveBeenCalledTimes(1);
   });
 });

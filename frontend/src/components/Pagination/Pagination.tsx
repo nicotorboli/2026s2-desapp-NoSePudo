@@ -22,19 +22,19 @@ export const Pagination: React.FC<PaginationProps> = ({
   const isLastPage = page >= totalPages;
 
   return (
-    <nav className="pagination" aria-label="Pagination Navigation">
+    <nav className="pagination" aria-label="Navegación de paginación">
       <button
         type="button"
         className={`pagination__button ${isFirstPage ? 'pagination__button--disabled' : ''}`}
         disabled={isFirstPage}
         onClick={() => onPageChange(page - 1)}
-        aria-label="Previous Page"
+        aria-label="Página anterior"
       >
-        ← Previous
+        ← Anterior
       </button>
 
       <span className="pagination__info">
-        Page <strong>{page}</strong> of <strong>{totalPages || 1}</strong> ({total} total players)
+        Página <strong>{page}</strong> de <strong>{totalPages || 1}</strong> ({total} jugadores en total)
       </span>
 
       <button
@@ -42,9 +42,9 @@ export const Pagination: React.FC<PaginationProps> = ({
         className={`pagination__button ${isLastPage ? 'pagination__button--disabled' : ''}`}
         disabled={isLastPage}
         onClick={() => onPageChange(page + 1)}
-        aria-label="Next Page"
+        aria-label="Página siguiente"
       >
-        Next →
+        Siguiente →
       </button>
     </nav>
   );

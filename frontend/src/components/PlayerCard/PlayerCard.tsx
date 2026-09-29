@@ -1,5 +1,6 @@
 import React from 'react';
 import { PlayerDetailDTO } from '../../api/players';
+import { translatePosition } from '../../utils/translations';
 import './PlayerCard.css';
 
 interface PlayerCardProps {
@@ -9,7 +10,7 @@ interface PlayerCardProps {
 export const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
   const formatShirtNumber = (num: number | null) => {
     if (num === null || num === undefined) {
-      return 'Unassigned';
+      return 'Sin asignar';
     }
     return `#${num}`;
   };
@@ -25,7 +26,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
     if (!dateStr) return '—';
     try {
       const d = new Date(dateStr);
-      return d.toLocaleString();
+      return d.toLocaleString('es-ES');
     } catch {
       return dateStr;
     }
@@ -43,40 +44,40 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
             player.active ? 'player-card__badge--active' : 'player-card__badge--inactive'
           }`}
         >
-          {player.active ? 'Active' : 'Inactive'}
+          {player.active ? 'Activo' : 'Inactivo'}
         </span>
       </div>
 
       <div className="player-card__grid">
         <div className="player-card__field">
-          <span className="player-card__label">Position</span>
-          <span className="player-card__value">{player.position}</span>
+          <span className="player-card__label">Posición</span>
+          <span className="player-card__value">{translatePosition(player.position)}</span>
         </div>
 
         <div className="player-card__field">
-          <span className="player-card__label">Shirt Number</span>
+          <span className="player-card__label">Número de camiseta</span>
           <span className="player-card__value">{formatShirtNumber(player.shirtNumber)}</span>
         </div>
 
         <div className="player-card__field">
-          <span className="player-card__label">League</span>
+          <span className="player-card__label">Liga</span>
           <span className="player-card__value">
             {player.league} ({player.leagueCode})
           </span>
         </div>
 
         <div className="player-card__field">
-          <span className="player-card__label">Nationality</span>
-          <span className="player-card__value">{player.nationality || 'Unknown'}</span>
+          <span className="player-card__label">Nacionalidad</span>
+          <span className="player-card__value">{player.nationality || 'Desconocida'}</span>
         </div>
 
         <div className="player-card__field">
-          <span className="player-card__label">Date of Birth</span>
+          <span className="player-card__label">Fecha de nacimiento</span>
           <span className="player-card__value">{formatDate(player.dateOfBirth)}</span>
         </div>
 
         <div className="player-card__field">
-          <span className="player-card__label">Last Updated</span>
+          <span className="player-card__label">Última actualización</span>
           <span className="player-card__value player-card__value--meta">
             {formatDateTime(player.updatedAt)}
           </span>

@@ -47,8 +47,8 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(screen.getByText('NoSePudo Football')).toBeDefined();
-    expect(screen.getByText('European Football Players Catalog')).toBeDefined();
+    expect(screen.getByText('NoSePudo Market')).toBeDefined();
+    expect(screen.getByText('Catálogo de Jugadores de Fútbol Europeo')).toBeDefined();
 
     await waitFor(() => {
       expect(screen.getByText('Bukayo Saka')).toBeDefined();
@@ -68,13 +68,13 @@ describe('App', () => {
     fireEvent.click(screen.getByText('Bukayo Saka'));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /back to player catalog/i })).toBeDefined();
+      expect(screen.getByRole('button', { name: /volver al catálogo/i })).toBeDefined();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /back to player catalog/i }));
+    fireEvent.click(screen.getByRole('button', { name: /volver al catálogo/i }));
 
     await waitFor(() => {
-      expect(screen.getByText('European Football Players Catalog')).toBeDefined();
+      expect(screen.getByText('Catálogo de Jugadores de Fútbol Europeo')).toBeDefined();
     });
   });
 });
