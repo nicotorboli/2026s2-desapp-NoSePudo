@@ -64,8 +64,7 @@ func Decode[T any](r *http.Request) (T, error) {
 // devuelven los valores que se mandaron, que es justo lo que hace falta: decir
 // qué estuvo mal sin repetir un secreto.
 func badRequestMessage(err error) string {
-	var unmarshalTypeError *json.UnmarshalTypeError
-	if errors.As(err, &unmarshalTypeError) {
+	if unmarshalTypeError, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 		return fmt.Sprintf("el campo %q no tiene el tipo esperado", unmarshalTypeError.Field)
 	}
 
@@ -73,8 +72,7 @@ func badRequestMessage(err error) string {
 		return "el cuerpo de la petición está vacío"
 	}
 
-	var syntaxError *json.SyntaxError
-	if errors.As(err, &syntaxError) {
+	if _, ok := errors.AsType[*json.SyntaxError](err); ok {
 		return "el cuerpo de la petición no es JSON válido"
 	}
 

@@ -19,8 +19,6 @@ func aLiveToken() model.RefreshToken {
 	}
 }
 
-func instant(t time.Time) *time.Time { return &t }
-
 // El límite de expiración, un instante antes, justo en, y un instante después.
 // Queda definido igual que el de la credencial de acceso: viva estrictamente
 // antes de expires_at.
@@ -61,11 +59,11 @@ func TestRefreshTokenIsLiveRequiresAllThreeConditions(t *testing.T) {
 		wantLive bool
 	}{
 		{func(*model.RefreshToken) {}, "recién emitida", true},
-		{func(token *model.RefreshToken) { token.UsedAt = instant(used) }, "usada", false},
-		{func(token *model.RefreshToken) { token.RevokedAt = instant(used) }, "revocada", false},
+		{func(token *model.RefreshToken) { token.UsedAt = new(used) }, "usada", false},
+		{func(token *model.RefreshToken) { token.RevokedAt = new(used) }, "revocada", false},
 		{func(token *model.RefreshToken) {
-			token.UsedAt = instant(used)
-			token.RevokedAt = instant(used)
+			token.UsedAt = new(used)
+			token.RevokedAt = new(used)
 		}, "usada y revocada", false},
 	}
 
@@ -92,7 +90,7 @@ func TestRefreshTokenDistinguishesExpiredFromConsumed(t *testing.T) {
 	expired.ExpiresAt = tokenIssuedAt.Add(time.Minute)
 
 	consumed := aLiveToken()
-	consumed.UsedAt = instant(now)
+	consumed.UsedAt = new(now)
 
 	if !expired.IsExpired(now) {
 		t.Error("una credencial vencida no se reporta como expirada")
@@ -114,7 +112,7 @@ func TestRefreshTokenDistinguishesExpiredFromConsumed(t *testing.T) {
 // respuesta al robo no podría dispararse nunca.
 func TestRefreshTokenUsedIsTerminalAndVisible(t *testing.T) {
 	token := aLiveToken()
-	token.UsedAt = instant(tokenIssuedAt.Add(time.Hour))
+	token.UsedAt = new(tokenIssuedAt.Add(time.Hour))
 
 	if token.ID == "" {
 		t.Error("la credencial usada perdió su identificador")

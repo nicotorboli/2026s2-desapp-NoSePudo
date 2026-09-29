@@ -1,7 +1,6 @@
 package server_test
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -84,7 +83,7 @@ func newTestServerWith(verifier middleware.TokenVerifier) *server.Server {
 func TestServer_ServeHTTP_GetPlayers(t *testing.T) {
 	srv := newTestServer()
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players", nil)
 	// El catálogo pasó a exigir credencial, así que el caso que lo pedía sin
 	// nada ahora la presenta.
 	req.Header.Set("Authorization", "Bearer una-credencial")
@@ -102,7 +101,7 @@ func TestServer_ServeHTTP_GetPlayers(t *testing.T) {
 func TestServer_ServeHTTP_GetPlayers_SinCredencial(t *testing.T) {
 	srv := newTestServer()
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players", nil)
 	w := httptest.NewRecorder()
 
 	srv.ServeHTTP(w, req)
@@ -116,7 +115,7 @@ func TestServer_ServeHTTP_GetPlayers_SinCredencial(t *testing.T) {
 func TestServer_ServeHTTP_GetPlayers_CredencialInvalida(t *testing.T) {
 	srv := newTestServerWith(&stubTokenVerifier{err: adapters.ErrTokenInvalid})
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/players", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players", nil)
 	req.Header.Set("Authorization", "Bearer una-credencial-alterada")
 	w := httptest.NewRecorder()
 
@@ -141,7 +140,7 @@ func TestServer_ServeHTTP_RutasAnonimas(t *testing.T) {
 		t.Run(c.pattern, func(t *testing.T) {
 			srv := newTestServer()
 
-			req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, c.pattern, nil)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, c.pattern, nil)
 			w := httptest.NewRecorder()
 
 			srv.ServeHTTP(w, req)
@@ -156,7 +155,7 @@ func TestServer_ServeHTTP_RutasAnonimas(t *testing.T) {
 func TestServer_ServeHTTP_NotFound(t *testing.T) {
 	srv := newTestServer()
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/unknown-route", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/unknown-route", nil)
 	w := httptest.NewRecorder()
 
 	srv.ServeHTTP(w, req)

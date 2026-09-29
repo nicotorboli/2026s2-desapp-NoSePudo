@@ -149,8 +149,7 @@ func (m *mockRefreshTokenRepository) Rotate(
 		return model.ErrRefreshTokenReused
 	}
 
-	used := m.now()
-	presented.UsedAt = &used
+	presented.UsedAt = new(m.now())
 	m.byID[presentedID] = presented
 
 	return m.Insert(ctx, replacement)
@@ -162,7 +161,7 @@ func (m *mockRefreshTokenRepository) RevokeFamily(_ context.Context, familyID st
 	revoked := m.now()
 	for id, token := range m.byID {
 		if token.FamilyID == familyID && token.UserID == userID && token.RevokedAt == nil {
-			token.RevokedAt = &revoked
+			token.RevokedAt = new(revoked)
 			m.byID[id] = token
 		}
 	}
@@ -180,7 +179,7 @@ func (m *mockRefreshTokenRepository) RevokeAllLiveForUser(_ context.Context, use
 	revoked := m.now()
 	for id, token := range m.byID {
 		if token.UserID == userID && token.RevokedAt == nil {
-			token.RevokedAt = &revoked
+			token.RevokedAt = new(revoked)
 			m.byID[id] = token
 		}
 	}
