@@ -11,59 +11,40 @@ import (
 )
 
 // route es la declaración de un endpoint: su patrón, el nivel de acceso que
-// exige y el endpoint en sí. Los campos van de mayor a menor tamaño porque
-// govet corre con fieldalignment.
+// exige y el endpoint en sí. 
 type route struct {
 	endpoint httphandler.Endpoint
-	pattern  string
-	access   AccessLevel
+	pattern string
+	access AccessLevel
 }
 
 // routes describe las rutas y no registra ninguna.
-//
-// La forma importa tanto como el chequeo automático. Si esto registrara sobre
-// s.router, la manera más fácil de agregar un endpoint sería un s.router.Handle
-// más al lado de los otros, y el camino de menor resistencia pasaría de largo
-// por la tabla. Devolviendo la descripción no hay ningún mux a mano al que
-// colgarle una ruta suelta: saltear la tabla deja de ser lo cómodo y pasa a
-// ser algo deliberado.
+
 func (s *Server) routes() []route {
 	return []route{
 		{
-			// FR-015 lo fija anónimo: es la puerta de entrada, y exigir
-			// credencial para crear la cuenta que la produce no cerraría.
-			pattern:  "POST /auth/register",
-			access:   AccessAnonymous,
+			pattern: "POST /auth/register",
+			access: AccessAnonymous,
 			endpoint: s.controllers.Auth.Register(),
 		},
 		{
-			// Anónimo por FR-015: es la operación que produce la credencial,
-			// así que no puede exigir una.
-			pattern:  "POST /auth/login",
-			access:   AccessAnonymous,
+			pattern: "POST /auth/login",
+			access: AccessAnonymous,
 			endpoint: s.controllers.Auth.Login(),
 		},
 		{
-			// FR-015 lo declara renewal, y no authenticated, porque acá la
-			// credencial es el token de refresco: el middleware rechaza uno de
-			// acceso, así que el nivel tiene algo detrás y no es una etiqueta.
-			pattern:  "POST /auth/refresh",
-			access:   AccessRenewal,
+			pattern: "POST /auth/refresh",
+			access: AccessRenewal,
 			endpoint: s.controllers.Auth.Refresh(),
 		},
 		{
-			// Authenticated por FR-015: su credencial es el token de acceso, y
-			// la sesión que cierra la nombra el claim sid de ese mismo token.
-			pattern:  "POST /auth/logout",
-			access:   AccessAuthenticated,
+			pattern: "POST /auth/logout",
+			access: AccessAuthenticated,
 			endpoint: s.controllers.Auth.Logout(),
 		},
 		{
-			// FR-015: el catálogo exige credencial. Es el único otro endpoint
-			// que esta entrega expone, así que dejarlo anónimo significaría
-			// que la credencial no gobierna nada.
-			pattern:  "GET /players",
-			access:   AccessAuthenticated,
+			pattern: "GET /players",
+			access: AccessAuthenticated,
 			endpoint: s.controllers.Player.GetPlayers(),
 		},
 	}
@@ -83,11 +64,6 @@ func buildMux(routes []route, logger *slog.Logger, middlewares *middleware.Conta
 }
 
 // chainFor devuelve el endpoint ya decorado según el nivel declarado.
-//
-// Entra en pánico en el arranque, y no devuelve un error, porque una ruta mal
-// declarada no es una condición que el servidor deba tolerar sirviendo: es un
-// error de programación, y la alternativa de arrancar igual es exactamente el
-// agujero que esta feature existe para cerrar.
 func chainFor(r route, middlewares *middleware.Container) httphandler.Endpoint {
 	switch r.access {
 	case AccessAnonymous:
@@ -97,15 +73,6 @@ func chainFor(r route, middlewares *middleware.Container) httphandler.Endpoint {
 	case AccessRenewal:
 		return middlewares.Authentication.RequireRefreshToken()(r.endpoint)
 	case AccessSuperuser:
-		// Ninguna ruta lo usa en esta entrega. La cadena existe porque es el
-		// punto donde se engancha la primera operación reservada al
-		// superusuario, y dejarla armada ahora es lo que hace que esa feature
-		// no tenga que tocar el ruteo.
-		//
-		// El orden se lee al revés de como se ejecuta: el decorador de afuera
-		// corre primero. La autenticación tiene que ser la externa porque es la
-		// que publica el actor que la autorización después lee; invertirlas
-		// deja a la autorización sin actor y todo termina en 401.
 		return middlewares.Authentication.RequireAccessToken()(
 			middlewares.Authorization.Require(model.PrivilegeSuperuser)(r.endpoint),
 		)
@@ -121,3 +88,4 @@ func chainFor(r route, middlewares *middleware.Container) httphandler.Endpoint {
 		))
 	}
 }
+

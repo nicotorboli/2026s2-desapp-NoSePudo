@@ -74,7 +74,7 @@ func newTestServerWith(verifier middleware.TokenVerifier) *server.Server {
 		logger.NewLog(),
 		&controller.Container{
 			Player: &mockPlayerController{},
-			Auth:   &mockAuthController{},
+			Auth: &mockAuthController{},
 		},
 		middleware.NewContainer(verifier),
 	)
@@ -130,7 +130,7 @@ func TestServer_ServeHTTP_GetPlayers_CredencialInvalida(t *testing.T) {
 func TestServer_ServeHTTP_RutasAnonimas(t *testing.T) {
 	cases := []struct {
 		pattern string
-		want    int
+		want int
 	}{
 		{"/auth/register", http.StatusCreated},
 		{"/auth/login", http.StatusOK},
@@ -164,3 +164,4 @@ func TestServer_ServeHTTP_NotFound(t *testing.T) {
 		t.Fatalf("expected status 404, got %d", w.Code)
 	}
 }
+

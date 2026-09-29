@@ -1,10 +1,7 @@
-// Este archivo es el chequeo automático que pide FR-014, en dos partes: una
-// tabla sobre lo que routes() declara, y una lectura del código fuente que
-// detecta una ruta registrada por fuera de buildMux.
+// Verificaciones sobre la tabla de rutas routes() y que no existan
+// rutas registradas por fuera de buildMux.
 //
-// Vive en el paquete server y no en server_test porque necesita llamar a
-// routes(), que no está exportado. Los dos paquetes de test conviven en el
-// directorio.
+// Vive en el paquete server porque necesita llamar a routes(), que no está exportado.
 package server
 
 import (
@@ -36,23 +33,23 @@ func (stubController) endpoint() httphandler.Endpoint {
 }
 
 func (s stubController) GetPlayers() httphandler.Endpoint { return s.endpoint() }
-func (s stubController) Register() httphandler.Endpoint   { return s.endpoint() }
-func (s stubController) Login() httphandler.Endpoint      { return s.endpoint() }
-func (s stubController) Refresh() httphandler.Endpoint    { return s.endpoint() }
-func (s stubController) Logout() httphandler.Endpoint     { return s.endpoint() }
+func (s stubController) Register() httphandler.Endpoint { return s.endpoint() }
+func (s stubController) Login() httphandler.Endpoint { return s.endpoint() }
+func (s stubController) Refresh() httphandler.Endpoint { return s.endpoint() }
+func (s stubController) Logout() httphandler.Endpoint { return s.endpoint() }
 
 func routesUnderTest() []route {
 	server := &Server{
 		controllers: &controller.Container{
 			Player: stubController{},
-			Auth:   stubController{},
+			Auth: stubController{},
 		},
 	}
 
 	return server.routes()
 }
 
-// La mitad que FR-014 pide literalmente: ninguna ruta puede quedarse sin nivel.
+// Ninguna ruta puede quedarse sin nivel de acceso declarado.
 // Un literal de route que se olvide del campo obtiene AccessUndeclared, y acá
 // se entera.
 func TestEveryRouteDeclaresAnAccessLevel(t *testing.T) {
@@ -69,16 +66,16 @@ func TestEveryRouteDeclaresAnAccessLevel(t *testing.T) {
 	}
 }
 
-// FR-015 fija el nivel de cada endpoint de esta entrega. El mapa se compara
+// Comprueba el nivel esperado de cada endpoint declarado. El mapa se compara
 // exacto en las dos direcciones, así que una ruta nueva que no se agregue acá
 // también hace fallar el caso.
 func TestDeclaredLevelsMatchTheSpecification(t *testing.T) {
 	expected := map[string]AccessLevel{
 		"POST /auth/register": AccessAnonymous,
-		"POST /auth/login":    AccessAnonymous,
-		"POST /auth/refresh":  AccessRenewal,
-		"POST /auth/logout":   AccessAuthenticated,
-		"GET /players":        AccessAuthenticated,
+		"POST /auth/login": AccessAnonymous,
+		"POST /auth/refresh": AccessRenewal,
+		"POST /auth/logout": AccessAuthenticated,
+		"GET /players": AccessAuthenticated,
 	}
 
 	declared := map[string]AccessLevel{}
@@ -128,8 +125,7 @@ func TestBuildMuxPanicsOnAnUndeclaredLevel(t *testing.T) {
 	buildMux(undeclared, nil, nil)
 }
 
-// La otra mitad, la que FR-014 no nombra pero que es el mismo agujero con otra
-// causa: un endpoint que nunca entró en la tabla.
+// Garantiza que ningún endpoint se registre por fuera de buildMux.
 //
 // Go no ofrece manera de enumerar los patrones registrados en un ServeMux, así
 // que el código fuente es la única otra fuente de verdad. Se lee con go/ast y
@@ -214,9 +210,9 @@ func (s stubVerifier) Verify(string) (adapters.Claims, error) {
 // no lo detectan porque arman su propia cadena; esto mira la que se usa.
 func TestSuperuserChainAuthenticatesBeforeAuthorizing(t *testing.T) {
 	cases := []struct {
-		name      string
+		name string
 		privilege model.PrivilegeLevel
-		want      int
+		want int
 	}{
 		{"el superusuario pasa", model.PrivilegeSuperuser, http.StatusOK},
 		{"un usuario comun recibe 403 y no 401", model.PrivilegeUser, http.StatusForbidden},
@@ -228,7 +224,7 @@ func TestSuperuserChainAuthenticatesBeforeAuthorizing(t *testing.T) {
 			reached := false
 			routes := []route{{
 				pattern: "GET /solo-superusuario",
-				access:  AccessSuperuser,
+				access: AccessSuperuser,
 				endpoint: func(w http.ResponseWriter, _ *http.Request) error {
 					reached = true
 					return httphandler.Encode(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -256,11 +252,11 @@ func TestSuperuserChainAuthenticatesBeforeAuthorizing(t *testing.T) {
 	}
 }
 
-// Y sin credencial la misma cadena da 401, que es el otro lado de FR-011.
+// Y sin credencial la misma cadena da 401, que es el otro lado de el requerimiento.
 func TestSuperuserChainRefusesWithoutACredential(t *testing.T) {
 	routes := []route{{
-		pattern:  "GET /solo-superusuario",
-		access:   AccessSuperuser,
+		pattern: "GET /solo-superusuario",
+		access: AccessSuperuser,
 		endpoint: stubController{}.endpoint(),
 	}}
 
@@ -278,3 +274,4 @@ func TestSuperuserChainRefusesWithoutACredential(t *testing.T) {
 		t.Errorf("status = %d, se esperaba 401", recorder.Code)
 	}
 }
+
