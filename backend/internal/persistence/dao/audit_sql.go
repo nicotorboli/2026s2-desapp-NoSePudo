@@ -22,8 +22,10 @@ func NewAuditDao(db *sql.DB) *AuditSql {
 }
 
 func (d *AuditSql) InsertAuditLog(ctx context.Context, tx *sql.Tx, log model.AuditLog) error {
-	if tx == nil && d.db == nil {
-		return fmt.Errorf("database connection is nil")
+	// La auditoría es parte de la misma transacción que la escritura que
+	// describe: sin transacción no hay nada que auditar de forma consistente.
+	if tx == nil {
+		return fmt.Errorf("insert audit log requires a transaction")
 	}
 
 	var diffOldJSON []byte
@@ -49,13 +51,7 @@ func (d *AuditSql) InsertAuditLog(ctx context.Context, tx *sql.Tx, log model.Aud
 	query := `INSERT INTO player_audit_logs (entity_type, entity_id, action, actor, diff_old, diff_new, created_at)
               VALUES ($1, $2, $3, $4, $5, $6, NOW())`
 
-	var execErr error
-	if tx != nil {
-		_, execErr = tx.ExecContext(ctx, query, log.EntityType, log.EntityID, log.Action, log.Actor, diffOldJSON, diffNewJSON)
-	} else {
-		_, execErr = d.db.ExecContext(ctx, query, log.EntityType, log.EntityID, log.Action, log.Actor, diffOldJSON, diffNewJSON)
-	}
-
+	_, execErr := tx.ExecContext(ctx, query, log.EntityType, log.EntityID, log.Action, log.Actor, diffOldJSON, diffNewJSON)
 	if execErr != nil {
 		return fmt.Errorf("insert audit log: %w", execErr)
 	}
