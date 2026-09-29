@@ -76,18 +76,6 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
         </div>
 
         <div className="player-card__field">
-          <span className="player-card__label">External ID</span>
-          <span className="player-card__value">{player.externalId}</span>
-        </div>
-
-        <div className="player-card__field">
-          <span className="player-card__label">Created At</span>
-          <span className="player-card__value player-card__value--meta">
-            {formatDateTime(player.createdAt)}
-          </span>
-        </div>
-
-        <div className="player-card__field">
           <span className="player-card__label">Last Updated</span>
           <span className="player-card__value player-card__value--meta">
             {formatDateTime(player.updatedAt)}

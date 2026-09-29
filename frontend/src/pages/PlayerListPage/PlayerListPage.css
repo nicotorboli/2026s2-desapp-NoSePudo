@@ -1,6 +1,4 @@
 .player-list-page {
-  max-width: 1200px;
-  margin: 0 auto;
   padding: 2rem 1.5rem;
 }
 
@@ -11,7 +9,7 @@
 .player-list-page__title {
   font-size: 2rem;
   font-weight: 800;
-  color: #1a202c;
+  color: var(--ink-blue);
   margin-bottom: 0.5rem;
 }
 
@@ -74,7 +72,6 @@
 }
 
 .player-list-page__empty {
-  background-color: #ffffff;
   border-radius: 8px;
   padding: 4rem 2rem;
   text-align: center;

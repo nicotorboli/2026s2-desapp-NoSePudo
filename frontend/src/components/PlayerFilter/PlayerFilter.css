@@ -2,7 +2,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
-  background-color: #ffffff;
+  background-color: color-mix(in srgb, var(--green-forest) 69%, #ffffff);
   padding: 1.5rem;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -29,7 +29,7 @@
   border-radius: 6px;
   font-size: 0.9375rem;
   color: #2d3748;
-  background-color: #ffffff;
+  background-color: color-mix(in srgb, #ffffff 39%, transparent);
   transition: border-color 0.2s;
 }
 

@@ -16,7 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigateHome }) => {
           aria-label="Go to players catalog"
         >
           <span className="navbar__logo">⚽</span>
-          <span className="navbar__title">NoSePudo Football</span>
+          <span className="navbar__title">NoSePudo Market</span>
         </button>
       </div>
     </header>

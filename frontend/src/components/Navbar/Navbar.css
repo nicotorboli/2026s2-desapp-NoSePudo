@@ -1,12 +1,11 @@
 .navbar {
-  background-color: #1a1a2e;
-  color: #ffffff;
+  background-color: var(--ink-blue);
+  color: var(--golden);
   padding: 1rem 2rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .navbar__container {
-  max-width: 1200px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -30,7 +29,7 @@
 }
 
 .navbar__title {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 800;
   letter-spacing: 0.5px;
 }
