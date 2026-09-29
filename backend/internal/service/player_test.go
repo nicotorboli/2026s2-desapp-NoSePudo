@@ -3,55 +3,232 @@ package service_test
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"testing"
+	"time"
 
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters/footballdata"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
 )
 
 type mockPlayerRepository struct {
-	err     error
-	players []model.Player
+	listPlayersFn func(ctx context.Context, filter model.PlayerFilter) (model.PageResult[model.Player], error)
+	getPlayerFn   func(ctx context.Context, id int64) (model.Player, error)
+	savePlayersFn func(ctx context.Context, players []model.Player, leagueCode, actor string) (int, int, int, error)
 }
 
-func (m *mockPlayerRepository) GetPlayer(ctx context.Context) ([]model.Player, error) {
-	if m.err != nil {
-		return nil, m.err
+func (m *mockPlayerRepository) ListPlayers(ctx context.Context, filter model.PlayerFilter) (model.PageResult[model.Player], error) {
+	if m.listPlayersFn != nil {
+		return m.listPlayersFn(ctx, filter)
 	}
-	return m.players, nil
+	return model.PageResult[model.Player]{}, nil
+}
+
+func (m *mockPlayerRepository) GetPlayerByID(ctx context.Context, id int64) (model.Player, error) {
+	if m.getPlayerFn != nil {
+		return m.getPlayerFn(ctx, id)
+	}
+	return model.Player{}, nil
+}
+
+func (m *mockPlayerRepository) SavePlayers(ctx context.Context, players []model.Player, leagueCode, actor string) (int, int, int, error) {
+	if m.savePlayersFn != nil {
+		return m.savePlayersFn(ctx, players, leagueCode, actor)
+	}
+	return len(players), 0, 0, nil
+}
+
+type mockFootballDataClient struct {
+	fetchLeaguePlayersFn func(ctx context.Context, leagueCode string) ([]model.Player, error)
+}
+
+func (m *mockFootballDataClient) FetchLeaguePlayers(ctx context.Context, leagueCode string) ([]model.Player, error) {
+	if m.fetchLeaguePlayersFn != nil {
+		return m.fetchLeaguePlayersFn(ctx, leagueCode)
+	}
+	return nil, nil
 }
 
 func TestPlayerService_ListPlayers_Success(t *testing.T) {
 	expectedPlayers := []model.Player{
-		{ID: 1, Name: "Ernesto Provitillo", Position: 5},
-		{ID: 2, Name: "Alfre Montes de Oca", Position: 1},
+		{ID: 1, Name: "Ernesto Provitillo", ClubName: "Arsenal", LeagueName: "Premier League", Position: "Midfielder"},
+		{ID: 2, Name: "Alfre Montes de Oca", ClubName: "Chelsea", LeagueName: "Premier League", Position: "Goalkeeper"},
 	}
-	mockRepo := &mockPlayerRepository{players: expectedPlayers}
+
+	mockRepo := &mockPlayerRepository{
+		listPlayersFn: func(ctx context.Context, filter model.PlayerFilter) (model.PageResult[model.Player], error) {
+			return model.PageResult[model.Player]{
+				Items:      expectedPlayers,
+				Page:       1,
+				Limit:      20,
+				Total:      2,
+				TotalPages: 1,
+			}, nil
+		},
+	}
+
 	svc := service.NewPlayerService(mockRepo)
-
-	players, err := svc.ListPlayers(t.Context())
+	res, err := svc.ListPlayers(t.Context(), dto.PlayerFilterDTO{Page: 1, Limit: 20})
 	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(players) != len(expectedPlayers) {
-		t.Fatalf("expected %d players, got %d", len(expectedPlayers), len(players))
+	if len(res.Items) != 2 {
+		t.Fatalf("expected 2 players, got %d", len(res.Items))
 	}
-
-	for i := range players {
-		if players[i] != expectedPlayers[i] {
-			t.Errorf("expected player %+v, got %+v", expectedPlayers[i], players[i])
-		}
+	if res.Items[0].Name != "Ernesto Provitillo" || res.Items[0].Club != "Arsenal" || res.Items[0].League != "Premier League" || res.Items[0].Position != "Midfielder" {
+		t.Errorf("unexpected player 0: %+v", res.Items[0])
+	}
+	if res.Items[1].Name != "Alfre Montes de Oca" || res.Items[1].Club != "Chelsea" || res.Items[1].League != "Premier League" || res.Items[1].Position != "Goalkeeper" {
+		t.Errorf("unexpected player 1: %+v", res.Items[1])
 	}
 }
 
-func TestPlayerService_ListPlayers_Error(t *testing.T) {
-	expectedErr := errors.New("db connection failure")
-	mockRepo := &mockPlayerRepository{err: expectedErr}
-	svc := service.NewPlayerService(mockRepo)
+func TestPlayerService_GetPlayerByID_Success(t *testing.T) {
+	dob := "1990-05-15"
+	nat := "Argentina"
+	num := 10
+	now := time.Now().UTC()
 
-	_, err := svc.ListPlayers(t.Context())
-	if !errors.Is(err, expectedErr) {
-		t.Fatalf("expected error %v, got %v", expectedErr, err)
+	mockRepo := &mockPlayerRepository{
+		getPlayerFn: func(ctx context.Context, id int64) (model.Player, error) {
+			if id == 42 {
+				return model.Player{
+					ID:          42,
+					ExternalID:  1234,
+					Name:        "Test Player",
+					ClubName:    "FC Barcelona",
+					LeagueName:  "La Liga",
+					LeagueCode:  "PD",
+					Position:    "Attacker",
+					DateOfBirth: &dob,
+					Nationality: &nat,
+					ShirtNumber: &num,
+					Active:      true,
+					CreatedAt:   now,
+					UpdatedAt:   now,
+				}, nil
+			}
+			return model.Player{}, repository.ErrNotFound
+		},
+	}
+
+	svc := service.NewPlayerService(mockRepo)
+	res, err := svc.GetPlayerByID(t.Context(), 42)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if res.ID != 42 || res.ExternalID != 1234 || res.Name != "Test Player" || res.Club != "FC Barcelona" || res.LeagueCode != "PD" || res.Position != "Attacker" {
+		t.Errorf("unexpected player detail: %+v", res)
+	}
+	if res.DateOfBirth == nil || *res.DateOfBirth != dob {
+		t.Errorf("expected dob %s, got %v", dob, res.DateOfBirth)
+	}
+	if res.Nationality == nil || *res.Nationality != nat {
+		t.Errorf("expected nat %s, got %v", nat, res.Nationality)
+	}
+	if res.ShirtNumber == nil || *res.ShirtNumber != num {
+		t.Errorf("expected shirtNumber %d, got %v", num, res.ShirtNumber)
+	}
+}
+
+func TestPlayerService_GetPlayerByID_NotFound(t *testing.T) {
+	mockRepo := &mockPlayerRepository{
+		getPlayerFn: func(ctx context.Context, id int64) (model.Player, error) {
+			return model.Player{}, repository.ErrNotFound
+		},
+	}
+
+	svc := service.NewPlayerService(mockRepo)
+	_, err := svc.GetPlayerByID(t.Context(), 999)
+	if !errors.Is(err, service.ErrNotFound) {
+		t.Fatalf("expected service.ErrNotFound, got %v", err)
+	}
+}
+
+func TestPlayerSyncService_SyncPlayers_Success(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	mockAdapter := &mockFootballDataClient{
+		fetchLeaguePlayersFn: func(ctx context.Context, leagueCode string) ([]model.Player, error) {
+			return []model.Player{
+				{ExternalID: 1, Name: "Player " + leagueCode},
+			}, nil
+		},
+	}
+
+	mockRepo := &mockPlayerRepository{
+		savePlayersFn: func(ctx context.Context, players []model.Player, leagueCode, actor string) (int, int, int, error) {
+			return len(players), 1, 0, nil
+		},
+	}
+
+	syncSvc := service.NewPlayerSyncService(mockAdapter, mockRepo, logger)
+	resp, err := syncSvc.SyncPlayers(t.Context(), "system/test")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resp.Status != "success" {
+		t.Errorf("expected status success, got %s", resp.Status)
+	}
+	if resp.TotalProcessed != 5 {
+		t.Errorf("expected 5 processed (1 per league), got %d", resp.TotalProcessed)
+	}
+	if resp.TotalUpdated != 5 {
+		t.Errorf("expected 5 updated, got %d", resp.TotalUpdated)
+	}
+}
+
+func TestPlayerSyncService_SyncPlayers_RateLimitHandling(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	callCount := 0
+	mockAdapter := &mockFootballDataClient{
+		fetchLeaguePlayersFn: func(ctx context.Context, leagueCode string) ([]model.Player, error) {
+			callCount++
+			if callCount == 1 {
+				return []model.Player{{ExternalID: 1, Name: "Player 1"}}, nil
+			}
+			return nil, footballdata.ErrRateLimitExceeded
+		},
+	}
+
+	mockRepo := &mockPlayerRepository{
+		savePlayersFn: func(ctx context.Context, players []model.Player, leagueCode, actor string) (int, int, int, error) {
+			return len(players), 0, 0, nil
+		},
+	}
+
+	syncSvc := service.NewPlayerSyncService(mockAdapter, mockRepo, logger)
+	resp, err := syncSvc.SyncPlayers(t.Context(), "system/test")
+	if err != nil {
+		t.Fatalf("unexpected error on partial success: %v", err)
+	}
+
+	if resp.Status != "partial_success" {
+		t.Errorf("expected status partial_success, got %s", resp.Status)
+	}
+	if resp.TotalProcessed != 1 {
+		t.Errorf("expected 1 processed, got %d", resp.TotalProcessed)
+	}
+}
+
+func TestPlayerSyncService_SyncPlayers_TotalRateLimitFailure(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	mockAdapter := &mockFootballDataClient{
+		fetchLeaguePlayersFn: func(ctx context.Context, leagueCode string) ([]model.Player, error) {
+			return nil, footballdata.ErrRateLimitExceeded
+		},
+	}
+	mockRepo := &mockPlayerRepository{}
+
+	syncSvc := service.NewPlayerSyncService(mockAdapter, mockRepo, logger)
+	_, err := syncSvc.SyncPlayers(t.Context(), "system/test")
+	if !errors.Is(err, service.ErrRateLimitExceeded) {
+		t.Fatalf("expected service.ErrRateLimitExceeded, got %v", err)
 	}
 }

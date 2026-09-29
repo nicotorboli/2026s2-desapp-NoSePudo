@@ -25,25 +25,28 @@ func Wrap(endpoint Endpoint, log *slog.Logger) http.HandlerFunc {
 		// le inyectó al servidor, y lo que escriban no tendría con qué
 		// decorarse ni adónde ir.
 		req = req.WithContext(logger.Into(req.Context(), log))
+		ctx := req.Context()
 
 		err := endpoint(w, req)
-		if err != nil {
-			log.Error("Endpoint error", "error", err.Error())
+		if err == nil {
+			return
+		}
 
-			// Se recorre la cadena de %w en vez de mirar sólo el error de
-			// arriba: cualquier capa intermedia que decore con
-			// fmt.Errorf("...: %w", err) convertiría un 401 intencional en un
-			// 500 si se usara una type assertion pelada.
-			if apiErr, ok := errors.AsType[APIError](err); ok {
-				if encodeErr := Encode(w, apiErr.StatusCode(), map[string]string{"error": apiErr.Message()}); encodeErr != nil {
-					log.Error("Error encoding API error", "error", encodeErr.Error())
-				}
-				return
+		// Se recorre la cadena de %w en vez de mirar sólo el error de
+		// arriba: cualquier capa intermedia que decore con
+		// fmt.Errorf("...: %w", err) convertiría un 401 intencional en un
+		// 500 si se usara una type assertion pelada.
+		if apiErr, ok := errors.AsType[APIError](err); ok {
+			log.WarnContext(ctx, "Handled HTTP error", "status", apiErr.StatusCode(), "error", err.Error())
+			if encodeErr := Encode(w, apiErr.StatusCode(), map[string]string{"error": apiErr.Message()}); encodeErr != nil {
+				log.ErrorContext(ctx, "Error encoding API error", "error", encodeErr.Error())
 			}
+			return
+		}
 
-			if encodeErr := Encode(w, http.StatusInternalServerError, map[string]string{"error": "Internal Server Error"}); encodeErr != nil {
-				log.Error("Error encoding internal server error", "error", encodeErr.Error())
-			}
+		log.ErrorContext(ctx, "Internal server error", "error", err.Error())
+		if encodeErr := Encode(w, http.StatusInternalServerError, map[string]string{"error": "Internal Server Error"}); encodeErr != nil {
+			log.ErrorContext(ctx, "Error encoding internal server error", "error", encodeErr.Error())
 		}
 	}
 }

@@ -2,24 +2,57 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 )
 
-type PlayerRepository interface {
-	GetPlayer(ctx context.Context) ([]model.Player, error)
+var ErrNotFound = errors.New("player not found")
+
+type PlayerService interface {
+	ListPlayers(ctx context.Context, filter dto.PlayerFilterDTO) (dto.PaginatedResponse[dto.PlayerListItemResponse], error)
+	GetPlayerByID(ctx context.Context, id int64) (dto.PlayerDetailResponse, error)
 }
 
-type Player struct {
-	repo PlayerRepository
+type PlayerServiceImpl struct {
+	repo repository.PlayerRepository
 }
 
-func (p *Player) ListPlayers(ctx context.Context) ([]model.Player, error) {
-	return p.repo.GetPlayer(ctx)
+func NewPlayerService(repo repository.PlayerRepository) *PlayerServiceImpl {
+	return &PlayerServiceImpl{repo: repo}
 }
 
-func NewPlayerService(r PlayerRepository) *Player {
-	return &Player{
-		repo: r,
+func (s *PlayerServiceImpl) ListPlayers(ctx context.Context, filter dto.PlayerFilterDTO) (dto.PaginatedResponse[dto.PlayerListItemResponse], error) {
+	modelFilter := dto.PlayerFilterAModelo(filter)
+	pageResult, err := s.repo.ListPlayers(ctx, modelFilter)
+	if err != nil {
+		return dto.PaginatedResponse[dto.PlayerListItemResponse]{}, fmt.Errorf("service list players: %w", err)
 	}
+
+	items := make([]dto.PlayerListItemResponse, len(pageResult.Items))
+	for i, p := range pageResult.Items {
+		items[i] = dto.PlayerListItemDesdeModelo(p)
+	}
+
+	return dto.PaginatedResponse[dto.PlayerListItemResponse]{
+		Items:      items,
+		Page:       pageResult.Page,
+		Limit:      pageResult.Limit,
+		Total:      pageResult.Total,
+		TotalPages: pageResult.TotalPages,
+	}, nil
+}
+
+func (s *PlayerServiceImpl) GetPlayerByID(ctx context.Context, id int64) (dto.PlayerDetailResponse, error) {
+	player, err := s.repo.GetPlayerByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return dto.PlayerDetailResponse{}, ErrNotFound
+		}
+		return dto.PlayerDetailResponse{}, err
+	}
+
+	return dto.PlayerDetailDesdeModelo(player), nil
 }

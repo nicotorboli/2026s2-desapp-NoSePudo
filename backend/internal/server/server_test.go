@@ -1,12 +1,14 @@
 package server_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/logger"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/middleware"
@@ -14,12 +16,28 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/server"
 )
 
-type mockPlayerController struct{}
+type mockPlayerService struct{}
 
-func (m *mockPlayerController) GetPlayers() httphandler.Endpoint {
-	return func(w http.ResponseWriter, req *http.Request) error {
-		return httphandler.Encode(w, http.StatusOK, map[string]string{"status": "ok"})
-	}
+func (m *mockPlayerService) ListPlayers(ctx context.Context, filter dto.PlayerFilterDTO) (dto.PaginatedResponse[dto.PlayerListItemResponse], error) {
+	return dto.PaginatedResponse[dto.PlayerListItemResponse]{
+		Items: []dto.PlayerListItemResponse{
+			{ID: 1, Name: "Test Player", Club: "Test Club", League: "Test League", Position: "Attacker"},
+		},
+		Page:       1,
+		Limit:      20,
+		Total:      1,
+		TotalPages: 1,
+	}, nil
+}
+
+func (m *mockPlayerService) GetPlayerByID(ctx context.Context, id int64) (dto.PlayerDetailResponse, error) {
+	return dto.PlayerDetailResponse{ID: id, Name: "Test Player"}, nil
+}
+
+type mockSyncService struct{}
+
+func (m *mockSyncService) SyncPlayers(ctx context.Context, actor string) (dto.SyncPlayersResponse, error) {
+	return dto.SyncPlayersResponse{Status: "success"}, nil
 }
 
 type mockAuthController struct{}
@@ -71,9 +89,11 @@ func newTestServer() *server.Server {
 
 func newTestServerWith(verifier middleware.TokenVerifier) *server.Server {
 	return server.NewServer(
+		"127.0.0.1:8080",
 		logger.NewLog(),
 		&controller.Container{
-			Player: &mockPlayerController{},
+			Player: controller.NewPlayerController(&mockPlayerService{}),
+			Sync:   controller.NewSyncController(&mockSyncService{}),
 			Auth:   &mockAuthController{},
 		},
 		middleware.NewContainer(verifier),

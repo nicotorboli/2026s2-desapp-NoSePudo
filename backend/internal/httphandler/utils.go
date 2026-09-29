@@ -9,6 +9,10 @@ import (
 	"strings"
 )
 
+// maxRequestBodySize acota lo que Decode está dispuesto a leer, para que un
+// cuerpo gigante no se coma la memoria del proceso.
+const maxRequestBodySize = 1 << 20 // 1MB
+
 // Validator lo implementa el DTO que valida la forma de sus propios campos.
 // Decode lo invoca cuando está presente, así que ningún endpoint puede
 // saltearse la validación por olvidarse de llamarla.
@@ -36,10 +40,13 @@ func Encode[T any](w http.ResponseWriter, status int, data T) error {
 func Decode[T any](r *http.Request) (T, error) {
 	var v T
 
-	decoder := json.NewDecoder(r.Body)
+	decoder := json.NewDecoder(http.MaxBytesReader(nil, r.Body, maxRequestBodySize))
 	decoder.DisallowUnknownFields()
 
 	if err := decoder.Decode(&v); err != nil {
+		if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
+			return v, NewError(http.StatusRequestEntityTooLarge, "el cuerpo de la petición es demasiado grande", err)
+		}
 		return v, NewError(http.StatusBadRequest, badRequestMessage(err), err)
 	}
 

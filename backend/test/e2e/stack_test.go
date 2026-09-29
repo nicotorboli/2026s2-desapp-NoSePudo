@@ -165,16 +165,17 @@ func newStackWith(t *testing.T, accessTTL, refreshTTL time.Duration) *stack {
 	}
 
 	daos := dao.NewContainer(db)
-	repos := repository.NewContainer(daos)
+	repos := repository.NewContainer(db, daos)
 	adapterContainer := adapters.NewContainer(cfg)
-	services := service.NewContainer(repos, adapterContainer)
+	logs := &capturedLogs{}
+	log := slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	services := service.NewContainer(repos, adapterContainer, log)
 	controllers := controller.NewContainer(services)
 	middlewares := middleware.NewContainer(adapterContainer.JWT)
 
-	logs := &capturedLogs{}
-
 	httpServer := httptest.NewServer(server.NewServer(
-		slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		"",
+		log,
 		controllers,
 		middlewares,
 	))

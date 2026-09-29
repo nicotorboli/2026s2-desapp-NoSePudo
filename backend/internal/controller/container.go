@@ -7,6 +7,11 @@ import (
 
 type PlayerController interface {
 	GetPlayers() httphandler.Endpoint
+	GetPlayerByID() httphandler.Endpoint
+}
+
+type SyncController interface {
+	SyncPlayers() httphandler.Endpoint
 }
 
 type AuthController interface {
@@ -18,12 +23,14 @@ type AuthController interface {
 
 type Container struct {
 	Player PlayerController
+	Sync   SyncController
 	Auth   AuthController
 }
 
 func NewContainer(services *service.Container) *Container {
 	return &Container{
 		Player: NewPlayerController(services.Player),
+		Sync:   NewSyncController(services.Sync),
 		Auth:   NewAuthController(services.Auth),
 	}
 }

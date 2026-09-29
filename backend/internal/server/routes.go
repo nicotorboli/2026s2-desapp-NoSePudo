@@ -47,6 +47,18 @@ func (s *Server) routes() []route {
 			access:   AccessAuthenticated,
 			endpoint: s.controllers.Player.GetPlayers(),
 		},
+		{
+			pattern:  "GET /players/{id}",
+			access:   AccessAuthenticated,
+			endpoint: s.controllers.Player.GetPlayerByID(),
+		},
+		{
+			// Sólo el superusuario: dispara pedidos contra una API externa con
+			// rate limit y reescribe el catálogo.
+			pattern:  "POST /players/sync",
+			access:   AccessSuperuser,
+			endpoint: s.controllers.Sync.SyncPlayers(),
+		},
 	}
 }
 

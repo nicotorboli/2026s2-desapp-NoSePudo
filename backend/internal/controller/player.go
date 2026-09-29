@@ -1,44 +1,59 @@
 package controller
 
 import (
-	"context"
+	"errors"
 	"net/http"
+	"strconv"
 
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller/dto"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
 )
 
-type PlayerService interface {
-	ListPlayers(ctx context.Context) ([]model.Player, error)
-}
-
 type RestPlayerController struct {
-	svc PlayerService
+	svc service.PlayerService
 }
 
-func NewPlayerController(svc PlayerService) *RestPlayerController {
-	return &RestPlayerController{
-		svc: svc,
-	}
+func NewPlayerController(svc service.PlayerService) *RestPlayerController {
+	return &RestPlayerController{svc: svc}
 }
 
 func (c *RestPlayerController) GetPlayers() httphandler.Endpoint {
 	return func(w http.ResponseWriter, req *http.Request) error {
-		players, err := c.svc.ListPlayers(req.Context())
+		filterDTO, err := dto.PlayerFilterDesdeQuery(req)
+		if err != nil {
+			return httphandler.NewError(http.StatusBadRequest, err.Error(), err)
+		}
+
+		result, err := c.svc.ListPlayers(req.Context(), filterDTO)
 		if err != nil {
 			return err
 		}
 
-		playersDto := make([]dto.Player, len(players))
-		for i := range players {
-			playersDto[i] = dto.DesdeModelo(players[i])
+		return httphandler.Encode(w, http.StatusOK, result)
+	}
+}
+
+func (c *RestPlayerController) GetPlayerByID() httphandler.Endpoint {
+	return func(w http.ResponseWriter, req *http.Request) error {
+		idParam := req.PathValue("id")
+		if idParam == "" {
+			return httphandler.NewError(http.StatusBadRequest, "missing player id", nil)
 		}
 
-		if err := httphandler.Encode(w, http.StatusOK, playersDto); err != nil {
+		id, err := strconv.ParseInt(idParam, 10, 64)
+		if err != nil || id <= 0 {
+			return httphandler.NewError(http.StatusBadRequest, "invalid player ID format", err)
+		}
+
+		player, err := c.svc.GetPlayerByID(req.Context(), id)
+		if err != nil {
+			if errors.Is(err, service.ErrNotFound) {
+				return httphandler.NewError(http.StatusNotFound, "player not found", err)
+			}
 			return err
 		}
 
-		return nil
+		return httphandler.Encode(w, http.StatusOK, player)
 	}
 }

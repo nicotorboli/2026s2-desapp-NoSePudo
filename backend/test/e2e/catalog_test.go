@@ -55,18 +55,29 @@ func TestCatalogIsServedWithAValidCredential(t *testing.T) {
 	stack := newStack(t)
 	token := stack.accessTokenFor(t, "nico@nosepudo.ar", "una-contraseña")
 
+	// init.sql ya no siembra jugadores (llegan por el sync), así que el caso
+	// inserta uno propio.
+	if _, err := stack.db.ExecContext(t.Context(),
+		`INSERT INTO players (external_id, name, club_name, league_name, league_code, position)
+		 VALUES (1, 'Ernesto Provitillo', 'Arsenal FC', 'Premier League', 'PL', 'Midfielder')`,
+	); err != nil {
+		t.Fatalf("no se pudo sembrar un jugador: %v", err)
+	}
+
 	status, body := stack.get(t, "/players", "Bearer "+token)
 
 	if status != http.StatusOK {
 		t.Fatalf("status = %d, se esperaba 200: %s", status, body)
 	}
 
-	var players []map[string]any
-	if err := json.Unmarshal([]byte(body), &players); err != nil {
-		t.Fatalf("la respuesta no es una lista de jugadores: %v (%s)", err, body)
+	var page struct {
+		Items []map[string]any `json:"items"`
 	}
-	if len(players) == 0 {
-		t.Error("el catálogo vino vacío, se esperaban los jugadores sembrados por init.sql")
+	if err := json.Unmarshal([]byte(body), &page); err != nil {
+		t.Fatalf("la respuesta no es una página de jugadores: %v (%s)", err, body)
+	}
+	if len(page.Items) == 0 {
+		t.Error("el catálogo vino vacío, se esperaba el jugador sembrado")
 	}
 }
 

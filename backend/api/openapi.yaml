@@ -204,17 +204,97 @@ paths:
         delivery can reopen it by changing one declaration.
       security:
         - accessToken: []
+      parameters:
+        - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, default: 20}}
+        - {name: league, in: query, description: League code (e.g. PL), schema: {type: string}}
+        - {name: club, in: query, schema: {type: string}}
+        - {name: position, in: query, schema: {type: string}}
+        - {name: search, in: query, description: Substring of the player name, schema: {type: string}}
+        - {name: includeInactive, in: query, schema: {type: boolean, default: false}}
       responses:
         '200':
-          description: The catalog
+          description: One page of the catalog
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Player'
+                $ref: '#/components/schemas/PlayerPage'
+        '400':
+          description: A query parameter is malformed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /players/{id}:
+    get:
+      tags: [players]
+      summary: Get one player of the catalog
+      operationId: getPlayer
+      x-access-level: authenticated
+      security:
+        - accessToken: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+      responses:
+        '200':
+          description: The player
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerDetail'
+        '400':
+          description: The id is not a positive integer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: No player has that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: player not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /players/sync:
+    post:
+      tags: [players]
+      summary: Synchronize the catalog with football-data.org
+      operationId: syncPlayers
+      x-access-level: superuser
+      description: |
+        Fetches the squads of the supported leagues from football-data.org, upserts
+        them and deactivates players that left. Reserved to the superuser: it spends the
+        external provider's rate limit and rewrites the catalog.
+      security:
+        - accessToken: []
+      responses:
+        '200':
+          description: The synchronization ran, fully or partially.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          description: The external provider's rate limit was hit before anything was synchronized; existing data is intact.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -276,12 +356,9 @@ components:
         operation requires. Deliberately distinct from 401: a caller has to be
         able to tell "you are not signed in" from "you are signed in but not allowed".
 
-        No endpoint of this delivery returns it, because the two operations the
-        constitution reserves to the superuser do not exist yet. It is documented
-        because the enforcement point is built and declared — `superuser` is a level the
-        route table accepts — and this is the shape the first operation to use it will
-        answer with. An absent or unrecognised privilege level lands here too, never on
-        the permitted side.
+        Returned by the operations declared `superuser` (today, `POST /players/sync`).
+        An absent or unrecognised privilege level lands here too, never on the
+        permitted side.
       content:
         application/json:
           schema:
@@ -393,21 +470,55 @@ components:
 
     Player:
       type: object
-      description: |
-        A player in the catalog. The response carries no database identifier: the
-        existing DTO exposes name and position only, and this document records the API
-        as it is.
-      required: [name, position]
+      description: A player as listed in the catalog.
+      required: [id, name, club, league, position]
       properties:
-        name:
-          type: string
-          example: Ernesto Provitillo
-        position:
-          type: integer
-          format: int32
-          minimum: 1
-          maximum: 11
-          example: 5
+        id: {type: integer, format: int64, example: 7}
+        name: {type: string, example: Bukayo Saka}
+        club: {type: string, example: Arsenal FC}
+        league: {type: string, example: Premier League}
+        position: {type: string, example: Offence}
+
+    PlayerPage:
+      type: object
+      required: [items, total, page, limit, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Player'
+        total: {type: integer, format: int64}
+        page: {type: integer}
+        limit: {type: integer}
+        totalPages: {type: integer}
+
+    PlayerDetail:
+      type: object
+      required: [id, externalId, name, club, league, leagueCode, position, active, createdAt, updatedAt]
+      properties:
+        id: {type: integer, format: int64}
+        externalId: {type: integer, format: int64, description: Identifier in football-data.org}
+        name: {type: string}
+        club: {type: string}
+        league: {type: string}
+        leagueCode: {type: string, example: PL}
+        position: {type: string}
+        dateOfBirth: {type: string, nullable: true, example: '2001-09-05'}
+        nationality: {type: string, nullable: true}
+        shirtNumber: {type: integer, nullable: true}
+        active: {type: boolean}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+
+    SyncResult:
+      type: object
+      required: [status, message, totalProcessed, totalUpdated, totalDeactivated]
+      properties:
+        status: {type: string, enum: [success, partial_success]}
+        message: {type: string}
+        totalProcessed: {type: integer}
+        totalUpdated: {type: integer}
+        totalDeactivated: {type: integer}
 
     Error:
       type: object

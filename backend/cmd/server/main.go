@@ -3,9 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -35,7 +33,7 @@ func main() {
 // expectedTables son las tablas sin las cuales el servicio no puede trabajar.
 // La lista y la decisión de abortar viven acá y no en el DAO: el DAO sólo
 // corre la consulta.
-var expectedTables = []string{"players", "users", "refresh_tokens"}
+var expectedTables = []string{"players", "player_audit_logs", "users", "refresh_tokens"}
 
 // ensureSchema se niega a arrancar cuando falta alguna tabla, por la misma
 // razón por la que el servicio se niega a arrancar sin secreto de firma: es
@@ -101,9 +99,9 @@ func startServer() error {
 	}
 	logger.Info("Database schema verified")
 
-	repos := repository.NewContainer(daos)
+	repos := repository.NewContainer(db, daos)
 	adapterContainer := adapters.NewContainer(cfg)
-	services := service.NewContainer(repos, adapterContainer)
+	services := service.NewContainer(repos, adapterContainer, logger)
 	if cfg.HasSuperuserCredentials() {
 		if err = services.Auth.EnsureSuperuser(ctx, cfg.SuperuserEmail, cfg.SuperuserPassword); err != nil {
 			return fmt.Errorf("aprovisionar el superusuario: %w", err)
@@ -114,44 +112,10 @@ func startServer() error {
 	controllers := controller.NewContainer(services)
 	middlewares := middleware.NewContainer(adapterContainer.JWT)
 
-	srv := server.NewServer(
-		logger,
-		controllers,
-		middlewares,
-	)
+	srv := server.NewServer(cfg.GetServerAddress(), logger, controllers, middlewares)
 
-	server := &http.Server{
-		Addr:         cfg.GetServerAddress(),
-		Handler:      srv,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
+	runCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	logger.Info(fmt.Sprintf("Starting server at %s", cfg.GetServerAddress()))
-
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(stop)
-
-	serverErr := make(chan error, 1)
-	go func() {
-		serverErr <- server.ListenAndServe()
-	}()
-
-	select {
-	case err = <-serverErr:
-		if !errors.Is(err, http.ErrServerClosed) && err != nil {
-			return fmt.Errorf("error starting server: %w", err)
-		}
-	case <-stop:
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := server.Shutdown(shutdownCtx); err != nil {
-			return fmt.Errorf("error shutting down server: %w", err)
-		}
-	}
-
-	logger.Info("Server stopped gracefully")
-	return nil
+	return srv.Run(runCtx)
 }

@@ -1,14 +1,19 @@
 package server
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/middleware"
 )
 
 type Server struct {
+	httpServer  *http.Server
 	router      *http.ServeMux
 	logger      *slog.Logger
 	controllers *controller.Container
@@ -16,14 +21,15 @@ type Server struct {
 }
 
 func NewServer(
+	addr string,
 	logger *slog.Logger,
 	controllers *controller.Container,
-	middleware *middleware.Container,
+	middlewareContainer *middleware.Container,
 ) *Server {
 	s := &Server{
 		logger:      logger,
 		controllers: controllers,
-		middleware:  middleware,
+		middleware:  middlewareContainer,
 	}
 
 	// El router no existe hasta que buildMux corre sobre la descripción que
@@ -31,9 +37,50 @@ func NewServer(
 	// registrarle una ruta por fuera de la tabla.
 	s.router = buildMux(s.routes(), s.logger, s.middleware)
 
+	handler := middleware.Chain(
+		s.router,
+		middleware.CorrelationID,
+		middleware.CORS,
+		middleware.RequestLogger(s.logger),
+	)
+
+	s.httpServer = &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
 	return s
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.router.ServeHTTP(w, r)
+	s.httpServer.Handler.ServeHTTP(w, r)
+}
+
+func (s *Server) Run(ctx context.Context) error {
+	serverErr := make(chan error, 1)
+
+	go func() {
+		s.logger.Info(fmt.Sprintf("HTTP server listening at %s", s.httpServer.Addr))
+		if err := s.httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- fmt.Errorf("listen and serve: %w", err)
+		}
+		close(serverErr)
+	}()
+
+	select {
+	case err := <-serverErr:
+		return err
+	case <-ctx.Done():
+		s.logger.Info("Shutting down HTTP server gracefully")
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := s.httpServer.Shutdown(shutdownCtx); err != nil {
+			return fmt.Errorf("server shutdown: %w", err)
+		}
+		return nil
+	}
 }

@@ -54,6 +54,7 @@ dependencias) e `internal`, separado en paquetes con responsabilidades claras:
   concreta con tecnología específica que se quiera aislar —no solo
   servicios de red, sino también librerías de terceros. El consumidor
   depende de la interfaz, nunca del tipo concreto.
+- dto: contiene las estructuras de datos que se comunican entre capas
 
 Hay un repository por concepto del dominio —jugador, cotización, usuario,
 orden—, no uno por tabla, y lo que cruza su borde son modelos, nunca filas.

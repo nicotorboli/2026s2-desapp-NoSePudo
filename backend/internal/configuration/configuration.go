@@ -25,6 +25,7 @@ var ErrMissingJWTSecret = errors.New("NSP_JWT_SECRET es obligatorio y debe tener
 
 type Cfg struct {
 	PostgresDataSource string
+	FootballDataAPIKey string
 	Host               string
 	Port               string
 	JWTSecret          string
@@ -58,6 +59,7 @@ func LoadCfg() (*Cfg, error) {
 
 	return &Cfg{
 		PostgresDataSource: os.Getenv("NSPPSQLDS"),
+		FootballDataAPIKey: os.Getenv("NSPFOOTBALLDATAAPIKEY"),
 		Host:               cmp.Or(os.Getenv("NSPHOST"), defaultHost),
 		Port:               cmp.Or(os.Getenv("NSPPORT"), defaultPort),
 		JWTSecret:          jwtSecret,
