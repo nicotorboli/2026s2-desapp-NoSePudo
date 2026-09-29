@@ -62,7 +62,7 @@ func TestPasswordHashesOfTheSamePasswordDiffer(t *testing.T) {
 	}
 }
 
-// FR-004: del registro guardado no se puede recuperar la contraseña original.
+// el requerimiento: del registro guardado no se puede recuperar la contraseña original.
 func TestPasswordHashDoesNotContainThePlaintext(t *testing.T) {
 	password := adapters.NewPassword(testCost)
 	const plain = "contraseña-reconocible"
@@ -114,3 +114,4 @@ func TestPasswordCompareDistinguishesACorruptHashFromAMismatch(t *testing.T) {
 		t.Error("un hash corrupto se reportó como contraseña incorrecta")
 	}
 }
+

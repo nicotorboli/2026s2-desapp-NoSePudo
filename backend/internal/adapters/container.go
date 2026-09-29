@@ -11,12 +11,13 @@ import (
 // factor de costo de bcrypt se aplican.
 type Container struct {
 	Password *Password
-	JWT      *JWT
+	JWT *JWT
 }
 
 func NewContainer(cfg *configuration.Cfg) *Container {
 	return &Container{
 		Password: NewPassword(cfg.BcryptCost),
-		JWT:      NewJWT(cfg.JWTSecret, cfg.AccessTTL, cfg.RefreshTTL, time.Now),
+		JWT: NewJWT(cfg.JWTSecret, cfg.AccessTTL, cfg.RefreshTTL, time.Now),
 	}
 }
+

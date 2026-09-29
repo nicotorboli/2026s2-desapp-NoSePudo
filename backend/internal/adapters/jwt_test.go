@@ -1,4 +1,4 @@
-package adapters_test
+﻿package adapters_test
 
 import (
 	"errors"
@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	testSecret     = "0123456789abcdef0123456789abcdef"
-	testAccessTTL  = 15 * time.Minute
+	testSecret = "0123456789abcdef0123456789abcdef"
+	testAccessTTL = 15 * time.Minute
 	testRefreshTTL = 168 * time.Hour
 )
 
@@ -113,7 +113,7 @@ func TestJWTEachTokenGetsItsOwnIdentifier(t *testing.T) {
 	}
 }
 
-// El primer caso borde de la spec: un instante antes, justo en, y un instante
+// El primer caso borde: un instante antes, justo en, y un instante
 // después de exp. El límite queda definido como "válida estrictamente antes de
 // exp", y se comporta igual en los tres puntos.
 func TestJWTExpiryBoundary(t *testing.T) {
@@ -126,8 +126,8 @@ func TestJWTExpiryBoundary(t *testing.T) {
 	expiry := issued.ExpiresAt
 
 	cases := []struct {
-		instant     time.Time
-		name        string
+		instant time.Time
+		name string
 		wantExpired bool
 	}{
 		{expiry.Add(-tick), "un tick antes de exp", false},
@@ -154,15 +154,15 @@ func TestJWTExpiryBoundary(t *testing.T) {
 	}
 }
 
-// FR-009: la allowlist es explícita, así que una credencial no se verifica
+// el requerimiento: la allowlist es explícita, así que una credencial no se verifica
 // según el algoritmo que ella misma declara.
 func TestJWTRejectsAnAlgorithmOutsideTheAllowlist(t *testing.T) {
 	issuer, _ := newJWTAt(baseInstant)
 
 	claims := jwt.RegisteredClaims{
-		Subject:   "42",
-		ID:        "un-jti",
-		IssuedAt:  jwt.NewNumericDate(baseInstant),
+		Subject: "42",
+		ID: "un-jti",
+		IssuedAt: jwt.NewNumericDate(baseInstant),
 		ExpiresAt: jwt.NewNumericDate(baseInstant.Add(testAccessTTL)),
 	}
 
@@ -203,13 +203,13 @@ func TestJWTRejectsAnAlteredToken(t *testing.T) {
 	}
 
 	cases := map[string]string{
-		"payload alterado":       parts[0] + "." + parts[1][:len(parts[1])-2] + "XY." + parts[2],
-		"firma alterada":         parts[0] + "." + parts[1] + "." + parts[2][:len(parts[2])-2] + "XY",
-		"firma recortada":        parts[0] + "." + parts[1] + ".",
-		"partes de más":          raw + ".extra",
-		"no es un JWT":           "esto-no-es-una-credencial",
-		"cadena vacía":           "",
-		"sólo el header":         parts[0],
+		"payload alterado": parts[0] + "." + parts[1][:len(parts[1])-2] + "XY." + parts[2],
+		"firma alterada": parts[0] + "." + parts[1] + "." + parts[2][:len(parts[2])-2] + "XY",
+		"firma recortada": parts[0] + "." + parts[1] + ".",
+		"partes de más": raw + ".extra",
+		"no es un JWT": "esto-no-es-una-credencial",
+		"cadena vacía": "",
+		"sólo el header": parts[0],
 		"firmado con otra clave": signedWithAnotherKey(t),
 	}
 
@@ -234,12 +234,12 @@ func signedWithAnotherKey(t *testing.T) string {
 	return raw
 }
 
-// FR-018: un priv que no se reconoce no es superusuario, es insuficiente.
+// el requerimiento: un priv que no se reconoce no es superusuario, es insuficiente.
 func TestJWTUnrecognizedPrivilegeBecomesUnknown(t *testing.T) {
 	raw := signedWithClaims(t, tokenClaimsFixture{
-		typ:  "access",
+		typ: "access",
 		priv: "root",
-		sub:  "42",
+		sub: "42",
 	})
 
 	issuer, _ := newJWTAt(baseInstant)
@@ -289,9 +289,9 @@ func TestJWTRejectsATokenWithoutExpiry(t *testing.T) {
 // tokenClaimsFixture arma credenciales a mano para los casos que el emisor
 // nunca produciría pero que un atacante sí podría presentar.
 type tokenClaimsFixture struct {
-	typ      string
-	priv     string
-	sub      string
+	typ string
+	priv string
+	sub string
 	noExpiry bool
 }
 
@@ -319,3 +319,4 @@ func signedWithClaims(t *testing.T, fixture tokenClaimsFixture) string {
 
 	return raw
 }
+

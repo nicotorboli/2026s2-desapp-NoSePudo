@@ -12,8 +12,7 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
-// TokenKind distingue las dos credenciales. El valor cero es inválido: una
-// credencial cuyo typ no se reconoce no sirve para ningún nivel de acceso.
+
 type TokenKind uint8
 
 const (
@@ -23,7 +22,7 @@ const (
 )
 
 const (
-	kindAccessName  = "access"
+	kindAccessName = "access"
 	kindRefreshName = "refresh"
 )
 
@@ -49,52 +48,46 @@ func parseTokenKind(s string) TokenKind {
 	}
 }
 
-// Errores del adaptador. El middleware los traduce a 401; ninguno le cuenta al
-// cliente por qué exactamente falló la verificación.
+
 var (
 	ErrTokenInvalid = errors.New("la credencial no es válida")
 	ErrTokenExpired = errors.New("la credencial expiró")
 )
 
-// Claims es lo que una credencial verificada afirma. Es el tipo que cruza
-// desde el adaptador hacia el middleware, y sólo se construye después de
-// haber comprobado la firma.
+
 type Claims struct {
-	IssuedAt  time.Time
+	IssuedAt time.Time
 	ExpiresAt time.Time
-	ID        string
+	ID string
 	SessionID string
-	Subject   int64
+	Subject int64
 	Privilege model.PrivilegeLevel
-	Kind      TokenKind
+	Kind TokenKind
 }
 
 // tokenClaims es la forma serializada, con los nombres de claim que fija el
 // data-model.
 type tokenClaims struct {
-	Kind      string `json:"typ"`
+	Kind string `json:"typ"`
 	Privilege string `json:"priv,omitempty"`
 	SessionID string `json:"sid"`
 	jwt.RegisteredClaims
 }
 
 // JWT emite y verifica las credenciales con HS256.
-//
-// El reloj entra por constructor porque sin eso el instante exacto de
-// expiración no es un caso que se pueda escribir: "justo en exp" no existe
-// contra time.Now.
+
 type JWT struct {
-	now        func() time.Time
-	secret     []byte
-	accessTTL  time.Duration
+	now func() time.Time
+	secret []byte
+	accessTTL time.Duration
 	refreshTTL time.Duration
 }
 
 func NewJWT(secret string, accessTTL, refreshTTL time.Duration, now func() time.Time) *JWT {
 	return &JWT{
-		now:        now,
-		secret:     []byte(secret),
-		accessTTL:  accessTTL,
+		now: now,
+		secret: []byte(secret),
+		accessTTL: accessTTL,
 		refreshTTL: refreshTTL,
 	}
 }
@@ -105,9 +98,7 @@ func (j *JWT) IssueAccess(subject int64, privilege model.PrivilegeLevel, session
 	return j.issue(subject, privilege, sessionID, KindAccess, j.accessTTL)
 }
 
-// IssueRefresh emite la credencial de renovación. No lleva privilegio: no da
-// acceso a ningún recurso, y el privilegio viaja en el access token que la
-// renovación emite, leído de la cuenta en ese momento.
+// IssueRefresh emite la credencial de renovación. 
 func (j *JWT) IssueRefresh(subject int64, sessionID string) (string, Claims, error) {
 	return j.issue(subject, model.PrivilegeUnknown, sessionID, KindRefresh, j.refreshTTL)
 }
@@ -121,22 +112,22 @@ func (j *JWT) issue(
 ) (string, Claims, error) {
 	issuedAt := j.now()
 	claims := Claims{
-		IssuedAt:  issuedAt,
+		IssuedAt: issuedAt,
 		ExpiresAt: issuedAt.Add(ttl),
-		ID:        uuid.NewString(),
+		ID: uuid.NewString(),
 		SessionID: sessionID,
-		Subject:   subject,
+		Subject: subject,
 		Privilege: privilege,
-		Kind:      kind,
+		Kind: kind,
 	}
 
 	serialized := tokenClaims{
-		Kind:      kind.String(),
+		Kind: kind.String(),
 		SessionID: sessionID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   strconv.FormatInt(subject, 10),
-			ID:        claims.ID,
-			IssuedAt:  jwt.NewNumericDate(claims.IssuedAt),
+			Subject: strconv.FormatInt(subject, 10),
+			ID: claims.ID,
+			IssuedAt: jwt.NewNumericDate(claims.IssuedAt),
 			ExpiresAt: jwt.NewNumericDate(claims.ExpiresAt),
 		},
 	}
@@ -153,8 +144,7 @@ func (j *JWT) issue(
 }
 
 // Verify comprueba firma y expiración y recién entonces devuelve lo que la
-// credencial afirma. Todo lo que falle es ErrTokenInvalid o ErrTokenExpired:
-// el que la presenta no se entera de en qué paso se cayó.
+// credencial afirma. Todo lo que falle es ErrTokenInvalid o ErrTokenExpired
 func (j *JWT) Verify(raw string) (Claims, error) {
 	var parsed tokenClaims
 
@@ -163,7 +153,7 @@ func (j *JWT) Verify(raw string) (Claims, error) {
 		&parsed,
 		func(*jwt.Token) (any, error) { return j.secret, nil },
 		// La allowlist explícita es lo que impide que una credencial se
-		// verifique según el algoritmo que ella misma declara (FR-009).
+		// verifique según el algoritmo que ella misma declara.
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
 		jwt.WithTimeFunc(j.now),
 		jwt.WithExpirationRequired(),
@@ -194,14 +184,13 @@ func claimsFrom(parsed tokenClaims) (Claims, error) {
 	}
 
 	return Claims{
-		IssuedAt:  parsed.IssuedAt.Time,
+		IssuedAt: parsed.IssuedAt.Time,
 		ExpiresAt: parsed.ExpiresAt.Time,
-		ID:        parsed.ID,
+		ID: parsed.ID,
 		SessionID: parsed.SessionID,
-		Subject:   subject,
-		// Un priv ausente o irreconocible queda en PrivilegeUnknown, que no
-		// satisface ningún requisito (FR-018).
+		Subject: subject,
 		Privilege: model.ParsePrivilege(parsed.Privilege),
-		Kind:      kind,
+		Kind: kind,
 	}, nil
 }
+
