@@ -1,4 +1,4 @@
-﻿package middleware
+package middleware
 
 import "github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 
@@ -21,7 +21,6 @@ type Actor struct {
 	// forma de nombrarla.
 	CredentialID string
 
-	ID int64
+	ID        int64
 	Privilege model.PrivilegeLevel
 }
-

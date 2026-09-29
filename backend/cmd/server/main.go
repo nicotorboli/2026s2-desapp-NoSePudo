@@ -121,11 +121,11 @@ func startServer() error {
 	)
 
 	server := &http.Server{
-		Addr: cfg.GetServerAddress(),
-		Handler: srv,
-		ReadTimeout: 10 * time.Second,
+		Addr:         cfg.GetServerAddress(),
+		Handler:      srv,
+		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		IdleTimeout: 120 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	logger.Info(fmt.Sprintf("Starting server at %s", cfg.GetServerAddress()))
@@ -155,4 +155,3 @@ func startServer() error {
 	logger.Info("Server stopped gracefully")
 	return nil
 }
-

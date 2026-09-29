@@ -14,9 +14,8 @@ import "time"
 // es corta y se verifica sola, y la de renovación, que es larga y está
 // persistida justamente para poder cortarla antes de que expire.
 type Session struct {
-	AccessExpiresAt time.Time
+	AccessExpiresAt  time.Time
 	RefreshExpiresAt time.Time
-	AccessToken string
-	RefreshToken string
+	AccessToken      string
+	RefreshToken     string
 }
-

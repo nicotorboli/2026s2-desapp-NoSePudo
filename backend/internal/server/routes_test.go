@@ -33,16 +33,16 @@ func (stubController) endpoint() httphandler.Endpoint {
 }
 
 func (s stubController) GetPlayers() httphandler.Endpoint { return s.endpoint() }
-func (s stubController) Register() httphandler.Endpoint { return s.endpoint() }
-func (s stubController) Login() httphandler.Endpoint { return s.endpoint() }
-func (s stubController) Refresh() httphandler.Endpoint { return s.endpoint() }
-func (s stubController) Logout() httphandler.Endpoint { return s.endpoint() }
+func (s stubController) Register() httphandler.Endpoint   { return s.endpoint() }
+func (s stubController) Login() httphandler.Endpoint      { return s.endpoint() }
+func (s stubController) Refresh() httphandler.Endpoint    { return s.endpoint() }
+func (s stubController) Logout() httphandler.Endpoint     { return s.endpoint() }
 
 func routesUnderTest() []route {
 	server := &Server{
 		controllers: &controller.Container{
 			Player: stubController{},
-			Auth: stubController{},
+			Auth:   stubController{},
 		},
 	}
 
@@ -72,10 +72,10 @@ func TestEveryRouteDeclaresAnAccessLevel(t *testing.T) {
 func TestDeclaredLevelsMatchTheSpecification(t *testing.T) {
 	expected := map[string]AccessLevel{
 		"POST /auth/register": AccessAnonymous,
-		"POST /auth/login": AccessAnonymous,
-		"POST /auth/refresh": AccessRenewal,
-		"POST /auth/logout": AccessAuthenticated,
-		"GET /players": AccessAuthenticated,
+		"POST /auth/login":    AccessAnonymous,
+		"POST /auth/refresh":  AccessRenewal,
+		"POST /auth/logout":   AccessAuthenticated,
+		"GET /players":        AccessAuthenticated,
 	}
 
 	declared := map[string]AccessLevel{}
@@ -210,9 +210,9 @@ func (s stubVerifier) Verify(string) (adapters.Claims, error) {
 // no lo detectan porque arman su propia cadena; esto mira la que se usa.
 func TestSuperuserChainAuthenticatesBeforeAuthorizing(t *testing.T) {
 	cases := []struct {
-		name string
+		name      string
 		privilege model.PrivilegeLevel
-		want int
+		want      int
 	}{
 		{"el superusuario pasa", model.PrivilegeSuperuser, http.StatusOK},
 		{"un usuario comun recibe 403 y no 401", model.PrivilegeUser, http.StatusForbidden},
@@ -224,7 +224,7 @@ func TestSuperuserChainAuthenticatesBeforeAuthorizing(t *testing.T) {
 			reached := false
 			routes := []route{{
 				pattern: "GET /solo-superusuario",
-				access: AccessSuperuser,
+				access:  AccessSuperuser,
 				endpoint: func(w http.ResponseWriter, _ *http.Request) error {
 					reached = true
 					return httphandler.Encode(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -255,8 +255,8 @@ func TestSuperuserChainAuthenticatesBeforeAuthorizing(t *testing.T) {
 // Y sin credencial la misma cadena da 401, que es el otro lado de el requerimiento.
 func TestSuperuserChainRefusesWithoutACredential(t *testing.T) {
 	routes := []route{{
-		pattern: "GET /solo-superusuario",
-		access: AccessSuperuser,
+		pattern:  "GET /solo-superusuario",
+		access:   AccessSuperuser,
 		endpoint: stubController{}.endpoint(),
 	}}
 
@@ -274,4 +274,3 @@ func TestSuperuserChainRefusesWithoutACredential(t *testing.T) {
 		t.Errorf("status = %d, se esperaba 401", recorder.Code)
 	}
 }
-

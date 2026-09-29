@@ -1,4 +1,4 @@
-﻿package service_test
+package service_test
 
 import (
 	"context"
@@ -17,11 +17,11 @@ import (
 // mockUserRepository guarda las cuentas en memoria, indexadas por el email ya
 // normalizado, que es exactamente lo que hace la columna con su índice único.
 type mockUserRepository struct {
-	byEmail map[string]model.User
-	insertErr error
+	byEmail      map[string]model.User
+	insertErr    error
 	getByEmailer func(email string) (model.User, error)
-	inserted []model.User
-	nextID int64
+	inserted     []model.User
+	nextID       int64
 }
 
 func newMockUserRepository() *mockUserRepository {
@@ -67,8 +67,8 @@ func (m *mockUserRepository) GetByID(_ context.Context, id int64) (model.User, e
 // que el service guarda lo que el adaptador devolvió y no el texto plano, y
 // evita pagar un bcrypt real por caso.
 type mockPasswordHasher struct {
-	hashErr error
-	hashed []string
+	hashErr       error
+	hashed        []string
 	dummyCompares int
 }
 
@@ -96,24 +96,24 @@ func (m *mockPasswordHasher) CompareWithDummy(string) {
 // mockTokenIssuer devuelve una credencial reconocible y registra con qué se la
 // pidieron, que es lo que el service tiene que haber sacado de la cuenta.
 type mockTokenIssuer struct {
-	expiresAt time.Time
+	expiresAt        time.Time
 	refreshExpiresAt time.Time
-	err error
-	sessionIDs []string
-	gotSubject int64
-	issued int
-	refreshesIssued int
-	gotPrivilege model.PrivilegeLevel
+	err              error
+	sessionIDs       []string
+	gotSubject       int64
+	issued           int
+	refreshesIssued  int
+	gotPrivilege     model.PrivilegeLevel
 }
 
 // mockRefreshTokenRepository guarda las filas en memoria y replica lo que hace
 // el SQL de verdad: Rotate sólo tiene éxito si la fila está viva, que es la
 // condición que el WHERE del UPDATE lleva adentro.
 type mockRefreshTokenRepository struct {
-	byID map[string]model.RefreshToken
-	now func() time.Time
-	rotateErr error
-	revokeAllErr error
+	byID          map[string]model.RefreshToken
+	now           func() time.Time
+	rotateErr     error
+	revokeAllErr  error
 	revokedAllFor []int64
 	revokedFamily []string
 }
@@ -209,10 +209,10 @@ func (m *mockTokenIssuer) IssueRefresh(subject int64, sessionID string) (string,
 
 	return "refresh-token-" + id, adapters.Claims{
 		ExpiresAt: m.refreshExpiresAt,
-		ID: id,
+		ID:        id,
 		SessionID: sessionID,
-		Subject: subject,
-		Kind: adapters.KindRefresh,
+		Subject:   subject,
+		Kind:      adapters.KindRefresh,
 	}, nil
 }
 
@@ -233,9 +233,9 @@ func (m *mockTokenIssuer) IssueAccess(
 	return fmt.Sprintf("access-token-de-%d", subject), adapters.Claims{
 		ExpiresAt: m.expiresAt,
 		SessionID: sessionID,
-		Subject: subject,
+		Subject:   subject,
 		Privilege: privilege,
-		Kind: adapters.KindAccess,
+		Kind:      adapters.KindAccess,
 	}, nil
 }
 
@@ -244,12 +244,12 @@ func (m *mockTokenIssuer) IssueAccess(
 var serviceNow = time.Date(2026, time.September, 28, 12, 0, 0, 0, time.UTC)
 
 type authFixture struct {
-	auth *service.Auth
+	auth           *service.Auth
 	userRepository *mockUserRepository
 	passwordHasher *mockPasswordHasher
-	tokenIssuer *mockTokenIssuer
-	refreshTokens *mockRefreshTokenRepository
-	clock *serviceClock
+	tokenIssuer    *mockTokenIssuer
+	refreshTokens  *mockRefreshTokenRepository
+	clock          *serviceClock
 }
 
 type serviceClock struct {
@@ -263,7 +263,7 @@ func newAuthFixture() authFixture {
 	userRepository := newMockUserRepository()
 	passwordHasher := &mockPasswordHasher{}
 	tokenIssuer := &mockTokenIssuer{
-		expiresAt: serviceNow.Add(15 * time.Minute),
+		expiresAt:        serviceNow.Add(15 * time.Minute),
 		refreshExpiresAt: serviceNow.Add(168 * time.Hour),
 	}
 	refreshTokens := newMockRefreshTokenRepository(clock.now)
@@ -274,9 +274,9 @@ func newAuthFixture() authFixture {
 		),
 		userRepository: userRepository,
 		passwordHasher: passwordHasher,
-		tokenIssuer: tokenIssuer,
-		refreshTokens: refreshTokens,
-		clock: clock,
+		tokenIssuer:    tokenIssuer,
+		refreshTokens:  refreshTokens,
+		clock:          clock,
 	}
 }
 
@@ -469,9 +469,9 @@ func TestLoginIssuesASessionForCorrectCredentials(t *testing.T) {
 // contraseña coincide emite algo, y las otras dos son indistinguibles entre sí.
 func TestLoginDecisionTable(t *testing.T) {
 	cases := []struct {
-		name string
-		email string
-		password string
+		name        string
+		email       string
+		password    string
 		wantSession bool
 	}{
 		{"la cuenta existe y la contraseña coincide", "nico@nosepudo.ar", "una-contraseña", true},
@@ -744,4 +744,3 @@ func TestLoginIssuesTheSuperuserPrivilege(t *testing.T) {
 		t.Errorf("se emitió con privilegio %v, se esperaba superuser", tokenIssuer.gotPrivilege)
 	}
 }
-

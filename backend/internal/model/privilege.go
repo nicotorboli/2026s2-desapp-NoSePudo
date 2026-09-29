@@ -15,9 +15,9 @@ const (
 )
 
 const (
-	privilegeUserName = "user"
+	privilegeUserName      = "user"
 	privilegeSuperuserName = "superuser"
-	privilegeUnknownName = "unknown"
+	privilegeUnknownName   = "unknown"
 )
 
 func (p PrivilegeLevel) String() string {
@@ -54,4 +54,3 @@ func (p PrivilegeLevel) Satisfies(required PrivilegeLevel) bool {
 	}
 	return p >= required
 }
-

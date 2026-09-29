@@ -1,4 +1,4 @@
-﻿package repository_test
+package repository_test
 
 import (
 	"database/sql"
@@ -17,8 +17,8 @@ import (
 // credenciales tienen una clave foránea contra users, así que no hay forma de
 // probarlas sin una cuenta real.
 type refreshTokenFixture struct {
-	repo *repository.RefreshTokenRepository
-	db *sql.DB
+	repo   *repository.RefreshTokenRepository
+	db     *sql.DB
 	userID int64
 }
 
@@ -34,8 +34,8 @@ func newRefreshTokenFixture(t *testing.T) refreshTokenFixture {
 	}
 
 	return refreshTokenFixture{
-		repo: repository.NewRefreshTokenRepository(dao.NewRefreshTokenDao(db)),
-		db: db,
+		repo:   repository.NewRefreshTokenRepository(dao.NewRefreshTokenDao(db)),
+		db:     db,
 		userID: user.ID,
 	}
 }
@@ -43,9 +43,9 @@ func newRefreshTokenFixture(t *testing.T) refreshTokenFixture {
 func (f refreshTokenFixture) aToken(familyID string) model.RefreshToken {
 	return model.RefreshToken{
 		ExpiresAt: time.Now().Add(168 * time.Hour),
-		ID: uuid.NewString(),
-		FamilyID: familyID,
-		UserID: f.userID,
+		ID:        uuid.NewString(),
+		FamilyID:  familyID,
+		UserID:    f.userID,
 	}
 }
 
@@ -291,9 +291,9 @@ func TestRefreshTokenRevokeAllLiveForUserLeavesOtherAccountsAlone(t *testing.T) 
 
 	otherToken := model.RefreshToken{
 		ExpiresAt: time.Now().Add(168 * time.Hour),
-		ID: uuid.NewString(),
-		FamilyID: uuid.NewString(),
-		UserID: other.ID,
+		ID:        uuid.NewString(),
+		FamilyID:  uuid.NewString(),
+		UserID:    other.ID,
 	}
 	if err = fixture.repo.Insert(t.Context(), otherToken); err != nil {
 		t.Fatalf("no se pudo insertar la credencial de la otra cuenta: %v", err)
@@ -352,4 +352,3 @@ func TestRefreshTokenConcurrentRotationsLeaveOneWinner(t *testing.T) {
 		t.Errorf("hay %d credenciales vivas, se esperaba 1", live)
 	}
 }
-

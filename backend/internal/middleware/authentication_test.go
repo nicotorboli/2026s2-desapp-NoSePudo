@@ -20,9 +20,9 @@ import (
 // tener que firmar nada: lo que se prueba acá es qué hace el middleware con el
 // veredicto, no cómo se verifica una firma.
 type mockTokenVerifier struct {
-	err error
+	err    error
 	claims adapters.Claims
-	calls int
+	calls  int
 }
 
 func (m *mockTokenVerifier) Verify(string) (adapters.Claims, error) {
@@ -33,9 +33,9 @@ func (m *mockTokenVerifier) Verify(string) (adapters.Claims, error) {
 // spyEndpoint registra si la operación de abajo llegó a correr, que es lo que
 // el requerimiento exige: el rechazo ocurre antes de que corra lógica de negocio.
 type spyEndpoint struct {
-	actor middleware.Actor
+	actor    middleware.Actor
 	hadActor bool
-	calls int
+	calls    int
 }
 
 func (s *spyEndpoint) endpoint() httphandler.Endpoint {
@@ -71,11 +71,11 @@ func serve(t *testing.T, decorator middleware.Decorator, spy *spyEndpoint, autho
 
 func validAccessClaims() adapters.Claims {
 	return adapters.Claims{
-		ID: "un-jti",
+		ID:        "un-jti",
 		SessionID: "una-familia",
-		Subject: 42,
+		Subject:   42,
 		Privilege: model.PrivilegeUser,
-		Kind: adapters.KindAccess,
+		Kind:      adapters.KindAccess,
 	}
 }
 
@@ -111,7 +111,7 @@ func TestRequireAccessTokenPublishesTheActor(t *testing.T) {
 // rechaza en vez de intentar interpretarla.
 func TestRequireAccessTokenRefusesMalformedHeaders(t *testing.T) {
 	cases := []struct {
-		name string
+		name          string
 		authorization string
 	}{
 		{"sin cabecera", ""},
@@ -168,7 +168,7 @@ func TestRequireAccessTokenAcceptsTheSchemeInAnyCase(t *testing.T) {
 // confía en nada de lo que la credencial diga.
 func TestRequireAccessTokenRefusesWhatTheVerifierRejects(t *testing.T) {
 	cases := []struct {
-		err error
+		err  error
 		name string
 	}{
 		{adapters.ErrTokenExpired, "expirada"},
@@ -202,10 +202,10 @@ func TestRequireAccessTokenRefusesWhatTheVerifierRejects(t *testing.T) {
 // Las dos credenciales no son intercambiables en ninguna dirección.
 func TestTokenKindAgainstRequiredLevel(t *testing.T) {
 	cases := []struct {
-		name string
+		name      string
 		presented adapters.TokenKind
-		renewal bool
-		accepted bool
+		renewal   bool
+		accepted  bool
 	}{
 		{"acceso a un endpoint autenticado", adapters.KindAccess, false, true},
 		{"refresco a un endpoint autenticado", adapters.KindRefresh, false, false},
@@ -287,4 +287,3 @@ func TestRequireAccessTokenCarriesAnUnknownPrivilegeAsInsufficient(t *testing.T)
 		t.Error("un privilegio irreconocible alcanza para usuario común")
 	}
 }
-

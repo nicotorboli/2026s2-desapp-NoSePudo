@@ -9,10 +9,10 @@ import (
 )
 
 type Server struct {
-	router *http.ServeMux
-	logger *slog.Logger
+	router      *http.ServeMux
+	logger      *slog.Logger
 	controllers *controller.Container
-	middleware *middleware.Container
+	middleware  *middleware.Container
 }
 
 func NewServer(
@@ -21,9 +21,9 @@ func NewServer(
 	middleware *middleware.Container,
 ) *Server {
 	s := &Server{
-		logger: logger,
+		logger:      logger,
 		controllers: controllers,
-		middleware: middleware,
+		middleware:  middleware,
 	}
 
 	// El router no existe hasta que buildMux corre sobre la descripción que
@@ -37,4 +37,3 @@ func NewServer(
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
 }
-

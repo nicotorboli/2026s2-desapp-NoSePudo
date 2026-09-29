@@ -8,18 +8,16 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
-
 const tokenTypeBearer = "Bearer"
 
 const (
-	maxEmailLength = 254
+	maxEmailLength   = 254
 	minPasswordBytes = 8
 	maxPasswordBytes = 72
 )
 
-
 type RegisterRequest struct {
-	Email string `json:"email"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
@@ -31,7 +29,7 @@ func (r *RegisterRequest) Validate() error {
 }
 
 type LoginRequest struct {
-	Email string `json:"email"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
@@ -47,32 +45,31 @@ func (l *LoginRequest) Validate() error {
 
 type AccountResponse struct {
 	Email string `json:"email"`
-	ID int64 `json:"id"`
+	ID    int64  `json:"id"`
 }
-
 
 func AccountResponseDesdeModelo(user model.User) AccountResponse {
 	return AccountResponse{
 		Email: user.Email,
-		ID: user.ID,
+		ID:    user.ID,
 	}
 }
 
 type SessionResponse struct {
-	AccessExpiresAt time.Time `json:"access_expires_at"`
+	AccessExpiresAt  time.Time `json:"access_expires_at"`
 	RefreshExpiresAt time.Time `json:"refresh_expires_at"`
-	AccessToken string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType string `json:"token_type"`
+	AccessToken      string    `json:"access_token"`
+	RefreshToken     string    `json:"refresh_token"`
+	TokenType        string    `json:"token_type"`
 }
 
 func SessionResponseDesdeModelo(session model.Session) SessionResponse {
 	return SessionResponse{
-		AccessExpiresAt: session.AccessExpiresAt,
+		AccessExpiresAt:  session.AccessExpiresAt,
 		RefreshExpiresAt: session.RefreshExpiresAt,
-		AccessToken: session.AccessToken,
-		RefreshToken: session.RefreshToken,
-		TokenType: tokenTypeBearer,
+		AccessToken:      session.AccessToken,
+		RefreshToken:     session.RefreshToken,
+		TokenType:        tokenTypeBearer,
 	}
 }
 
@@ -114,4 +111,3 @@ func validatePassword(password string) error {
 
 	return nil
 }
-

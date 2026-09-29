@@ -26,18 +26,18 @@ const fakeAccessToken = "una-credencial" //nolint:gosec // valor de prueba, no u
 // mockAuthService devuelve lo que el caso necesite. Lo que se prueba acá es el
 // borde HTTP: los status, la forma del cuerpo y qué llega al service.
 type mockAuthService struct {
-	gotEmail string
-	gotPassword string
+	gotEmail        string
+	gotPassword     string
 	gotCredentialID string
-	gotSessionID string
-	err error
-	session model.Session
-	user model.User
-	gotUserID int64
-	registerCalled int
-	loginCalled int
-	refreshCalled int
-	logoutCalled int
+	gotSessionID    string
+	err             error
+	session         model.Session
+	user            model.User
+	gotUserID       int64
+	registerCalled  int
+	loginCalled     int
+	refreshCalled   int
+	logoutCalled    int
 }
 
 func (m *mockAuthService) Register(_ context.Context, email, password string) (model.User, error) {
@@ -338,4 +338,3 @@ func TestLoginEndpointAcceptsAShortPassword(t *testing.T) {
 		t.Error("la petición no llegó al service")
 	}
 }
-

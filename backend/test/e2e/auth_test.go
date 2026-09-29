@@ -1,4 +1,4 @@
-﻿package e2e_test
+package e2e_test
 
 import (
 	"encoding/json"
@@ -46,9 +46,9 @@ func TestRegisterCreatesACommonUserAccount(t *testing.T) {
 	}
 
 	var (
-		email string
+		email     string
 		privilege int16
-		active bool
+		active    bool
 	)
 	err := stack.db.QueryRowContext(t.Context(),
 		"SELECT email, privilege, active FROM users WHERE id = $1", int64(body["id"].(float64)),
@@ -226,4 +226,3 @@ func TestRegisterStoresNoRecoverablePassword(t *testing.T) {
 		t.Errorf("el hash mide %d caracteres, un digest de bcrypt mide 60", len(hash))
 	}
 }
-

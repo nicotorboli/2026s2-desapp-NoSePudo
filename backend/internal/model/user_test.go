@@ -1,4 +1,4 @@
-﻿package model_test
+package model_test
 
 import (
 	"testing"
@@ -8,9 +8,9 @@ import (
 
 func TestNormalizeEmail(t *testing.T) {
 	cases := []struct {
-		name string
+		name  string
 		input string
-		want string
+		want  string
 	}{
 		{"ya normalizado queda igual", "nico@nosepudo.ar", "nico@nosepudo.ar"},
 		{"mayúsculas se bajan", "Nico@NoSePudo.AR", "nico@nosepudo.ar"},
@@ -63,4 +63,3 @@ func TestAccountErrorsAreDistinct(t *testing.T) {
 		t.Error("ErrEmailTaken y ErrInvalidCredentials son el mismo error: el controller no podría darles status distintos")
 	}
 }
-

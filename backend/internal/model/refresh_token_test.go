@@ -11,11 +11,11 @@ var tokenIssuedAt = time.Date(2026, time.September, 28, 12, 0, 0, 0, time.UTC)
 
 func aLiveToken() model.RefreshToken {
 	return model.RefreshToken{
-		IssuedAt: tokenIssuedAt,
+		IssuedAt:  tokenIssuedAt,
 		ExpiresAt: tokenIssuedAt.Add(168 * time.Hour),
-		ID: "un-jti",
-		FamilyID: "una-familia",
-		UserID: 42,
+		ID:        "un-jti",
+		FamilyID:  "una-familia",
+		UserID:    42,
 	}
 }
 
@@ -27,8 +27,8 @@ func TestRefreshTokenExpiryBoundary(t *testing.T) {
 	const tick = time.Nanosecond
 
 	cases := []struct {
-		now time.Time
-		name string
+		now      time.Time
+		name     string
 		wantLive bool
 	}{
 		{token.ExpiresAt.Add(-tick), "un instante antes de expirar", true},
@@ -54,8 +54,8 @@ func TestRefreshTokenIsLiveRequiresAllThreeConditions(t *testing.T) {
 	used := tokenIssuedAt.Add(time.Hour)
 
 	cases := []struct {
-		mutate func(*model.RefreshToken)
-		name string
+		mutate   func(*model.RefreshToken)
+		name     string
 		wantLive bool
 	}{
 		{func(*model.RefreshToken) {}, "recién emitida", true},
@@ -140,4 +140,3 @@ func TestRefreshTokenErrorsAreDistinct(t *testing.T) {
 		}
 	}
 }
-

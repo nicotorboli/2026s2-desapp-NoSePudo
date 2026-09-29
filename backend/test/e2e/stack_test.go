@@ -92,10 +92,10 @@ func startPostgres(t *testing.T) *sql.DB {
 // stack es la aplicación entera corriendo sobre una base real: el mismo
 // armado de dependencias que hace cmd, servido por httptest.
 type stack struct {
-	db *sql.DB
+	db     *sql.DB
 	server *httptest.Server
-	auth *service.Auth
-	logs *capturedLogs
+	auth   *service.Auth
+	logs   *capturedLogs
 }
 
 // capturedLogs junta lo que el servidor escribe, para poder revisarlo después.
@@ -103,7 +103,7 @@ type stack struct {
 // petición.
 type capturedLogs struct {
 	builder strings.Builder
-	mutex sync.Mutex
+	mutex   sync.Mutex
 }
 
 func (c *capturedLogs) Write(p []byte) (int, error) {
@@ -158,8 +158,8 @@ func newStackWith(t *testing.T, accessTTL, refreshTTL time.Duration) *stack {
 	db := startPostgres(t)
 
 	cfg := &configuration.Cfg{
-		JWTSecret: testJWTSecret,
-		AccessTTL: accessTTL,
+		JWTSecret:  testJWTSecret,
+		AccessTTL:  accessTTL,
 		RefreshTTL: refreshTTL,
 		BcryptCost: testBcryptCost,
 	}
@@ -233,4 +233,3 @@ func (s *stack) countUsers(t *testing.T) int {
 
 	return count
 }
-

@@ -26,7 +26,6 @@ func NewAuthController(authService AuthService) *RestAuthController {
 	return &RestAuthController{authService: authService}
 }
 
-
 // El controller hace tres cosas: decodifica, delega y traduce el
 // error de dominio a un status. La validación la corre Decode y las reglas las
 // tiene el service, que no sabe nada de HTTP.
@@ -50,7 +49,6 @@ func (c *RestAuthController) Register() httphandler.Endpoint {
 		return httphandler.Encode(w, http.StatusCreated, dto.AccountResponseDesdeModelo(user))
 	}
 }
-
 
 func (c *RestAuthController) Login() httphandler.Endpoint {
 	return func(w http.ResponseWriter, req *http.Request) error {
@@ -126,4 +124,3 @@ func actorOf(req *http.Request) (middleware.Actor, error) {
 }
 
 var errMissingActor = errors.New("la operación necesita un actor y la petición no fue autenticada")
-

@@ -17,7 +17,6 @@ func NewRefreshTokenDao(db *sql.DB) *RefreshTokenSql {
 	return &RefreshTokenSql{Db: db}
 }
 
-
 func (dao *RefreshTokenSql) Insert(ctx context.Context, token model.RefreshToken) error {
 	if dao.Db == nil {
 		return errNilDatabase
@@ -63,7 +62,6 @@ func (dao *RefreshTokenSql) GetByID(ctx context.Context, id string) (model.Refre
 
 	return token, nil
 }
-
 
 func (dao *RefreshTokenSql) Rotate(ctx context.Context, presentedID string, replacement model.RefreshToken) error {
 	if dao.Db == nil {
@@ -111,7 +109,6 @@ func (dao *RefreshTokenSql) Rotate(ctx context.Context, presentedID string, repl
 
 	return nil
 }
-
 
 func (dao *RefreshTokenSql) RevokeFamily(ctx context.Context, familyID string, userID int64) error {
 	if dao.Db == nil {

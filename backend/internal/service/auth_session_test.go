@@ -1,4 +1,4 @@
-﻿package service_test
+package service_test
 
 import (
 	"errors"
@@ -290,4 +290,3 @@ func TestRefreshLosingTheRotationRaceIsTreatedAsReuse(t *testing.T) {
 		t.Error("perder la carrera no disparó la respuesta al robo")
 	}
 }
-

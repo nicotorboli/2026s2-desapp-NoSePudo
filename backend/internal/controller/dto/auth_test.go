@@ -21,11 +21,11 @@ const fakeStoredHash = "$2a$12$un-hash-que-no-debe-salir" //nolint:gosec // valo
 // el DTO tiene que dejar afuera.
 func aStoredUser() model.User {
 	return model.User{
-		ID: 42,
-		Email: "nico@nosepudo.ar",
+		ID:           42,
+		Email:        "nico@nosepudo.ar",
 		PasswordHash: fakeStoredHash,
-		Privilege: model.PrivilegeSuperuser,
-		Active: true,
+		Privilege:    model.PrivilegeSuperuser,
+		Active:       true,
 	}
 }
 
@@ -42,9 +42,9 @@ func TestRegisterRequestAcceptsValidData(t *testing.T) {
 // contraseñas distintas colisionaran.
 func TestRegisterRequestPasswordLengthBoundaries(t *testing.T) {
 	cases := []struct {
-		name string
+		name   string
 		length int
-		valid bool
+		valid  bool
 	}{
 		{"7 bytes, uno menos que el mínimo", 7, false},
 		{"8 bytes, el mínimo", 8, true},
@@ -57,7 +57,7 @@ func TestRegisterRequestPasswordLengthBoundaries(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			request := dto.RegisterRequest{
-				Email: "nico@nosepudo.ar",
+				Email:    "nico@nosepudo.ar",
 				Password: strings.Repeat("a", c.length),
 			}
 
@@ -77,7 +77,7 @@ func TestRegisterRequestPasswordLengthBoundaries(t *testing.T) {
 // pasa de largo aunque "parezca" que entra.
 func TestRegisterRequestPasswordIsMeasuredInBytes(t *testing.T) {
 	request := dto.RegisterRequest{
-		Email: "nico@nosepudo.ar",
+		Email:    "nico@nosepudo.ar",
 		Password: strings.Repeat("ñ", 40), // 80 bytes en 40 runas
 	}
 
@@ -91,7 +91,7 @@ func TestRegisterRequestEmailLengthBoundaries(t *testing.T) {
 	const domain = "@nosepudo.ar"
 
 	cases := []struct {
-		name string
+		name  string
 		total int
 		valid bool
 	}{
@@ -121,7 +121,7 @@ func TestRegisterRequestEmailLengthBoundaries(t *testing.T) {
 
 func TestRegisterRequestRejectsMalformedEmails(t *testing.T) {
 	cases := []struct {
-		name string
+		name  string
 		email string
 	}{
 		{"ausente", ""},
@@ -188,8 +188,8 @@ func TestLoginRequestDoesNotImposePasswordLength(t *testing.T) {
 
 func TestLoginRequestRejectsMissingFields(t *testing.T) {
 	cases := []struct {
-		name string
-		email string
+		name     string
+		email    string
 		password string
 	}{
 		{"email ausente", "", validPassword},
@@ -241,4 +241,3 @@ func TestAccountResponseSerializesNeitherHashNorPrivilege(t *testing.T) {
 		}
 	}
 }
-

@@ -8,7 +8,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-
 var ErrPasswordMismatch = errors.New("la contraseña no corresponde al hash")
 
 // MaxPasswordBytes es el límite de bcrypt.
@@ -16,7 +15,7 @@ const MaxPasswordBytes = 72
 
 type Password struct {
 	dummyHash string
-	cost int
+	cost      int
 }
 
 func NewPassword(cost int) *Password {
@@ -28,7 +27,6 @@ func NewPassword(cost int) *Password {
 
 	return password
 }
-
 
 func (p *Password) CompareWithDummy(plain string) {
 	if p.dummyHash == "" {
@@ -45,7 +43,6 @@ func (p *Password) Hash(plain string) (string, error) {
 	return string(digest), nil
 }
 
-
 func (p *Password) Compare(hash, plain string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain))
 	if err == nil {
@@ -58,4 +55,3 @@ func (p *Password) Compare(hash, plain string) error {
 
 	return fmt.Errorf("comparar contraseña: %w", err)
 }
-

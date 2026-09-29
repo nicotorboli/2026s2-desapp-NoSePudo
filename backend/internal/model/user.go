@@ -28,12 +28,12 @@ var (
 // User es el participante del mercado. Los campos van de mayor a menor tamaño
 // porque govet corre con fieldalignment.
 type User struct {
-	CreatedAt time.Time
-	Email string
+	CreatedAt    time.Time
+	Email        string
 	PasswordHash string
-	ID int64
-	Privilege PrivilegeLevel
-	Active bool
+	ID           int64
+	Privilege    PrivilegeLevel
+	Active       bool
 }
 
 // NormalizeEmail deja la dirección en la forma en que se guarda y se busca:
@@ -45,4 +45,3 @@ type User struct {
 func NormalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
-

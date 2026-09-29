@@ -1,4 +1,4 @@
-﻿package e2e_test
+package e2e_test
 
 import (
 	"encoding/json"
@@ -182,7 +182,7 @@ func TestReusingARefreshCredentialRevokesTheWholeAccount(t *testing.T) {
 	// Ni la que la renovación había emitido ni la de la otra sesión sirven.
 	for name, token := range map[string]string{
 		"la que emitió la renovación": renewedToken,
-		"la de la otra sesión": secondRefreshToken,
+		"la de la otra sesión":        secondRefreshToken,
 	} {
 		if status, _ := stack.postWithBearer(t, "/auth/refresh", token); status != http.StatusUnauthorized {
 			t.Errorf("%s sigue sirviendo: %d", name, status)
@@ -339,4 +339,3 @@ func TestSuccessiveRenewalsStayInOneChain(t *testing.T) {
 		}
 	}
 }
-

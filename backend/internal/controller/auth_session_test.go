@@ -24,10 +24,10 @@ const fakeRefreshToken = "una-credencial-de-renovacion" //nolint:gosec // valor 
 // credencial.
 func anActor() middleware.Actor {
 	return middleware.Actor{
-		SessionID: "una-familia",
+		SessionID:    "una-familia",
 		CredentialID: "un-jti",
-		ID: 42,
-		Privilege: model.PrivilegeUser,
+		ID:           42,
+		Privilege:    model.PrivilegeUser,
 	}
 }
 
@@ -65,10 +65,10 @@ func TestRefreshEndpointReturns200WithTheNewSession(t *testing.T) {
 	refreshExpiry := time.Date(2026, time.October, 5, 12, 0, 0, 0, time.UTC)
 
 	service := &mockAuthService{session: model.Session{
-		AccessExpiresAt: accessExpiry,
+		AccessExpiresAt:  accessExpiry,
 		RefreshExpiresAt: refreshExpiry,
-		AccessToken: fakeAccessToken,
-		RefreshToken: fakeRefreshToken,
+		AccessToken:      fakeAccessToken,
+		RefreshToken:     fakeRefreshToken,
 	}}
 	actor := anActor()
 
@@ -117,7 +117,7 @@ func TestRefreshEndpointTakesEverythingFromTheVerifiedActor(t *testing.T) {
 // reuso además haya cortado toda la cuenta es interno.
 func TestRefreshEndpointAnswers401ForBothRefusals(t *testing.T) {
 	cases := []struct {
-		err error
+		err  error
 		name string
 	}{
 		{fmt.Errorf("rotar: %w", model.ErrRefreshTokenReused), "reuso"},
@@ -176,7 +176,7 @@ func TestLogoutEndpointReturns204(t *testing.T) {
 func TestSessionEndpointsRefuseWithoutAnActor(t *testing.T) {
 	cases := map[string]func(*controller.RestAuthController) httphandler.Endpoint{
 		"refresh": (*controller.RestAuthController).Refresh,
-		"logout": (*controller.RestAuthController).Logout,
+		"logout":  (*controller.RestAuthController).Logout,
 	}
 
 	for name, endpoint := range cases {
@@ -194,4 +194,3 @@ func TestSessionEndpointsRefuseWithoutAnActor(t *testing.T) {
 		})
 	}
 }
-

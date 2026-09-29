@@ -12,7 +12,7 @@ import (
 const insufficientPrivilegeMessage = "insufficient privilege"
 
 var (
-	errNoActor = errors.New("la operación exige privilegio pero la petición no fue autenticada")
+	errNoActor               = errors.New("la operación exige privilegio pero la petición no fue autenticada")
 	errInsufficientPrivilege = errors.New("el actor no tiene el privilegio que la operación exige")
 )
 
@@ -55,4 +55,3 @@ func (a *Authorization) Require(required model.PrivilegeLevel) Decorator {
 		}
 	}
 }
-

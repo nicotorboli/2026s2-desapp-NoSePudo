@@ -13,13 +13,11 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
-
 type UserRepository interface {
 	Insert(ctx context.Context, user model.User) (model.User, error)
 	GetByEmail(ctx context.Context, email string) (model.User, error)
 	GetByID(ctx context.Context, id int64) (model.User, error)
 }
-
 
 type PasswordHasher interface {
 	Hash(plain string) (string, error)
@@ -40,15 +38,14 @@ type RefreshTokenRepository interface {
 	RevokeAllLiveForUser(ctx context.Context, userID int64) error
 }
 
-
 type Clock func() time.Time
 
 type Auth struct {
-	userRepository UserRepository
-	passwordHasher PasswordHasher
-	tokenIssuer TokenIssuer
+	userRepository         UserRepository
+	passwordHasher         PasswordHasher
+	tokenIssuer            TokenIssuer
 	refreshTokenRepository RefreshTokenRepository
-	now Clock
+	now                    Clock
 }
 
 func NewAuthService(
@@ -59,14 +56,13 @@ func NewAuthService(
 	now Clock,
 ) *Auth {
 	return &Auth{
-		userRepository: userRepository,
-		passwordHasher: passwordHasher,
-		tokenIssuer: tokenIssuer,
+		userRepository:         userRepository,
+		passwordHasher:         passwordHasher,
+		tokenIssuer:            tokenIssuer,
 		refreshTokenRepository: refreshTokenRepository,
-		now: now,
+		now:                    now,
 	}
 }
-
 
 func (a *Auth) Login(ctx context.Context, email, password string) (model.Session, error) {
 	user, err := a.userRepository.GetByEmail(ctx, model.NormalizeEmail(email))
@@ -112,19 +108,19 @@ func (a *Auth) openSession(ctx context.Context, user model.User, sessionID strin
 
 	err = a.refreshTokenRepository.Insert(ctx, model.RefreshToken{
 		ExpiresAt: refreshClaims.ExpiresAt,
-		ID: refreshClaims.ID,
-		FamilyID: sessionID,
-		UserID: user.ID,
+		ID:        refreshClaims.ID,
+		FamilyID:  sessionID,
+		UserID:    user.ID,
 	})
 	if err != nil {
 		return model.Session{}, fmt.Errorf("persistir la credencial de renovación: %w", err)
 	}
 
 	return model.Session{
-		AccessExpiresAt: accessClaims.ExpiresAt,
+		AccessExpiresAt:  accessClaims.ExpiresAt,
 		RefreshExpiresAt: refreshClaims.ExpiresAt,
-		AccessToken: accessToken,
-		RefreshToken: refreshToken,
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
 	}, nil
 }
 
@@ -141,10 +137,10 @@ func (a *Auth) Register(ctx context.Context, email, password string) (model.User
 	}
 
 	user, err := a.userRepository.Insert(ctx, model.User{
-		Email: normalizedEmail,
+		Email:        normalizedEmail,
 		PasswordHash: passwordHash,
-		Privilege: model.PrivilegeUser,
-		Active: true,
+		Privilege:    model.PrivilegeUser,
+		Active:       true,
 	})
 	if err != nil {
 		return model.User{}, fmt.Errorf("crear la cuenta: %w", err)
@@ -152,7 +148,6 @@ func (a *Auth) Register(ctx context.Context, email, password string) (model.User
 
 	return user, nil
 }
-
 
 func (a *Auth) ensureEmailIsAvailable(ctx context.Context, normalizedEmail string) error {
 	_, err := a.userRepository.GetByEmail(ctx, normalizedEmail)
@@ -166,7 +161,6 @@ func (a *Auth) ensureEmailIsAvailable(ctx context.Context, normalizedEmail strin
 		return fmt.Errorf("verificar si el email está disponible: %w", err)
 	}
 }
-
 
 func (a *Auth) EnsureSuperuser(ctx context.Context, email, password string) error {
 	normalizedEmail := model.NormalizeEmail(email)
@@ -185,10 +179,10 @@ func (a *Auth) EnsureSuperuser(ctx context.Context, email, password string) erro
 	}
 
 	_, err = a.userRepository.Insert(ctx, model.User{
-		Email: normalizedEmail,
+		Email:        normalizedEmail,
 		PasswordHash: passwordHash,
-		Privilege: model.PrivilegeSuperuser,
-		Active: true,
+		Privilege:    model.PrivilegeSuperuser,
+		Active:       true,
 	})
 	if err != nil {
 
@@ -200,7 +194,6 @@ func (a *Auth) EnsureSuperuser(ctx context.Context, email, password string) erro
 
 	return nil
 }
-
 
 func (a *Auth) Refresh(
 	ctx context.Context,
@@ -217,7 +210,6 @@ func (a *Auth) Refresh(
 		return model.Session{}, fmt.Errorf("buscar la credencial de renovación: %w", err)
 	}
 
-
 	if presented.IsExpired(a.now()) {
 		return model.Session{}, model.ErrRefreshTokenExpired
 	}
@@ -225,7 +217,6 @@ func (a *Auth) Refresh(
 	if presented.IsUsed() {
 		return model.Session{}, a.respondToTheft(ctx, userID)
 	}
-
 
 	if presented.IsRevoked() {
 		return model.Session{}, model.ErrRefreshTokenRevoked
@@ -251,9 +242,9 @@ func (a *Auth) Refresh(
 	// credencial sólo una gana.
 	replacement := model.RefreshToken{
 		ExpiresAt: refreshClaims.ExpiresAt,
-		ID: refreshClaims.ID,
-		FamilyID: sessionID,
-		UserID: user.ID,
+		ID:        refreshClaims.ID,
+		FamilyID:  sessionID,
+		UserID:    user.ID,
 	}
 
 	if err := a.refreshTokenRepository.Rotate(ctx, presentedID, replacement); err != nil {
@@ -264,10 +255,10 @@ func (a *Auth) Refresh(
 	}
 
 	return model.Session{
-		AccessExpiresAt: accessClaims.ExpiresAt,
+		AccessExpiresAt:  accessClaims.ExpiresAt,
 		RefreshExpiresAt: refreshClaims.ExpiresAt,
-		AccessToken: accessToken,
-		RefreshToken: refreshToken,
+		AccessToken:      accessToken,
+		RefreshToken:     refreshToken,
 	}, nil
 }
 
@@ -293,4 +284,3 @@ func (a *Auth) Logout(ctx context.Context, userID int64, sessionID string) error
 
 	return nil
 }
-

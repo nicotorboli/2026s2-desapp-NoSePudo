@@ -11,31 +11,29 @@ import (
 
 const (
 	minSecretLength = 32
-	minBcryptCost = 4
-	maxBcryptCost = 31
+	minBcryptCost   = 4
+	maxBcryptCost   = 31
 
-	defaultHost = "127.0.0.1"
-	defaultPort = "8080"
-	defaultAccessTTL = "15m"
+	defaultHost       = "127.0.0.1"
+	defaultPort       = "8080"
+	defaultAccessTTL  = "15m"
 	defaultRefreshTTL = "168h"
 	defaultBcryptCost = "12"
 )
-
 
 var ErrMissingJWTSecret = errors.New("NSP_JWT_SECRET es obligatorio y debe tener al menos 32 bytes")
 
 type Cfg struct {
 	PostgresDataSource string
-	Host string
-	Port string
-	JWTSecret string
-	SuperuserEmail string
-	SuperuserPassword string
-	AccessTTL time.Duration
-	RefreshTTL time.Duration
-	BcryptCost int
+	Host               string
+	Port               string
+	JWTSecret          string
+	SuperuserEmail     string
+	SuperuserPassword  string
+	AccessTTL          time.Duration
+	RefreshTTL         time.Duration
+	BcryptCost         int
 }
-
 
 func LoadCfg() (*Cfg, error) {
 	jwtSecret := os.Getenv("NSP_JWT_SECRET")
@@ -60,21 +58,20 @@ func LoadCfg() (*Cfg, error) {
 
 	return &Cfg{
 		PostgresDataSource: os.Getenv("NSPPSQLDS"),
-		Host: cmp.Or(os.Getenv("NSPHOST"), defaultHost),
-		Port: cmp.Or(os.Getenv("NSPPORT"), defaultPort),
-		JWTSecret: jwtSecret,
-		SuperuserEmail: os.Getenv("NSP_SUPERUSER_EMAIL"),
-		SuperuserPassword: os.Getenv("NSP_SUPERUSER_PASSWORD"),
-		AccessTTL: accessTTL,
-		RefreshTTL: refreshTTL,
-		BcryptCost: bcryptCost,
+		Host:               cmp.Or(os.Getenv("NSPHOST"), defaultHost),
+		Port:               cmp.Or(os.Getenv("NSPPORT"), defaultPort),
+		JWTSecret:          jwtSecret,
+		SuperuserEmail:     os.Getenv("NSP_SUPERUSER_EMAIL"),
+		SuperuserPassword:  os.Getenv("NSP_SUPERUSER_PASSWORD"),
+		AccessTTL:          accessTTL,
+		RefreshTTL:         refreshTTL,
+		BcryptCost:         bcryptCost,
 	}, nil
 }
 
 func (c *Cfg) GetServerAddress() string {
 	return fmt.Sprintf("%s:%s", c.Host, c.Port)
 }
-
 
 func (c *Cfg) HasSuperuserCredentials() bool {
 	return c.SuperuserEmail != "" && c.SuperuserPassword != ""
@@ -108,4 +105,3 @@ func bcryptCostFromEnv() (int, error) {
 
 	return value, nil
 }
-

@@ -129,4 +129,3 @@ func TestErrorUnwrapsToItsCause(t *testing.T) {
 		t.Error("errors.Is no encuentra la causa a través del error de borde")
 	}
 }
-

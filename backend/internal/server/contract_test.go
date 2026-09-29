@@ -104,10 +104,10 @@ func TestPublishedContractMatchesTheRouteTable(t *testing.T) {
 // aplicar.
 func TestContractUsesOnlyKnownAccessLevels(t *testing.T) {
 	known := map[string]bool{
-		AccessAnonymous.String(): true,
+		AccessAnonymous.String():     true,
 		AccessAuthenticated.String(): true,
-		AccessRenewal.String(): true,
-		AccessSuperuser.String(): true,
+		AccessRenewal.String():       true,
+		AccessSuperuser.String():     true,
 	}
 
 	for pattern, level := range documentedRoutes(t, loadContract(t)) {
@@ -138,4 +138,3 @@ func TestContractOperationsAreIdentified(t *testing.T) {
 		}
 	}
 }
-

@@ -1,4 +1,4 @@
-﻿package e2e_test
+package e2e_test
 
 import (
 	"encoding/base64"
@@ -215,4 +215,3 @@ func TestTwoSignInsAreIndependent(t *testing.T) {
 		t.Error("las credenciales nombran cuentas distintas")
 	}
 }
-

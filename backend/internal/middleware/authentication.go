@@ -15,7 +15,6 @@ import (
 // insensible a mayúsculas porque el RFC 7235 define el esquema así.
 const bearerScheme = "bearer"
 
-
 const unauthenticatedMessage = "authentication required"
 
 type TokenVerifier interface {
@@ -69,10 +68,10 @@ func (a *Authentication) require(kind adapters.TokenKind) Decorator {
 			}
 
 			actor := Actor{
-				SessionID: claims.SessionID,
+				SessionID:    claims.SessionID,
 				CredentialID: claims.ID,
-				ID: claims.Subject,
-				Privilege: claims.Privilege,
+				ID:           claims.Subject,
+				Privilege:    claims.Privilege,
 			}
 
 			ctx = WithActor(ctx, actor)
@@ -85,10 +84,9 @@ func (a *Authentication) require(kind adapters.TokenKind) Decorator {
 
 var (
 	errMissingCredential = errors.New("falta la cabecera Authorization")
-	errMalformedHeader = errors.New("la cabecera Authorization no tiene la forma Bearer <token>")
-	errWrongTokenKind = errors.New("la credencial no es del tipo que este endpoint requiere")
+	errMalformedHeader   = errors.New("la cabecera Authorization no tiene la forma Bearer <token>")
+	errWrongTokenKind    = errors.New("la credencial no es del tipo que este endpoint requiere")
 )
-
 
 func bearerToken(header string) (string, error) {
 	if strings.TrimSpace(header) == "" {
@@ -129,4 +127,3 @@ func (a *Authentication) refuse(ctx context.Context, cause error) error {
 func unauthenticated(cause error) error {
 	return httphandler.NewError(http.StatusUnauthorized, unauthenticatedMessage, cause)
 }
-

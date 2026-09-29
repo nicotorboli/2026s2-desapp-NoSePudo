@@ -114,4 +114,3 @@ func TestPasswordCompareDistinguishesACorruptHashFromAMismatch(t *testing.T) {
 		t.Error("un hash corrupto se reportó como contraseña incorrecta")
 	}
 }
-

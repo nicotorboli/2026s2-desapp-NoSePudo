@@ -12,7 +12,7 @@ import (
 
 type plainBody struct {
 	Email string `json:"email"`
-	Age int `json:"age"`
+	Age   int    `json:"age"`
 }
 
 type validatedBody struct {
@@ -31,7 +31,7 @@ func (b *validatedBody) Validate() error {
 // countingBody cuenta las invocaciones para probar que Decode llama a Validate
 // exactamente una vez.
 type countingBody struct {
-	Name string
+	Name  string
 	Calls int `json:"-"`
 }
 
@@ -180,4 +180,3 @@ func TestDecodeLeavesATypeWithoutValidatorAlone(t *testing.T) {
 		t.Errorf("Decode = %+v, se esperaban los valores cero", got)
 	}
 }
-

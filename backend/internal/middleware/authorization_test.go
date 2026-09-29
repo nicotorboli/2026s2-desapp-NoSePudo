@@ -66,10 +66,10 @@ func serveDecorated(t *testing.T, endpoint httphandler.Endpoint, authorization s
 // sea insuficiente y nunca superusuario.
 func TestRequirePrivilegeDecisionTable(t *testing.T) {
 	cases := []struct {
-		name string
-		held model.PrivilegeLevel
+		name     string
+		held     model.PrivilegeLevel
 		required model.PrivilegeLevel
-		want int
+		want     int
 	}{
 		{"usuario donde se pide usuario", model.PrivilegeUser, model.PrivilegeUser, http.StatusOK},
 		{"superusuario donde se pide usuario", model.PrivilegeSuperuser, model.PrivilegeUser, http.StatusOK},
@@ -209,4 +209,3 @@ func TestSuperuserChainRefusesARefreshToken(t *testing.T) {
 		t.Error("la operación corrió con una credencial de refresco")
 	}
 }
-

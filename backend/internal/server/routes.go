@@ -11,11 +11,11 @@ import (
 )
 
 // route es la declaración de un endpoint: su patrón, el nivel de acceso que
-// exige y el endpoint en sí. 
+// exige y el endpoint en sí.
 type route struct {
 	endpoint httphandler.Endpoint
-	pattern string
-	access AccessLevel
+	pattern  string
+	access   AccessLevel
 }
 
 // routes describe las rutas y no registra ninguna.
@@ -23,28 +23,28 @@ type route struct {
 func (s *Server) routes() []route {
 	return []route{
 		{
-			pattern: "POST /auth/register",
-			access: AccessAnonymous,
+			pattern:  "POST /auth/register",
+			access:   AccessAnonymous,
 			endpoint: s.controllers.Auth.Register(),
 		},
 		{
-			pattern: "POST /auth/login",
-			access: AccessAnonymous,
+			pattern:  "POST /auth/login",
+			access:   AccessAnonymous,
 			endpoint: s.controllers.Auth.Login(),
 		},
 		{
-			pattern: "POST /auth/refresh",
-			access: AccessRenewal,
+			pattern:  "POST /auth/refresh",
+			access:   AccessRenewal,
 			endpoint: s.controllers.Auth.Refresh(),
 		},
 		{
-			pattern: "POST /auth/logout",
-			access: AccessAuthenticated,
+			pattern:  "POST /auth/logout",
+			access:   AccessAuthenticated,
 			endpoint: s.controllers.Auth.Logout(),
 		},
 		{
-			pattern: "GET /players",
-			access: AccessAuthenticated,
+			pattern:  "GET /players",
+			access:   AccessAuthenticated,
 			endpoint: s.controllers.Player.GetPlayers(),
 		},
 	}
@@ -88,4 +88,3 @@ func chainFor(r route, middlewares *middleware.Container) httphandler.Endpoint {
 		))
 	}
 }
-

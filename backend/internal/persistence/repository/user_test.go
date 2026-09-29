@@ -1,4 +1,4 @@
-﻿package repository_test
+package repository_test
 
 import (
 	"errors"
@@ -30,10 +30,10 @@ func TestFixtureHashMatchesTheColumnWidth(t *testing.T) {
 
 func aUser(email string) model.User {
 	return model.User{
-		Email: email,
+		Email:        email,
 		PasswordHash: fakeBcryptHash,
-		Privilege: model.PrivilegeUser,
-		Active: true,
+		Privilege:    model.PrivilegeUser,
+		Active:       true,
 	}
 }
 
@@ -174,4 +174,3 @@ func TestUserRepositoryNormalizedEmailsCollide(t *testing.T) {
 		t.Errorf("Insert devolvió %v, se esperaba ErrEmailTaken: una dirección se volvió dos cuentas", err)
 	}
 }
-

@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	superuserEmail = "admin@nosepudo.ar"
+	superuserEmail    = "admin@nosepudo.ar"
 	superuserPassword = "la-del-superusuario" //nolint:gosec // valor de prueba, no una credencial real
 )
 
@@ -141,7 +141,7 @@ func TestEveryAccountHoldsExactlyOneOfTheTwoLevels(t *testing.T) {
 	accounts := 0
 	for rows.Next() {
 		var (
-			email string
+			email     string
 			privilege int16
 		)
 		if err := rows.Scan(&email, &privilege); err != nil {
@@ -163,4 +163,3 @@ func TestEveryAccountHoldsExactlyOneOfTheTwoLevels(t *testing.T) {
 		t.Errorf("se examinaron %d cuentas, se esperaban 2", accounts)
 	}
 }
-

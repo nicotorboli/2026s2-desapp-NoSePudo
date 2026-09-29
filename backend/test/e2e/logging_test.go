@@ -9,7 +9,7 @@ import (
 // Las credenciales de la corrida completa. Son valores reconocibles a propósito:
 // la gracia del caso es buscarlos después en lo que el servidor escribió.
 const (
-	logSubjectEmail = "nico@nosepudo.ar"
+	logSubjectEmail    = "nico@nosepudo.ar"
 	logSubjectPassword = "una-contraseña-muy-reconocible" //nolint:gosec // valor de prueba, no una credencial real
 )
 
@@ -78,11 +78,11 @@ func TestCompleteRunLeaksNoSecretAndNoPersonalData(t *testing.T) {
 	}
 
 	forbidden := map[string]string{
-		"la contraseña": logSubjectPassword,
-		"la contraseña equivocada": "la-equivocada",
-		"la credencial de acceso": accessToken,
-		"la credencial de renovación": refreshToken,
-		"el secreto de firma": testJWTSecret,
+		"la contraseña":                  logSubjectPassword,
+		"la contraseña equivocada":       "la-equivocada",
+		"la credencial de acceso":        accessToken,
+		"la credencial de renovación":    refreshToken,
+		"el secreto de firma":            testJWTSecret,
 		"el email, que es dato personal": logSubjectEmail,
 	}
 
@@ -109,8 +109,8 @@ func TestRefusalsAreLoggedWithTheirReason(t *testing.T) {
 	// Cada tipo de rechazo dejó su evento, y cada uno lleva razón.
 	//nolint:gosec // son mensajes de log, no credenciales
 	expected := map[string]string{
-		"autenticación refutada": "authentication refused",
-		"inicio de sesión refutado": "sign-in refused",
+		"autenticación refutada":            "authentication refused",
+		"inicio de sesión refutado":         "sign-in refused",
 		"reuso de credencial de renovación": "refresh credential reused",
 	}
 
@@ -187,4 +187,3 @@ func TestRefusedSignInLogsNeitherTheAddressNorThePassword(t *testing.T) {
 		t.Error("el evento registró la contraseña que se envió")
 	}
 }
-

@@ -1,4 +1,4 @@
-﻿package e2e_test
+package e2e_test
 
 import (
 	"encoding/json"
@@ -82,7 +82,7 @@ func TestCatalogIsRefusedWithoutAUsableCredential(t *testing.T) {
 	}
 
 	cases := []struct {
-		name string
+		name          string
 		authorization string
 	}{
 		{"sin credencial", ""},
@@ -190,4 +190,3 @@ func TestAnonymousEndpointsNeedNoCredential(t *testing.T) {
 		t.Errorf("el login devolvió %d sin credencial: %v", status, body)
 	}
 }
-

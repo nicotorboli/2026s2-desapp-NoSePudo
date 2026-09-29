@@ -18,13 +18,12 @@ type AuthController interface {
 
 type Container struct {
 	Player PlayerController
-	Auth AuthController
+	Auth   AuthController
 }
 
 func NewContainer(services *service.Container) *Container {
 	return &Container{
 		Player: NewPlayerController(services.Player),
-		Auth: NewAuthController(services.Auth),
+		Auth:   NewAuthController(services.Auth),
 	}
 }
-

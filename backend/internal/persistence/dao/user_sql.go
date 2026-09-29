@@ -21,7 +21,6 @@ func NewUserDao(db *sql.DB) *UserSql {
 	return &UserSql{Db: db}
 }
 
-
 func (dao *UserSql) Insert(ctx context.Context, user model.User) (model.User, error) {
 	if dao.Db == nil {
 		return model.User{}, errNilDatabase
@@ -43,7 +42,6 @@ func (dao *UserSql) Insert(ctx context.Context, user model.User) (model.User, er
 
 	return user, nil
 }
-
 
 func (dao *UserSql) GetByEmail(ctx context.Context, email string) (model.User, error) {
 	const query = `
@@ -69,7 +67,7 @@ func (dao *UserSql) queryOne(ctx context.Context, query string, arg any) (model.
 	}
 
 	var (
-		user model.User
+		user      model.User
 		privilege int16
 	)
 
@@ -103,4 +101,3 @@ func privilegeFromColumn(value int16) model.PrivilegeLevel {
 		return model.PrivilegeUnknown
 	}
 }
-
