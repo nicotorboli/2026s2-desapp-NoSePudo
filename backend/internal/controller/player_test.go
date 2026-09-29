@@ -13,7 +13,7 @@ import (
 )
 
 type mockPlayerService struct {
-	err     error
+	err error
 	players []model.Player
 }
 
@@ -86,3 +86,4 @@ func TestRestPlayerController_GetPlayers_Error(t *testing.T) {
 		t.Fatalf("expected error %v, got %v", expectedErr, err)
 	}
 }
+

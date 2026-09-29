@@ -26,18 +26,18 @@ const fakeAccessToken = "una-credencial" //nolint:gosec // valor de prueba, no u
 // mockAuthService devuelve lo que el caso necesite. Lo que se prueba acá es el
 // borde HTTP: los status, la forma del cuerpo y qué llega al service.
 type mockAuthService struct {
-	gotEmail        string
-	gotPassword     string
+	gotEmail string
+	gotPassword string
 	gotCredentialID string
-	gotSessionID    string
-	err             error
-	session         model.Session
-	user            model.User
-	gotUserID       int64
-	registerCalled  int
-	loginCalled     int
-	refreshCalled   int
-	logoutCalled    int
+	gotSessionID string
+	err error
+	session model.Session
+	user model.User
+	gotUserID int64
+	registerCalled int
+	loginCalled int
+	refreshCalled int
+	logoutCalled int
 }
 
 func (m *mockAuthService) Register(_ context.Context, email, password string) (model.User, error) {
@@ -111,7 +111,7 @@ func TestRegisterEndpointReturns201WithTheAccountResponse(t *testing.T) {
 		user: model.User{ID: 42, Email: "nico@nosepudo.ar", Privilege: model.PrivilegeUser, Active: true},
 	}
 
-	status, body := callRegister(t, service, `{"email":"  Nico@NoSePudo.AR ","password":"una-contraseña"}`)
+	status, body := callRegister(t, service, `{"email":" Nico@NoSePudo.AR ","password":"una-contraseña"}`)
 
 	if status != http.StatusCreated {
 		t.Fatalf("status = %d, se esperaba 201: %v", status, body)
@@ -129,7 +129,7 @@ func TestRegisterEndpointReturns201WithTheAccountResponse(t *testing.T) {
 	}
 
 	// El controller pasa lo que recibió; normalizar es del dominio.
-	if service.gotEmail != "  Nico@NoSePudo.AR " {
+	if service.gotEmail != " Nico@NoSePudo.AR " {
 		t.Errorf("el service recibió %q", service.gotEmail)
 	}
 	if service.gotPassword != "una-contraseña" {
@@ -151,7 +151,7 @@ func TestRegisterEndpointReturns409WhenTheEmailIsTaken(t *testing.T) {
 	}
 }
 
-// FR-024 y el cuarto escenario de US1: un privilege en el cuerpo se rechaza,
+// el requerimiento y el cuarto escenario de Escenario:: un privilege en el cuerpo se rechaza,
 // y el service ni se entera.
 func TestRegisterEndpointRefusesAPrivilegeField(t *testing.T) {
 	service := &mockAuthService{}
@@ -170,7 +170,7 @@ func TestRegisterEndpointRefusesAPrivilegeField(t *testing.T) {
 	}
 }
 
-// FR-023: una entrada inválida se rechaza sin ejecutar lógica de negocio.
+// el requerimiento: una entrada inválida se rechaza sin ejecutar lógica de negocio.
 func TestRegisterEndpointReturns400ForInvalidBodies(t *testing.T) {
 	cases := []struct {
 		name string
@@ -179,7 +179,7 @@ func TestRegisterEndpointReturns400ForInvalidBodies(t *testing.T) {
 		{"cuerpo vacío", ``},
 		{"JSON malformado", `{"email":`},
 		{"email ausente", `{"password":"una-contraseña"}`},
-		{"email en blanco", `{"email":"   ","password":"una-contraseña"}`},
+		{"email en blanco", `{"email":" ","password":"una-contraseña"}`},
 		{"email sin arroba", `{"email":"sin-arroba","password":"una-contraseña"}`},
 		{"contraseña ausente", `{"email":"nico@nosepudo.ar"}`},
 		{"contraseña de 7 bytes", `{"email":"nico@nosepudo.ar","password":"1234567"}`},
@@ -198,7 +198,7 @@ func TestRegisterEndpointReturns400ForInvalidBodies(t *testing.T) {
 				t.Errorf("status = %d, se esperaba 400: %v", status, body)
 			}
 			if service.registerCalled != 0 {
-				t.Error("el service corrió pese a que el cuerpo era inválido (SC-003)")
+				t.Error("el service corrió pese a que el cuerpo era inválido")
 			}
 			if _, hasError := body["error"]; !hasError {
 				t.Errorf("la respuesta no tiene el campo error que fija el contrato: %v", body)
@@ -207,7 +207,7 @@ func TestRegisterEndpointReturns400ForInvalidBodies(t *testing.T) {
 	}
 }
 
-// FR-025: el mensaje de una validación fallida no repite la contraseña.
+// el requerimiento: el mensaje de una validación fallida no repite la contraseña.
 func TestRegisterEndpointNeverEchoesTheSubmittedPassword(t *testing.T) {
 	const secret = "contraseña-secretisima" //nolint:gosec // valor de prueba, no una credencial real
 	service := &mockAuthService{}
@@ -255,7 +255,7 @@ func TestLoginEndpointReturns200WithTheSessionResponse(t *testing.T) {
 	}
 }
 
-// FR-003: los dos modos de fallar responden idéntico, byte por byte.
+// el requerimiento: los dos modos de fallar responden idéntico, byte por byte.
 func TestLoginEndpointAnswersIdenticallyForBothFailureCauses(t *testing.T) {
 	wrongPassword := &mockAuthService{err: fmt.Errorf("comparar: %w", model.ErrInvalidCredentials)}
 	unknownAccount := &mockAuthService{err: fmt.Errorf("buscar: %w", model.ErrInvalidCredentials)}
@@ -274,7 +274,7 @@ func TestLoginEndpointAnswersIdenticallyForBothFailureCauses(t *testing.T) {
 	}
 }
 
-// FR-007: la respuesta no lleva nada que sea dañino divulgar.
+// el requerimiento: la respuesta no lleva nada que sea dañino divulgar.
 func TestLoginEndpointResponseCarriesNoSecret(t *testing.T) {
 	service := &mockAuthService{
 		session: model.Session{AccessToken: fakeAccessToken, AccessExpiresAt: time.Now()},
@@ -293,7 +293,7 @@ func TestLoginEndpointResponseCarriesNoSecret(t *testing.T) {
 	}
 }
 
-// El cuarto escenario de US2: una entrada inválida se rechaza sin buscar ni
+// El cuarto escenario de Escenario:: una entrada inválida se rechaza sin buscar ni
 // verificar credencial alguna.
 func TestLoginEndpointReturns400WithoutTouchingTheService(t *testing.T) {
 	cases := []struct {
@@ -303,7 +303,7 @@ func TestLoginEndpointReturns400WithoutTouchingTheService(t *testing.T) {
 		{"cuerpo vacío", ``},
 		{"JSON malformado", `{"email":`},
 		{"email ausente", `{"password":"una-contraseña"}`},
-		{"email en blanco", `{"email":"   ","password":"una-contraseña"}`},
+		{"email en blanco", `{"email":" ","password":"una-contraseña"}`},
 		{"email sin arroba", `{"email":"sin-arroba","password":"una-contraseña"}`},
 		{"contraseña ausente", `{"email":"nico@nosepudo.ar"}`},
 		{"campo desconocido", `{"email":"nico@nosepudo.ar","password":"x","remember":true}`},
@@ -338,3 +338,4 @@ func TestLoginEndpointAcceptsAShortPassword(t *testing.T) {
 		t.Error("la petición no llegó al service")
 	}
 }
+

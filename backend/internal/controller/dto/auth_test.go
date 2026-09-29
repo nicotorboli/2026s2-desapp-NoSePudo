@@ -21,11 +21,11 @@ const fakeStoredHash = "$2a$12$un-hash-que-no-debe-salir" //nolint:gosec // valo
 // el DTO tiene que dejar afuera.
 func aStoredUser() model.User {
 	return model.User{
-		ID:           42,
-		Email:        "nico@nosepudo.ar",
+		ID: 42,
+		Email: "nico@nosepudo.ar",
 		PasswordHash: fakeStoredHash,
-		Privilege:    model.PrivilegeSuperuser,
-		Active:       true,
+		Privilege: model.PrivilegeSuperuser,
+		Active: true,
 	}
 }
 
@@ -42,9 +42,9 @@ func TestRegisterRequestAcceptsValidData(t *testing.T) {
 // contraseñas distintas colisionaran.
 func TestRegisterRequestPasswordLengthBoundaries(t *testing.T) {
 	cases := []struct {
-		name   string
+		name string
 		length int
-		valid  bool
+		valid bool
 	}{
 		{"7 bytes, uno menos que el mínimo", 7, false},
 		{"8 bytes, el mínimo", 8, true},
@@ -57,7 +57,7 @@ func TestRegisterRequestPasswordLengthBoundaries(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			request := dto.RegisterRequest{
-				Email:    "nico@nosepudo.ar",
+				Email: "nico@nosepudo.ar",
 				Password: strings.Repeat("a", c.length),
 			}
 
@@ -77,7 +77,7 @@ func TestRegisterRequestPasswordLengthBoundaries(t *testing.T) {
 // pasa de largo aunque "parezca" que entra.
 func TestRegisterRequestPasswordIsMeasuredInBytes(t *testing.T) {
 	request := dto.RegisterRequest{
-		Email:    "nico@nosepudo.ar",
+		Email: "nico@nosepudo.ar",
 		Password: strings.Repeat("ñ", 40), // 80 bytes en 40 runas
 	}
 
@@ -91,7 +91,7 @@ func TestRegisterRequestEmailLengthBoundaries(t *testing.T) {
 	const domain = "@nosepudo.ar"
 
 	cases := []struct {
-		name  string
+		name string
 		total int
 		valid bool
 	}{
@@ -121,11 +121,11 @@ func TestRegisterRequestEmailLengthBoundaries(t *testing.T) {
 
 func TestRegisterRequestRejectsMalformedEmails(t *testing.T) {
 	cases := []struct {
-		name  string
+		name string
 		email string
 	}{
 		{"ausente", ""},
-		{"sólo espacios", "   \t "},
+		{"sólo espacios", " \t "},
 		{"sin arroba", "nico.nosepudo.ar"},
 		{"parte local vacía", "@nosepudo.ar"},
 		{"dominio vacío", "nico@"},
@@ -144,7 +144,7 @@ func TestRegisterRequestRejectsMalformedEmails(t *testing.T) {
 	}
 }
 
-// FR-025: el mensaje dice qué campo estuvo mal y no repite lo que se mandó.
+// el requerimiento: el mensaje dice qué campo estuvo mal y no repite lo que se mandó.
 func TestRegisterRequestMessagesNameTheFieldWithoutEchoingTheSecret(t *testing.T) {
 	const secret = "esta-contraseña-no-debe-aparecer" //nolint:gosec // valor de prueba, no una credencial real
 
@@ -188,12 +188,12 @@ func TestLoginRequestDoesNotImposePasswordLength(t *testing.T) {
 
 func TestLoginRequestRejectsMissingFields(t *testing.T) {
 	cases := []struct {
-		name     string
-		email    string
+		name string
+		email string
 		password string
 	}{
 		{"email ausente", "", validPassword},
-		{"email en blanco", "   ", validPassword},
+		{"email en blanco", " ", validPassword},
 		{"email con forma imposible", "sin-arroba", validPassword},
 		{"contraseña ausente", "nico@nosepudo.ar", ""},
 	}
@@ -223,7 +223,7 @@ func TestAccountResponseDesdeModelo(t *testing.T) {
 }
 
 // Lo que importa del DTO es lo que NO lleva: el hash no puede salir por la
-// respuesta (FR-004), y el privilegio tampoco, porque una cuenta
+// respuesta, y el privilegio tampoco, porque una cuenta
 // autoregistrada es siempre común y decirlo invitaría a creer que puede no
 // serlo.
 func TestAccountResponseSerializesNeitherHashNorPrivilege(t *testing.T) {
@@ -241,3 +241,4 @@ func TestAccountResponseSerializesNeitherHashNorPrivilege(t *testing.T) {
 		}
 	}
 }
+
