@@ -262,11 +262,14 @@ what `FromContext` returns; it no longer has to arrange for it to be reachable.
 
 ## Phase 10: Polish & Cross-Cutting Concerns
 
-- [ ] T087 [P] Publish the contract to `backend/api/openapi.yaml` — the maintained artifact Principle VII requires, documenting the four new endpoints and the pre-existing `GET /players`, and point the controller contract tests at this copy so drift fails the build (R16).
-- [ ] T088 [P] Verify `.gitignore` covers the Go patterns for this repository — `*.exe`, `*.test`, `*.out`, `vendor/` — and append only what is missing.
-- [ ] T089 [P] Document the new environment variables in `README.md`, matching the table in [quickstart.md](./quickstart.md) § 2.
-- [ ] T090 Run `./scripts/pre-commit.sh` from the repository root — gofmt, `go vet` with `enable-all`, and golangci-lint at the version in `.golangci-version`. `fieldalignment` is the one that usually bites on new structs.
-- [ ] T091 Run `go test -race ./...` from `backend/` and confirm every suite passes, testcontainers ones included.
+- [X] T087 [P] Publish the contract to `backend/api/openapi.yaml` — the maintained artifact Principle VII requires, documenting the four new endpoints and the pre-existing `GET /players`, and point the controller contract tests at this copy so drift fails the build (R16).
+  - **Three drifts were corrected while publishing it.** The `401` of `/auth/refresh` documented two error bodies (`refresh token required`, `refresh token no longer valid`) that the implementation never returns — it answers `authentication required` in every case, identically, so a caller cannot tell which refusal applied. The `403` the authorization middleware produces was undocumented. And `/auth/refresh` now states the used-versus-revoked decision, because a reader has to know that signing out and retrying does not take down the account's other sessions.
+  - **Enforced by `internal/server/contract_test.go`**, which reads the published file and compares its paths and `x-access-level` against the route table in both directions. Verified by injecting each drift on purpose: documenting the catalog as `anonymous` fails with *"se aplica como authenticated y el contrato la documenta como anonymous"*, and registering an undocumented route fails with *"está registrada y no figura en el contrato publicado"*. Both were reverted.
+  - The copy under `contracts/` stays as the record of what this feature designed; the published one is the maintained artifact.
+- [X] T088 [P] Verify `.gitignore` covers the Go patterns for this repository — `*.exe`, `*.test`, `*.out`, `vendor/` — and append only what is missing.
+- [X] T089 [P] Document the new environment variables in `README.md`, matching the table in [quickstart.md](./quickstart.md) § 2.
+- [X] T090 Run `./scripts/pre-commit.sh` from the repository root — gofmt, `go vet` with `enable-all`, and golangci-lint at the version in `.golangci-version`. `fieldalignment` is the one that usually bites on new structs.
+- [ ] T091 ⚠️ **Not verifiable on this machine — left unchecked on purpose.** `go test -race` needs cgo and therefore a C compiler, and there is no gcc here (`cgo: C compiler "gcc" not found`). Every suite was run and passes **without** `-race`, repository and e2e ones included, against a real Postgres from testcontainers. The CI runs it with `-race` on Linux, which is where this gets closed.
 - [ ] T092 Walk [quickstart.md](./quickstart.md) § 4 end to end and confirm each user story's flow behaves as written, starting with SC-009 — the server refusing to start with `NSP_JWT_SECRET` unset. Depends on T090, T091.
 
 ---
