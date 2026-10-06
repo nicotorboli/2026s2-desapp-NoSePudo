@@ -31,8 +31,8 @@ info:
     this API over TLS is a deployment concern (see the spec's assumptions).
 
 servers:
-  - url: http://localhost:8080
-    description: Local development
+  - url: /
+    description: Same origin as whatever is serving this documentation page
 
 tags:
   - name: auth

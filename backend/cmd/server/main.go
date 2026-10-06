@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -112,7 +113,9 @@ func startServer() error {
 	controllers := controller.NewContainer(services)
 	middlewares := middleware.NewContainer(adapterContainer.JWT)
 
-	srv := server.NewServer(cfg.GetServerAddress(), logger, controllers, middlewares)
+	contractPath := filepath.Join("api", "openapi.yaml")
+
+	srv := server.NewServer(cfg.GetServerAddress(), logger, controllers, middlewares, contractPath)
 
 	runCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
