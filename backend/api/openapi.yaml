@@ -4,31 +4,11 @@ info:
   title: NoSePudo API
   version: 0.2.0
   description: |
-    REST API of the NoSePudo backend. This is the maintained document that
-    Principle VII requires: it describes the API as it is, not as one feature
-    designed it, and it keeps describing it after the next delivery.
-
-    `internal/server` has a test that reads this file and compares its paths and
-    their `x-access-level` against the route table, so an endpoint that ships
-    undocumented — or documented with the wrong level — fails the build rather
-    than ageing quietly.
-
-    Every endpoint declares an access level. The declaration is not
-    decorative: it is the value the route table carries, and it is what selects the
-    middleware chain applied to the route. The `x-access-level` extension on each
-    operation mirrors that declaration, so the document and the code state the same
-    thing and a contract test can check they agree.
-
-    Access levels:
-
-      - `anonymous`     no credential required
-      - `authenticated` a valid access token (`typ: access`)
-      - `renewal`       a valid refresh token (`typ: refresh`), and nothing else
-      - `superuser`     a valid access token whose `priv` claim is `superuser`
+    REST API of the NoSePudo backend.
 
     Transport security is assumed rather than provided here: a bearer token in an
     `Authorization` header is readable by anything that can see the traffic. Serving
-    this API over TLS is a deployment concern (see the spec's assumptions).
+    this API over TLS is a deployment concern.
 
 servers:
   - url: /
