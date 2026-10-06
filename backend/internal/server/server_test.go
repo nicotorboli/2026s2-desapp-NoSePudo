@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -101,6 +102,7 @@ func newTestServerWith(verifier middleware.TokenVerifier) *server.Server {
 			Auth: controller.NewAuthController(&mockAuthService{}),
 		},
 		middleware.NewContainer(verifier),
+		filepath.Join("..", "..", "api", "openapi.yaml"),
 	)
 }
 

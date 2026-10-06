@@ -19,8 +19,8 @@ info:
       - `renewal`       a valid refresh token (`typ: refresh`), and nothing else
       - `superuser`     a valid access token whose `priv` claim is `superuser`
 servers:
-  - url: http://localhost:8080
-    description: Local development
+  - url: /
+    description: Same origin as whatever is serving this documentation page
 
 tags:
   - name: auth

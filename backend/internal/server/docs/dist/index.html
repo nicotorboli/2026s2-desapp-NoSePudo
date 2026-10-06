@@ -1,0 +1,29 @@
+<!-- HTML for static distribution bundle build -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Swagger UI</title>
+    <link rel="stylesheet" type="text/css" href="./swagger-ui.css" />
+    <link rel="stylesheet" type="text/css" href="index.css" />
+    <link rel="icon" type="image/png" href="./favicon-32x32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="./favicon-16x16.png" sizes="16x16" />
+    <!-- El link con la URL del spec que Swagger UI repite bajo el título, y el
+         selector de "Servers", son redundantes acá: las dos cosas están
+         fijadas en el contrato/swagger-initializer.js y nunca cambian. El
+         contrato sigue declarando `servers: [{url: /}]` — eso es lo que hace
+         que "try it out" pegue contra el origen correcto (ver research.md §3
+         de 004-documentacion-swagger); esto solo esconde el selector. -->
+    <style>
+      .swagger-ui .info .url { display: none; }
+      .swagger-ui .servers-title,
+      .swagger-ui .servers { display: none; }
+    </style>
+  </head>
+
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="./swagger-ui-bundle.js" charset="UTF-8"> </script>
+    <script src="./swagger-initializer.js" charset="UTF-8"> </script>
+  </body>
+</html>

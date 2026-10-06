@@ -10,6 +10,7 @@ import (
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/middleware"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/server/docs"
 )
 
 type Server struct {
@@ -25,6 +26,7 @@ func NewServer(
 	logger *slog.Logger,
 	controllers *controller.Container,
 	middlewareContainer *middleware.Container,
+	contractPath string,
 ) *Server {
 	s := &Server{
 		logger:      logger,
@@ -37,8 +39,10 @@ func NewServer(
 	// registrarle una ruta por fuera de la tabla.
 	s.router = buildMux(s.routes(), s.logger, s.middleware)
 
+	combined := docs.Mount(contractPath, s.router)
+
 	handler := middleware.Chain(
-		s.router,
+		combined,
 		middleware.CorrelationID,
 		middleware.CORS,
 		middleware.RequestLogger(s.logger),

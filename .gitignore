@@ -19,6 +19,10 @@ build/
 vendor/
 coverage/
 
+# Excepción: el dist/ de docs/ no es build output, es swagger-ui-dist
+# vendorizado a propósito (ver specs/004-documentacion-swagger).
+!backend/internal/server/docs/dist/
+
 # Binarios y artefactos de test
 *.exe
 *.test

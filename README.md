@@ -77,6 +77,10 @@ un test que compara esas declaraciones contra la tabla de rutas: un endpoint que
 se agregue sin documentar, o documentado con un nivel que el código no aplica,
 rompe el build.
 
+Con el backend corriendo, `/docs/` sirve una documentación interactiva
+(Swagger UI) que renderiza ese mismo contrato y permite probar cada endpoint
+("try it out") contra el backend real.
+
 ## Verificación
 
 Backend, desde `backend/`:
