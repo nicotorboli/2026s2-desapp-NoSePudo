@@ -1,16 +1,3 @@
-<!--
-Sync Impact Report:
-- Version change: 2.0.0 → 2.1.0
-- List of modified principles:
-  - Principle III. Arquitectura en capas: se detalla la estructura de la aplicación en internal/ incorporando server (inicialización y ruteo), middleware (lógica transversal y autenticación entre endpoints), logger (configuración de logging) y httphandler (utilidades como encode/decode JSON y endpoint wrapper).
-  - Principle V. DTOs en el borde: se especifica el uso de httphandler para la codificación y decodificación JSON de DTOs.
-  - Principle VIII. Seguridad: autenticación y autorización JWT: se explicita la aplicación de controles de acceso a través de middleware.
-- Modified sections:
-  - Technical Constraints: especificación explícita de los paquetes internal/server, internal/middleware, internal/httphandler e internal/logger dentro de la estructura de capas.
-- Added sections: Ninguna.
-- Removed sections: Ninguna.
-- Follow-up TODOs: Ninguno.
--->
 
 # NoSePudo Constitution
 
@@ -18,304 +5,179 @@ Sync Impact Report:
 
 ### I. Backend en Go con net/http
 
-El backend se implementa en Go y expone la API REST únicamente con la librería
-estándar `net/http`. Se prohíbe el uso de frameworks web externos; toda
-funcionalidad HTTP debe construirse sobre la librería estándar. Se debe incluir
-una versión dockerizada de la aplicación junto a la ejecución local.
+- Implementar el backend en Go exponiendo la API REST exclusivamente mediante `net/http` de la librería estándar.
+- Prohibir terminantemente el uso de frameworks web de terceros (e.g., Gin, Echo, Chi, Fiber).
+- Proveer soporte de ejecución dual obligatorio: ejecución local y contenedor Docker (`Dockerfile`).
+- Centralizar el código del backend bajo el módulo `backend/`, siendo su `go.mod` la única fuente de verdad sobre versiones de dependencias.
 
 ### II. Persistencia en PostgreSQL
 
-PostgreSQL es la única base de datos del sistema y se conecta mediante la
-librería estándar `database/sql`, sin ORM. La base de datos debe estar
-dockerizada en todos los entornos (desarrollo, CI y test).
+- Emplear PostgreSQL como el único motor de base de datos relacional del sistema.
+- Conectar y operar exclusivamente mediante la librería estándar `database/sql`. Prohibir el uso de ORMs (e.g., GORM, Ent).
 
 ### III. Arquitectura en capas
 
-El código se organiza en `cmd` (main que levanta el servidor y arma el grafo de
-dependencias) e `internal`, separado en paquetes con responsabilidades claras:
+Organizar el backend bajo `cmd/` e `internal/` con responsabilidades delimitadas y flujo unidireccional:
 
-- server: define las funciones de inicialización del servidor HTTP y la
-  configuración del ruteo (`mux`) de la aplicación.
-- middleware: define las funciones middleware que se aplican entre medio de los
-  endpoints para lógica transversal, como autenticación y autorización.
-- httphandler: provee utilidades estandarizadas para el manejo HTTP, incluyendo
-  codificación y decodificación de JSON (`Encode`, `Decode`) y wrappers para el
-  manejo centralizado de respuestas y errores.
-- logger: centraliza la inicialización y configuración del logger (`log/slog`
-  con handler de Zerolog) utilizado por toda la aplicación.
-- controller: sirve los endpoints REST y traduce los datos externos al servicio
-  y los resultados del servicio al cliente.
-- service: orquesta el modelo de negocio con la persistencia y los adapters.
-- persistence: capa de persistencia compuesta por `repository` (abstracción por
-  concepto del dominio que traduce entre base de datos y modelos) y `dao` (DAOs
-  por tabla que ejecutan el SQL).
-- model (dominio): contiene los modelos y la lógica pura del negocio.
-- adapters: conecta el core de la aplicación con cualquier dependencia
-  concreta con tecnología específica que se quiera aislar —no solo
-  servicios de red, sino también librerías de terceros. El consumidor
-  depende de la interfaz, nunca del tipo concreto.
-- dto: contiene las estructuras de datos que se comunican entre capas
-
-Hay un repository por concepto del dominio —jugador, cotización, usuario,
-orden—, no uno por tabla, y lo que cruza su borde son modelos, nunca filas.
-Adentro delega en DAOs, uno por tabla, que ejecutan el SQL. Los DAOs son
-públicos dentro del paquete de persistencia ya que necesitan ser instanciados
-e inyectados con su respectiva base de datos (por ejemplo, desde `cmd`). Si una
-operación abarca varias tablas las coordina el repository; el service nunca usa
-un DAO directamente.
-
-Se propaga obligatoriamente el contexto `context.Context` a todas las capas que
-requieran del uso de acciones de I/O como pueden ser controller, service,
-persistence (repository y DAO) y adapters. Esto garantiza la cancelación oportuna
-de operaciones, el manejo riguroso de timeouts y deadlines, y la propagación de
-metadatos y trazabilidad a lo largo de todo el ciclo de vida del request.
+- `cmd/`: Punto de entrada (`main.go`), responsable único de instanciar implementaciones concretas, ensamblar el grafo de dependencias y arrancar el servidor HTTP.
+- `internal/server`: Inicialización del servidor HTTP (`NewServer`) y registro de rutas (`routes`).
+- `internal/middleware`: Interceptores HTTP para lógica transversal (autenticación, autorización, tracing y métricas).
+- `internal/httphandler`: Utilidades HTTP comunes (codificación y decodificación JSON con `Encode`/`Decode` y wrappers de endpoints).
+- `internal/logger`: Inicialización y configuración centralizada de logging (`log/slog` con handler de Zerolog).
+- `internal/controller`: Manejo de endpoints HTTP, validación inicial de DTOs y mapeo de respuestas delegando en `service`.
+- `internal/service`: Orquestación de casos de uso y lógica de negocio. Interactúa con `model`, `repository` y `adapters`. Prohibido acceder directamente a DAOs o base de datos.
+- `internal/model`: Entidades y reglas puras de dominio. Prohibido contener dependencias de infraestructura o tags de serialización.
+- `internal/persistence`: Acceso a datos subdividido en:
+  - `repository`: Abstracción por entidad/concepto de dominio (retorna y recibe modelos). Coordina múltiples DAOs si una operación abarca varias tablas.
+  - `dao`: Acceso granular a nivel SQL por tabla. Son públicos para permitir su inyección desde `cmd/`.
+- `internal/adapters`: Integración con dependencias externas (servicios de red, APIs de terceros, librerías complejas).
+- `internal/dto`: Estructuras de datos dedicadas para transferencia entre límites del sistema y capas.
+- **Propagación de Contexto**: Propagar obligatoriamente `context.Context` como primer parámetro en toda función o método que realice I/O (controller, service, repository, dao, adapters) para garantizar cancelación oportuna, timeouts y trazabilidad.
 
 ### IV. Inyección de dependencias
 
-Ninguna capa construye sus propias dependencias: las recibe por constructor.
-Cada repository y cada adapter expone una interfaz y el service depende de
-ella, nunca del tipo concreto. Asimismo, los repositories reciben sus DAOs
-(o interfaces de estos) por constructor. La interfaz se declara junto a su
-implementación o consumidor según corresponda en el paquete de su capa.
-
-El único lugar donde se instancian implementaciones concretas (conexión a base de
-datos, DAOs, repositories, services, adapters y controllers) y se arma el grafo
-de dependencias es `cmd`. Sin eso el service no se puede testear con el
-repository mockeado, ni el repository con el DAO mockeado, como exige el
-principio de Testing.
+- Recibir todas las dependencias explícitamente vía constructor (`New...`). Prohibir la auto-instanciación dentro de tipos o el acceso a estado global.
+- Depender de interfaces y nunca de implementaciones concretas: los `services` consumen interfaces de `repository` y `adapters`; los `repositories` reciben DAOs (o sus interfaces) vía constructor.
+- Declarar interfaces junto a su consumidor o abstracción correspondiente para desacoplar implementaciones y habilitar testing.
+- Ensamblar el grafo de dependencias e instanciar implementaciones concretas exclusivamente en `cmd/`.
 
 ### V. DTOs en el borde
 
-Los tipos que cruzan el borde HTTP son DTOs y nunca son el modelo de dominio,
-aunque los campos coincidan. El modelo de dominio no lleva tags de
-serialización. Request y respuesta son DTOs distintos, y cada contexto en que
-se devuelve un modelo tiene su propio DTO: no se reusa uno agregándole campos
-opcionales.
-
-La conversión es explícita y vive en el DTO: `DesdeModelo` construye el DTO a
-partir del modelo y `AModelo` hace el camino inverso. El DTO nunca consulta la
-persistencia: `AModelo` recibe por parámetro los colaboradores ya resueltos.
-No se arman conversiones a mano en el controller. La codificación y
-decodificación JSON de los DTOs en las peticiones y respuestas HTTP se realiza
-mediante las utilidades centralizadas de `internal/httphandler`.
+- Prohibir la exposición de modelos de dominio en el borde HTTP. Los structs de `model` no deben contener tags de serialización (`json`, `xml`).
+- Diseñar DTOs independientes y desacoplados para request y response en cada operación; prohibido reutilizar DTOs añadiendo campos opcionales para contextos disímiles.
+- Implementar la conversión bidireccional exclusivamente en el paquete `dto` mediante métodos explícitos:
+  - `DesdeModelo(m Modelo) DTO`: construye el DTO a partir del modelo.
+  - `AModelo(deps...) Modelo`: construye el modelo recibiendo sus colaboradores externos ya resueltos (prohibido consultar persistencia desde el DTO).
+- Prohibir conversiones manuales ad-hoc en los controllers.
+- Canalizar toda codificación y decodificación JSON HTTP mediante `internal/httphandler`.
 
 ### VI. Frontend React + TypeScript
 
-El frontend se implementa en React con TypeScript y se comunica con el backend
-por HTTP/REST usando axios como único cliente HTTP. Toda comunicación pasa por
-un módulo de abstracción: los métodos HTTP se representan como funciones
-privadas y se exporta una función por cada endpoint consumido; fuera de ese
-módulo nadie importa axios. Los tipos TypeScript de ese módulo espejan los
-DTOs de la API, no el modelo de dominio del backend. El proyecto se organiza
-por páginas y componentes; los estilos se manejan con archivos CSS por
-página/componente, usando clases y siguiendo el arquetipo BEM.
+- Implementar la interfaz en `frontend/` utilizando React con TypeScript.
+- Encapsular todas las llamadas HTTP en un módulo de abstracción dedicado utilizando exclusivamente `axios`:
+  - Mantener llamadas de axios y métodos HTTP privados dentro del módulo.
+  - Exportar una función tipada por cada endpoint consumido. Prohibir importar `axios` fuera de este módulo.
+  - Espejar estrictamente en los tipos TypeScript los DTOs de la API REST, nunca modelos internos de backend.
+- Organizar el proyecto modularmente en carpetas de páginas y componentes.
+- Estilizar mediante archivos CSS por página/componente utilizando nombres de clases bajo convención BEM.
 
 ### VII. API REST documentada con OpenAPI
 
-La API REST se documenta con el estándar OpenAPI. La especificación es un
-artefacto obligatorio y debe mantenerse sincronizada con la implementación en
-cada cambio de endpoints.
+- Mantener una especificación OpenAPI (v3+) como contrato obligatorio y fuente de verdad de la API REST.
+- Sincronizar el artefacto OpenAPI en el mismo commit ante cualquier cambio, agregado o remoción de endpoints, DTOs o códigos de estado.
+- Validar la conformidad de los controllers frente a la especificación OpenAPI (rutas, esquemas y códigos de error).
 
 ### VIII. Seguridad: autenticación y autorización JWT
 
-La autenticación y autorización se implementan con JWT, diferenciando los
-privilegios entre usuario común y superusuario al gestionar el acceso a los
-recursos. Estas validaciones se aplican mediante funciones de `internal/middleware`
-que interceptan las llamadas entre medio de los endpoints protegidos. Todas las
-entradas de datos deben validarse; las entradas inválidas se rechazan sin
-ejecutar lógica de negocio.
-Un token se acepta solo si su firma verifica con HS256 y no está expirado.
-
-El middleware deja el ID del usuario autenticado en el `context` y puede exigir
-un nivel de privilegio. Todo control que dependa de datos del dominio lo decide
-el service: si un endpoint recibe un ID de usuario en la URL o en el body, se
-compara contra el del `context` antes de usarlo.
-
-Todo endpoint expuesto tiene un nivel de acceso declarado; la ausencia de
-declaración es un error, no un endpoint público.
-
+- Autenticar mediante tokens JWT firmados exclusivamente con algoritmo HS256 y fecha de expiración obligatoria.
+- Almacenar contraseñas protegidas mediante hashing con `bcrypt`.
+- Implementar control de acceso y autenticación mediante `internal/middleware`:
+  - Extraer e inyectar el ID de usuario y nivel de privilegios (usuario común vs. superusuario) en el `context.Context`.
+  - Rechazar inmediatamente solicitudes con tokens inválidos, expirados o ausentes en rutas protegidas.
+  - Exigir nivel de acceso declarado explícitamente en cada endpoint; la ausencia de declaración es un error, nunca un endpoint público.
+- Validar todas las entradas de datos en la frontera (`controller`/`middleware`), descartando datos malformados antes de ejecutar lógica de negocio.
+- Resolver controles de autorización basados en datos de dominio en `internal/service`: contrastar el ID del `context` contra el recurso requerido en la URL o body.
 
 ### IX. Observabilidad
 
-Los logs se emiten por medio de `log/slog` de la librería estándar configurado a
-partir de un handler de la librería Zerolog. Son estructurados en JSON, un evento
-por línea, y todo evento incluye como mínimo timestamp, nivel, correlation ID,
-operación y, en las operaciones autenticadas, el actor. Los nombres de los campos
-son comunes a todo el sistema: un log que no se puede filtrar no facilita ningún
-análisis.
-
-El correlation ID se genera en el borde HTTP cuando el cliente no lo provee,
-viaja por el `context.Context` (el cual se propaga obligatoriamente en todas las
-capas de I/O) y aparece en todos los eventos de la operación, incluidos los de
-los adapters: filtrar por un ID devuelve la solicitud completa de principio a
-fin.
-
-Se registran obligatoriamente cada request con su latencia y su status, todo
-error con su causa, y toda llamada a un servicio externo con su resultado y su
-duración. No se registran credenciales, tokens ni datos personales. El sistema
-expone un health check y métricas de latencia y tasa de error.
+- Emitir logs estructurados en JSON (un evento por línea) vía `log/slog` con handler de Zerolog centralizado en `internal/logger`.
+- Incluir en cada log los campos estándar mínimos: `timestamp` (UTC), `level`, `correlation_id`, `operation` y `actor` (en operaciones autenticadas).
+- Generar un `correlation_id` en el borde HTTP si el cliente no lo envía, propagarlo por `context.Context` e incluirlo en todos los eventos (incluyendo adapters).
+- Registrar de forma obligatoria:
+  - Peticiones HTTP: método, ruta, status code y latencia.
+  - Errores: mensaje, causa raíz y contexto de falla.
+  - Integraciones externas: operación, duración y resultado.
+- Prohibir terminantemente el registro de credenciales, contraseñas, tokens JWT o datos personales (PII).
+- Exponer un endpoint de health check y métricas operativas de latencia y tasa de error.
 
 ### X. Auditoría transaccional
 
-Se mantiene un registro de auditoría de las transacciones que incluye autor,
-timestamp, cambios realizados y la diferencia entre el estado anterior y el
-posterior. El registro es inmutable: las filas se agregan y nunca se
-modifican ni se borran. Todo cambio de estado relevante debe quedar auditado.
+- Registrar todo cambio de estado relevante en un log/tabla de auditoría inmutable (exclusivamente operaciones append-only; prohibidos updates y deletes).
+- Registrar por cada evento: identificador del autor/actor, timestamp GMT-3, entidad afectada, tipo de operación y diferencia exacta (diff/payload) entre estado anterior y posterior.
 
 ### XI. Integridad de datos
 
-Todas las operaciones de base de datos son transaccionales por defecto; omitir
-una transacción solo se permite cuando se indica y justifica explícitamente.
-El esquema se optimiza con indexación sobre las claves de búsqueda y consultas
-frecuentes.
+- Ejecutar toda operación de persistencia dentro de una transacción (`db.BeginTx`) por defecto; omitir una transacción requiere justificación y documentación explícita.
+- Definir índices sobre todas las claves foráneas, columnas de búsqueda y filtros frecuentes.
+- Forzar integridad referencial mediante constraints de clave primaria, unicidad y foreign keys en base de datos.
 
 ### XII. Resiliencia: caché y scheduler
 
-Toda lectura de datos externos pasa por una caché, y el sistema responde con
-datos locales cuando la fuente externa no está disponible. Los procesos batch
-se ejecutan desde un scheduler, nunca a mano.
+- Intermediar lecturas a datos y servicios externos mediante una capa de caché con TTL.
+- Proveer degradación elegante: responder con datos locales o cacheados cuando la fuente externa no esté disponible.
+- Ejecutar procesos en lote (batch) y sincronizaciones periódicas únicamente mediante un scheduler automatizado, prohibiendo ejecuciones manuales ad-hoc.
 
 ### XIII. Testing
 
-Toda feature incluye tests unitarios, de integración y e2e, y cada capa define
-qué se mockea:
-
-- model (dominio): sin base de datos ni red; las estrategias de valuación se
-  testean como funciones que reciben métricas y devuelven un score.
-- service: con el repository y los adapters mockeados.
-- repository: contra una base real levantada con testcontainers, para no
-  alterar la base de datos real.
-- adapters: sin conexión a servicios externos durante el test. Los que
-  envuelven un servicio externo se testean contra respuestas guardadas;
-  ningún test consulta el sitio o la API externa. Los que envuelven una
-  librería se testean contra la librería real con entradas fijas, y todo
-  lo que haga el resultado impredecible —el reloj, la fuente de
-  aleatoriedad— se inyecta para poder probar el valor límite.
-- controller: contra el contrato OpenAPI, incluidos los códigos de error.
-
-Cada caso de uso se cubre con su camino feliz, sus casos negativos y sus casos
-borde. Los casos no se eligen por intuición: se usan clases de equivalencia,
-un caso por clase de entrada; valores límite, probando el valor anterior, el
-exacto y el posterior en todo umbral; y tabla de decisión cuando una regla
-combina dos o más condiciones.
-
-Los escenarios de prueba exigidos por el enunciado se implementan como tests
-e2e, no como una demostración manual.
+- Cubrir cada funcionalidad con tests unitarios, de integración y end-to-end (e2e).
+- Aislar el alcance de pruebas según la capa:
+  - `model`: tests unitarios puros en memoria, sin base de datos ni dependencias de I/O.
+  - `service`: tests unitarios con mocks de interfaces de `repository` y `adapters`.
+  - `repository`: tests de integración contra una instancia real de PostgreSQL orquestada con `testcontainers`.
+  - `adapters`: tests contra stubs/fixtures grabados para servicios externos (sin llamadas reales a la red); inyección de reloj y fuentes de aleatoriedad para pruebas deterministas.
+  - `controller`: tests de integración HTTP validando status codes, payloads y contrato OpenAPI.
+- Diseñar casos de prueba mediante técnicas formales: clases de equivalencia (casos válidos e inválidos), análisis de valores límite (anterior, exacto y posterior) y tablas de decisión ante lógica multicondicional.
+- Automatizar los escenarios requeridos por el enunciado como suites e2e ejecutables en CI.
 
 ### XIV. Semánticas
 
-Toda especificación sobre la que se trabaje debe llevar exactamente el nombre
-de la branch de GitHub sobre la cual se está programando. Queda prohibido
-desarrollar o modificar una especificación cuyo identificador o directorio no
-coincida con el nombre de la rama activa en el repositorio. Esta
-correspondencia unívoca asegura la trazabilidad estricta entre la
-especificación de requisitos, las tareas asociadas, los commits y las
-revisiones en los Pull Requests.
+- Nombrar el directorio de cada especificación (`.specify/specs/<branch-name>`) de forma idéntica al nombre de la branch activa de Git.
+- Prohibir desarrollar o modificar especificaciones cuyo identificador no coincida unívocamente con la rama activa.
+- Garantizar la trazabilidad 1:1 entre rama de Git, especificación, tareas (`tasks.md`), commits y Pull Requests.
 
 ## Technical Constraints
 
-- Backend: Go con `net/http` y `database/sql` de la librería estándar; el
-  módulo vive en `backend/` y su `go.mod` es fuente de verdad de la versión.
-  Se debe incluir una versión de la aplicación dockerizada para permitir tanto
-  la ejecución local como por medio de un contenedor.
-- Estructura de la aplicación y capas (`internal/`):
-  - `internal/server/`: inicialización del servidor HTTP (`NewServer`) y ruteo
-    de la aplicación (`routes`).
-  - `internal/middleware/`: funciones middleware aplicadas entre medio de los
-    endpoints (autenticación, autorización, validaciones transversales).
-  - `internal/httphandler/`: funciones de utilidad HTTP, incluyendo codificación
-    y decodificación de JSON (`Encode`, `Decode`) y wrappers de endpoints.
-  - `internal/logger/`: inicialización centralizada del logger (`log/slog` con
-    handler de Zerolog).
-  - `internal/controller/`: controladores de endpoints REST y traducción de DTOs.
-  - `internal/service/`: orquestación de lógica de negocio y dependencias.
-  - `internal/persistence/`: capas de acceso a datos compuestas por `repository`
-    (interfaz con dominio) y `dao` (DAOs públicos con SQL por tabla e inyección
-    de base de datos).
-  - `internal/model/`: modelos y lógica pura de dominio.
-  - `internal/adapters/`: integración con dependencias externas detrás de una
-    interfaz (servicios de red y librerías de terceros con configuración
-    inyectada).
-  - El grafo de dependencias de todas las capas e infraestructura se ensambla en `cmd/`.
-- Propagación de Context: se propaga `context.Context` a todas las capas que
-  requieran del uso de acciones de I/O (controller, service, persistence —repositories
-  y DAOs— y adapters) garantizando soporte para timeouts, cancelación y trazabilidad.
-- Frontend: vive en `frontend/`, organizado por páginas y componentes, con CSS
-  por página/componente siguiendo BEM; axios se usa únicamente dentro del
-  módulo de abstracción HTTP.
-- Base de datos: PostgreSQL dockerizada de forma obligatoria y separada del
-  contenedor de backend.
-- Seguridad: `github.com/golang-jwt/jwt/v5` para JWT y
-  `golang.org/x/crypto/bcrypt` para hashing de passwords, una sola librería por
-  responsabilidad.
-
-
+- **Backend**: Go (versión declarada en `backend/go.mod`). Uso exclusivo de `net/http` y `database/sql` de la librería estándar.
+- **Base de datos**: PostgreSQL ejecutado en contenedor Docker aislado en desarrollo, CI y test.
+- **Docker**: `Dockerfile` en `backend/` y `docker-compose.yml` en la raíz para orquestación de servicios locales y testing.
+- **Seguridad**: `github.com/golang-jwt/jwt/v5` para manejo de tokens JWT y `golang.org/x/crypto/bcrypt` para hashing de contraseñas.
+- **Logging**: `log/slog` estándar configurado con handler de Zerolog (`github.com/rs/zerolog`).
+- **Frontend**: TypeScript y React en `frontend/`. `axios` restringido al módulo de abstracción HTTP. Estilos modulares con convención BEM.
+- **Testing**: `testing` estándar de Go y `testcontainers-go` para integración de PostgreSQL.
 
 ## Code Quality & Linting
 
-El backend Go se valida con golangci-lint v2.12.1, la misma versión que corre el CI.
-Un PR con issues de lint no se mergea. La configuración vive en `backend/.golangci.yml`
-y es la fuente de verdad; esta sección la describe, no la reemplaza.
+El backend Go se valida con `golangci-lint` en la versión fijada en `.golangci-version` (consistente entre local y CI). Pull Requests con fallas de linter tienen el merge bloqueado.
 
-Linters habilitados explícitamente:
-
-- `bodyclose`: cerrar HTTP response bodies
-- `gocritic`: patrones de código sospechosos (asignaciones innecesarias, etc.)
-- `gocyclo`: complejidad ciclomática máxima de 15 por función
-- `gosec`: problemas de seguridad, como log injection o datos sensibles en logs
-  (G104, errores sin chequear, queda excluido porque lo cubre `errcheck`)
-- `nilerr`: devolver `nil` después de haber comprobado que el error no era nil
-- `noctx`: requests HTTP sin contexto explícito
-- `rowserrcheck`: chequear `Err()` en database result sets
-- `sqlclosecheck`: cerrar SQL statements y rows
-- `unconvert`: conversiones de tipo innecesarias
-
-`govet` corre con `enable-all: true`, lo que suma todos sus analizadores. El más
-propenso a sorprender es `fieldalignment`, que exige ordenar los campos de un struct
-para minimizar el padding: los tipos más grandes primero. No es un linter aparte, así
-que solo se desactiva tocando la config de `govet`.
-
-Además siguen activos los linters que golangci-lint habilita por defecto y que la
-config no desactiva: `errcheck`, `ineffassign`, `staticcheck` y `unused`.
-
-Quien programa verifica antes de pushear:
-
-```bash
-cd backend
-golangci-lint run
-```
-
-El repo versiona una sola implementación del hook, `scripts/pre-commit.sh`, y el
-entrypoint en `.githooks/pre-commit`. Corre en Linux, macOS y Windows (vía el Bash que
-trae Git). No se mantiene un par en PowerShell: de dos implementaciones solo se
-ejercita la que se invoca, y la otra se desincroniza sin que nadie se entere. El CI
-ejecuta ese mismo script, de modo que la verificación local y la remota son idénticas.
-Se activa una vez por clon:
-
-```bash
-git config core.hooksPath .githooks
-```
-
-El hook requiere golangci-lint en el PATH, exactamente en la versión declarada en
-`.golangci-version`. Ese archivo es la única fuente de verdad: lo leen tanto el hook
-como el workflow de CI, así que una versión distinta a la del CI daría resultados
-distintos y el hook aborta el commit indicando la esperada y la detectada.
-
-```bash
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(cat .golangci-version)
-```
+- **Configuración central**: `backend/.golangci.yml` es la única fuente de verdad.
+- **Linters mandatorios**:
+  - `bodyclose`: Cierre obligatorio de response bodies HTTP.
+  - `gocritic`: Detección de patrones de código sospechosos.
+  - `gocyclo`: Complejidad ciclomática máxima de 15 por función.
+  - `gosec`: Detección de vulnerabilidades de seguridad (excluyendo G104, delegado en `errcheck`).
+  - `nilerr`: Prohibición de retornar `nil` tras comprobar un error no nulo.
+  - `noctx`: Peticiones HTTP obligadas a incluir contexto explícito.
+  - `rowserrcheck`: Verificación de `Err()` en result sets de base de datos.
+  - `sqlclosecheck`: Cierre obligatorio de statements y rows SQL.
+  - `unconvert`: Eliminación de conversiones de tipo redundantes.
+  - `govet`: Ejecución con `enable-all: true` (incluyendo `fieldalignment` para orden de structs por tamaño de tipos).
+  - Linters por defecto: `errcheck`, `ineffassign`, `staticcheck`, `unused`.
+- **Verificación local**:
+  ```bash
+  cd backend
+  golangci-lint run
+  ```
+- **Git Hook de pre-commit**:
+  - Entrypoint en `.githooks/pre-commit` ejecutando `scripts/pre-commit.sh`.
+  - Configuración inicial por clon:
+    ```bash
+    git config core.hooksPath .githooks
+    ```
+  - Instalación de la versión requerida:
+    ```bash
+    go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(cat .golangci-version)
+    ```
 
 ## Governance
 
-Esta constitución es el documento normativo supremo del proyecto; cualquier
-práctica o implementación que la contradiga debe corregirse.
+Esta constitución es el documento normativo supremo del proyecto. Toda práctica o implementación que la contradiga debe corregirse de inmediato.
 
-- Enmiendas: requieren documentación del cambio, justificación y ajuste de
-  versión según semver (MAJOR: remoción o redefinición de principios; MINOR:
-  nuevo principio o expansión material; PATCH: clarificaciones y correcciones
-  no semánticas). La documentación de cada enmienda se escribe en el mensaje
-  de su commit, y el PR la repite para quien revisa.
-- Cumplimiento: toda PR o revisión verifica la conformidad con esta
-  constitución; la complejidad adicional debe justificarse.
+- **Procedimiento de enmienda**:
+  - Requiere documentación explícita de la motivación y alcance en el commit y descripción del PR.
+  - Aplica versionado semántico según el tipo de cambio:
+    - **MAJOR**: Remoción, redefinición o cambios incompatibles en los principios.
+    - **MINOR**: Incorporación de un nuevo principio o ampliación material de directivas.
+    - **PATCH**: Correcciones, reducción de prosa, eliminación de redundancias o refinamientos no semánticos.
+- **Cumplimiento**: Todo Pull Request y code review debe validar conformidad estricta con esta constitución; la introducción de complejidad no prevista debe justificarse formalmente.
 
-**Version**: 2.1.0 | **Ratified**: 2026-09-05 | **Last Amended**: 2026-09-27
+**Version**: 2.1.1 | **Ratified**: 2026-09-05 | **Last Amended**: 2026-10-09
