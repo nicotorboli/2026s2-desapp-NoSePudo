@@ -1,4 +1,3 @@
-
 # NoSePudo Constitution
 
 ## Core Principles
@@ -6,8 +5,6 @@
 ### I. Backend en Go con net/http
 
 - Implementar el backend en Go exponiendo la API REST exclusivamente mediante `net/http` de la librería estándar.
-- Prohibir terminantemente el uso de frameworks web de terceros (e.g., Gin, Echo, Chi, Fiber).
-- Proveer soporte de ejecución dual obligatorio: ejecución local y contenedor Docker (`Dockerfile`).
 - Centralizar el código del backend bajo el módulo `backend/`, siendo su `go.mod` la única fuente de verdad sobre versiones de dependencias.
 
 ### II. Persistencia en PostgreSQL
@@ -110,20 +107,22 @@ Organizar el backend bajo `cmd/` e `internal/` con responsabilidades delimitadas
 ### XIII. Testing
 
 - Cubrir cada funcionalidad con tests unitarios, de integración y end-to-end (e2e).
+- Priorizar obligatoriamente tests de integración contra bases de datos reales mediante `testcontainers` (PostgreSQL) por sobre el uso de mocks.
+- Restringir el uso de mocks de forma exclusiva para evitar llamadas a servicios externos (APIs de terceros o dependencias de red externas); prohibido utilizar mocks para la base de datos o capas de persistencia.
+- Inmutabilidad estricta de tests: prohibido modificar, eliminar o relajar los tests existentes o creados a menos que el usuario lo solicite explícitamente. Ante la falla de un test, se debe analizar y corregir el comportamiento de la implementación que se está testeando en lugar de modificar el caso de prueba.
 - Aislar el alcance de pruebas según la capa:
   - `model`: tests unitarios puros en memoria, sin base de datos ni dependencias de I/O.
-  - `service`: tests unitarios con mocks de interfaces de `repository` y `adapters`.
+  - `service`: tests de integración priorizando persistencia real con `testcontainers` sobre mocks; mocks permitidos únicamente para llamadas a servicios externos.
   - `repository`: tests de integración contra una instancia real de PostgreSQL orquestada con `testcontainers`.
-  - `adapters`: tests contra stubs/fixtures grabados para servicios externos (sin llamadas reales a la red); inyección de reloj y fuentes de aleatoriedad para pruebas deterministas.
+  - `adapters`: tests contra stubs/fixtures/mocks para servicios externos (sin llamadas reales a la red); inyección de reloj y fuentes de aleatoriedad para pruebas deterministas.
   - `controller`: tests de integración HTTP validando status codes, payloads y contrato OpenAPI.
 - Diseñar casos de prueba mediante técnicas formales: clases de equivalencia (casos válidos e inválidos), análisis de valores límite (anterior, exacto y posterior) y tablas de decisión ante lógica multicondicional.
 - Automatizar los escenarios requeridos por el enunciado como suites e2e ejecutables en CI.
 
-### XIV. Semánticas
+### XIV. Preservación de comentarios y textos del usuario
 
-- Nombrar el directorio de cada especificación (`.specify/specs/<branch-name>`) de forma idéntica al nombre de la branch activa de Git.
-- Prohibir desarrollar o modificar especificaciones cuyo identificador no coincida unívocamente con la rama activa.
-- Garantizar la trazabilidad 1:1 entre rama de Git, especificación, tareas (`tasks.md`), commits y Pull Requests.
+- Prohibido modificar, alterar, borrar o parafrasear cualquier comentario o cadena de texto (string) ingresado o provisto por el usuario, a menos que el usuario indique explícitamente lo contrario.
+- Preservar intacta la literalidad de los strings y comentarios del usuario en el código fuente, especificaciones, documentación y artefactos de desarrollo, evitando normalizaciones o reescrituras no autorizadas.
 
 ## Technical Constraints
 
@@ -133,7 +132,7 @@ Organizar el backend bajo `cmd/` e `internal/` con responsabilidades delimitadas
 - **Seguridad**: `github.com/golang-jwt/jwt/v5` para manejo de tokens JWT y `golang.org/x/crypto/bcrypt` para hashing de contraseñas.
 - **Logging**: `log/slog` estándar configurado con handler de Zerolog (`github.com/rs/zerolog`).
 - **Frontend**: TypeScript y React en `frontend/`. `axios` restringido al módulo de abstracción HTTP. Estilos modulares con convención BEM.
-- **Testing**: `testing` estándar de Go y `testcontainers-go` para integración de PostgreSQL.
+- **Testing**: `testing` estándar de Go y `testcontainers-go` para integración de PostgreSQL. Mocks limitados estrictamente a servicios externos; prohibida la modificación de casos de prueba ante fallos sin instrucción expresa del usuario.
 
 ## Code Quality & Linting
 
@@ -180,4 +179,4 @@ Esta constitución es el documento normativo supremo del proyecto. Toda práctic
     - **PATCH**: Correcciones, reducción de prosa, eliminación de redundancias o refinamientos no semánticos.
 - **Cumplimiento**: Todo Pull Request y code review debe validar conformidad estricta con esta constitución; la introducción de complejidad no prevista debe justificarse formalmente.
 
-**Version**: 2.1.1 | **Ratified**: 2026-09-05 | **Last Amended**: 2026-10-09
+**Version**: 2.2.0 | **Ratified**: 2026-09-05 | **Last Amended**: 2026-10-13
