@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters"
@@ -97,6 +98,7 @@ func newTestServerWith(verifier middleware.TokenVerifier) *server.Server {
 			Auth:   &mockAuthController{},
 		},
 		middleware.NewContainer(verifier),
+		filepath.Join("..", "..", "api", "openapi.yaml"),
 	)
 }
 

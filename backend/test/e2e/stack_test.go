@@ -178,6 +178,7 @@ func newStackWith(t *testing.T, accessTTL, refreshTTL time.Duration) *stack {
 		log,
 		controllers,
 		middlewares,
+		filepath.Join("..", "..", "api", "openapi.yaml"),
 	))
 	t.Cleanup(httpServer.Close)
 
