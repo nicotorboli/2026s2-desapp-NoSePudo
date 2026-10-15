@@ -59,6 +59,13 @@ func (s *Server) routes() []route {
 			access:   AccessSuperuser,
 			endpoint: s.controllers.Sync.SyncPlayers(),
 		},
+		{
+			// Sólo el superusuario: dispara el scraper contra WhoScored y
+			// anexa una fotografía de estadísticas por jugador.
+			pattern:  "POST /players/statistics/sync",
+			access:   AccessSuperuser,
+			endpoint: s.controllers.StatisticsSync.SyncStatistics(),
+		},
 	}
 }
 

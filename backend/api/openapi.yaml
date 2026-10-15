@@ -298,6 +298,46 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /players/statistics/sync:
+    post:
+      tags: [players]
+      summary: Scrape player statistics from WhoScored
+      operationId: syncPlayerStatistics
+      x-access-level: superuser
+      description: |
+        Scrapes the statistics of the supported leagues from WhoScored and appends
+        one snapshot row per matched player. Reserved to the superuser: it hits an
+        external provider with anti-bot protection and appends to persistence.
+        Statistics are append-only: every run adds new rows and existing rows are
+        never updated, so the history is traced via each row's timestamp.
+      security:
+        - accessToken: []
+      responses:
+        '200':
+          description: The synchronization ran, fully or partially.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncStatisticsResult'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          description: The external provider's rate limit was hit before anything was scraped; existing data is intact.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: The external provider blocked the requests with an anti-bot challenge.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
 components:
 
   securitySchemes:
@@ -519,6 +559,17 @@ components:
         totalProcessed: {type: integer}
         totalUpdated: {type: integer}
         totalDeactivated: {type: integer}
+
+    SyncStatisticsResult:
+      type: object
+      required: [status, message, totalProcessed, totalMatched, totalUnmatched, totalInserted]
+      properties:
+        status: {type: string, enum: [success, partial_success]}
+        message: {type: string}
+        totalProcessed: {type: integer}
+        totalMatched: {type: integer}
+        totalUnmatched: {type: integer}
+        totalInserted: {type: integer}
 
     Error:
       type: object

@@ -7,15 +7,17 @@ import (
 )
 
 type Container struct {
-	Player       PlayerRepository
-	User         *UserRepository
-	RefreshToken *RefreshTokenRepository
+	Player           PlayerRepository
+	PlayerStatistics PlayerStatisticsRepository
+	User             *UserRepository
+	RefreshToken     *RefreshTokenRepository
 }
 
 func NewContainer(db *sql.DB, daos *dao.Container) *Container {
 	return &Container{
-		Player:       NewPlayerRepository(db, daos.Player, daos.Audit),
-		User:         NewUserRepository(daos.User),
-		RefreshToken: NewRefreshTokenRepository(daos.RefreshToken),
+		Player:           NewPlayerRepository(db, daos.Player, daos.Audit),
+		PlayerStatistics: NewPlayerStatisticsRepository(db, daos.PlayerStatistics),
+		User:             NewUserRepository(daos.User),
+		RefreshToken:     NewRefreshTokenRepository(daos.RefreshToken),
 	}
 }

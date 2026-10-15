@@ -9,15 +9,22 @@ import (
 )
 
 type Container struct {
-	Player PlayerService
-	Sync   PlayerSyncService
-	Auth   *Auth
+	Player         PlayerService
+	Sync           PlayerSyncService
+	StatisticsSync PlayerStatisticsSyncService
+	Auth           *Auth
 }
 
 func NewContainer(repos *repository.Container, adapterContainer *adapters.Container, logger *slog.Logger) *Container {
 	return &Container{
 		Player: NewPlayerService(repos.Player),
 		Sync:   NewPlayerSyncService(adapterContainer.FootballData, repos.Player, logger),
+		StatisticsSync: NewPlayerStatisticsSyncService(
+			adapterContainer.Whoscored,
+			repos.Player,
+			repos.PlayerStatistics,
+			logger,
+		),
 		Auth: NewAuthService(
 			repos.User,
 			adapterContainer.Password,

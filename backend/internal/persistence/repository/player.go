@@ -74,9 +74,6 @@ func (r *PlayerRepositoryImpl) GetPlayerByID(ctx context.Context, id int64) (mod
 }
 
 func (r *PlayerRepositoryImpl) SavePlayers(ctx context.Context, players []model.Player, leagueCode, actor string) (int, int, int, error) {
-	if r.db == nil {
-		return 0, 0, 0, fmt.Errorf("database connection is nil")
-	}
 
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
