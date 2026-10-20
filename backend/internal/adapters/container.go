@@ -23,8 +23,8 @@ const whoscoredRequestDelay = 1500 * time.Millisecond
 type Container struct {
 	Password     *Password
 	JWT          *JWT
-	FootballData *footballdata.FootballDataClient
-	Whoscored    *whoscored.WhoscoredClient
+	FootballData footballdata.Client
+	Whoscored    whoscored.Client
 }
 
 func NewContainer(cfg *configuration.Cfg) *Container {

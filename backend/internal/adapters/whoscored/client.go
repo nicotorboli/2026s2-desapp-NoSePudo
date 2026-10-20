@@ -22,8 +22,6 @@ var (
 	ErrRateLimitExceeded = errors.New("rate limit exceeded")
 )
 
-// leagueTournamentIDs mapea cada código de liga del catálogo al tournamentId
-// que WhoScored usa en su feed de estadísticas.
 var leagueTournamentIDs = map[string]int64{
 	"PL":  2,
 	"BL1": 3,
@@ -189,7 +187,6 @@ func (c *WhoscoredClient) newCollector(ctx context.Context) (*colly.Collector, e
 
 	return collector, nil
 }
-
 func (c *WhoscoredClient) feedURL(tournamentID int64, subcategory string) string {
 	params := url.Values{}
 	params.Set("category", "summary")
