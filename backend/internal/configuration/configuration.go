@@ -58,10 +58,10 @@ func LoadCfg() (*Cfg, error) {
 	}
 
 	return &Cfg{
-		PostgresDataSource: os.Getenv("NSPPSQLDS"),
-		FootballDataAPIKey: os.Getenv("NSPFOOTBALLDATAAPIKEY"),
-		Host:               cmp.Or(os.Getenv("NSPHOST"), defaultHost),
-		Port:               cmp.Or(os.Getenv("NSPPORT"), defaultPort),
+		PostgresDataSource: os.Getenv("NSP_PSQL_DS"),
+		FootballDataAPIKey: os.Getenv("NSP_FOOTBALLDATA_API_KEY"),
+		Host:               cmp.Or(os.Getenv("NSP_HOST"), defaultHost),
+		Port:               cmp.Or(os.Getenv("NSP_PORT"), defaultPort),
 		JWTSecret:          jwtSecret,
 		SuperuserEmail:     os.Getenv("NSP_SUPERUSER_EMAIL"),
 		SuperuserPassword:  os.Getenv("NSP_SUPERUSER_PASSWORD"),

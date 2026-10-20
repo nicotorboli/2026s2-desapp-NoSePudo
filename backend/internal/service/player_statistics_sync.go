@@ -125,14 +125,19 @@ func (s *PlayerStatisticsSyncServiceImpl) syncLeague(ctx context.Context, code s
 			continue
 		}
 		matched = append(matched, model.PlayerStatistics{
-			PlayerID:  playerID,
-			Goals:     row.Goals,
-			Assists:   row.Assists,
-			Shots:     row.Shots,
-			KeyPasses: row.KeyPasses,
-			Dribbles:  row.Dribbles,
-			Tackles:   row.Tackles,
-			Rating:    row.Rating,
+			PlayerID:      playerID,
+			Goals:         row.Goals,
+			Assists:       row.Assists,
+			Shots:         row.Shots,
+			KeyPasses:     row.KeyPasses,
+			Dribbles:      row.Dribbles,
+			Tackles:       row.Tackles,
+			Interceptions: row.Interceptions,
+			Fouls:         row.Fouls,
+			Clears:        row.Clears,
+			Blocks:        row.Blocks,
+			WasDribbled:   row.WasDribbled,
+			Rating:        row.Rating,
 		})
 	}
 

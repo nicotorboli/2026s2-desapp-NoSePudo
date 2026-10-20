@@ -1,16 +1,19 @@
 package whoscored
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
+	tls_client "github.com/bogdanfinn/tls-client"
+	"github.com/bogdanfinn/tls-client/profiles"
 	"github.com/gocolly/colly/v2"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
@@ -24,28 +27,26 @@ type Client interface {
 	FetchLeagueStatistics(ctx context.Context, leagueCode string) ([]model.PlayerStatisticsRow, error)
 }
 
-// leagueConfig mapea cada código de liga del catálogo a los identificadores
-// que WhoScored usa en sus URLs.
-type leagueConfig struct {
-	regionSlug   string
-	regionID     int64
-	tournamentID int64
+// leagueTournamentIDs mapea cada código de liga del catálogo al tournamentId
+// que WhoScored usa en su feed de estadísticas.
+var leagueTournamentIDs = map[string]int64{
+	"PL":  2,
+	"BL1": 3,
+	"PD":  4,
+	"SA":  5,
+	"FL1": 22,
 }
 
-var leagueConfigs = map[string]leagueConfig{
-	"PL":  {regionID: 252, tournamentID: 2, regionSlug: "England-Premier-League"},
-	"BL1": {regionID: 81, tournamentID: 3, regionSlug: "Germany-Bundesliga"},
-	"PD":  {regionID: 206, tournamentID: 4, regionSlug: "Spain-LaLiga"},
-	"SA":  {regionID: 108, tournamentID: 5, regionSlug: "Italy-Serie-A"},
-	"FL1": {regionID: 74, tournamentID: 22, regionSlug: "France-Ligue-1"},
-}
-
-const userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+const userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
 const (
 	defaultBaseURL      = "https://www.whoscored.com"
 	defaultRequestDelay = 4 * time.Second
 )
+
+// feedSubcategories son los dos feeds por liga: el ofensivo trae las métricas
+// de ataque y el defensivo las defensivas; el merge por playerId los une.
+var feedSubcategories = []string{"offensive", "defensive"}
 
 type WhoscoredClient struct {
 	baseURL      string
@@ -77,11 +78,11 @@ func NewClient(opts ...ClientOption) *WhoscoredClient {
 	return c
 }
 
-// FetchLeagueStatistics descarga las estadísticas de la liga indicada.
-// Primero visita la página regional para adquirir las cookies de sesión del
-// proveedor y después recorre las páginas del feed de estadísticas.
+// FetchLeagueStatistics descarga las estadísticas de la liga indicada desde
+// los feeds públicos de WhoScored. El primer pedido resuelve el handshake de
+// Cloudflare (301 que setea la cookie __cf_bm) y los siguientes van directo.
 func (c *WhoscoredClient) FetchLeagueStatistics(ctx context.Context, leagueCode string) ([]model.PlayerStatisticsRow, error) {
-	league, ok := leagueConfigs[leagueCode]
+	tournamentID, ok := leagueTournamentIDs[leagueCode]
 	if !ok {
 		return nil, fmt.Errorf("unsupported league code %s", leagueCode)
 	}
@@ -91,24 +92,15 @@ func (c *WhoscoredClient) FetchLeagueStatistics(ctx context.Context, leagueCode 
 		return nil, err
 	}
 
-	state := &scrapeState{totalPages: 1}
+	state := &scrapeState{}
 	collector.OnResponse(state.onResponse)
 
-	seedURL := fmt.Sprintf("%s/Regions/%d/Tournaments/%d/%s", c.baseURL, league.regionID, league.tournamentID, league.regionSlug)
-	if err := collector.Visit(seedURL); err != nil {
-		return nil, fmt.Errorf("seed visit: %w", err)
-	}
-	collector.Wait()
-	if state.fetchErr != nil {
-		return nil, state.fetchErr
-	}
-
-	for page := 1; page <= state.totalPages; page++ {
+	for _, subcategory := range feedSubcategories {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		if err := collector.Visit(c.feedURL(league, page)); err != nil {
-			return nil, fmt.Errorf("visit statistics page %d: %w", page, err)
+		if err := collector.Visit(c.feedURL(tournamentID, subcategory)); err != nil {
+			return nil, fmt.Errorf("visit statistics feed %s: %w", subcategory, err)
 		}
 		collector.Wait()
 		if state.fetchErr != nil {
@@ -116,16 +108,16 @@ func (c *WhoscoredClient) FetchLeagueStatistics(ctx context.Context, leagueCode 
 		}
 	}
 
-	return state.rows, nil
+	return mergeFeeds(state.offensive, state.defensive), nil
 }
 
-// scrapeState acumula el resultado de la descarga a medida que el collector
-// visita las páginas del feed.
+// scrapeState acumula las filas de cada feed a medida que el collector visita
+// las URLs. Los callbacks corren en la goroutine de Visit, así que no hay
+// acceso concurrente.
 type scrapeState struct {
-	fetchErr   error
-	rows       []model.PlayerStatisticsRow
-	totalPages int
-	mu         sync.Mutex
+	fetchErr  error
+	offensive []playerTableStat
+	defensive []playerTableStat
 }
 
 func (s *scrapeState) onResponse(res *colly.Response) {
@@ -148,26 +140,35 @@ func (s *scrapeState) onResponse(res *colly.Response) {
 		s.fetchErr = ErrBotChallenge
 		return
 	}
-	page, err := parseFeedPage(res.Body)
+	rows, err := parseFeedPage(res.Body)
 	if err != nil {
 		s.fetchErr = err
 		return
 	}
-	s.mu.Lock()
-	s.rows = append(s.rows, page.rows...)
-	if page.totalPages > s.totalPages {
-		s.totalPages = page.totalPages
+	if res.Request.URL.Query().Get("subcategory") == "offensive" {
+		s.offensive = rows
+		return
 	}
-	s.mu.Unlock()
+	s.defensive = rows
 }
 
 func (c *WhoscoredClient) newCollector(ctx context.Context) (*colly.Collector, error) {
+	tlsClient, err := tls_client.NewHttpClient(nil,
+		tls_client.WithClientProfile(profiles.Chrome_131),
+		tls_client.WithTimeoutSeconds(30),
+		tls_client.WithForceHttp1(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create tls client: %w", err)
+	}
+
 	collector := colly.NewCollector(
 		colly.AllowedDomains("www.whoscored.com", "127.0.0.1", "localhost"),
 		colly.ParseHTTPErrorResponse(),
 		colly.StdlibContext(ctx),
 		colly.UserAgent(userAgent),
 	)
+	collector.WithTransport(&tlsClientRoundTripper{dialTLS: tlsClient.GetTLSDialer()})
 	collector.SetRequestTimeout(30 * time.Second)
 	if err := collector.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
@@ -179,10 +180,40 @@ func (c *WhoscoredClient) newCollector(ctx context.Context) (*colly.Collector, e
 	return collector, nil
 }
 
-func (c *WhoscoredClient) feedURL(league leagueConfig, page int) string {
+// tlsClientRoundTripper habla HTTP/1.1 sobre conexiones TLS con el ClientHello
+// de Chrome 131 que produce tls-client. Cloudflare distingue a los clientes
+// por ese fingerprint y bloquea al net/http estándar.
+type tlsClientRoundTripper struct {
+	dialTLS tls_client.TLSDialerFunc
+}
+
+func (t *tlsClientRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	addr := req.URL.Host
+	if !strings.Contains(addr, ":") {
+		addr = net.JoinHostPort(req.URL.Hostname(), "443")
+	}
+
+	conn, err := t.dialTLS(req.Context(), "tcp", addr)
+	if err != nil {
+		return nil, fmt.Errorf("tls dial: %w", err)
+	}
+	defer func() { _ = conn.Close() }()
+
+	if writeErr := req.Write(conn); writeErr != nil {
+		return nil, fmt.Errorf("write request: %w", writeErr)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(conn), req)
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
+	return resp, nil
+}
+
+func (c *WhoscoredClient) feedURL(tournamentID int64, subcategory string) string {
 	params := url.Values{}
 	params.Set("category", "summary")
-	params.Set("subcategory", "all")
+	params.Set("subcategory", subcategory)
 	params.Set("statsAccumulationType", "0")
 	params.Set("isCurrent", "true")
 	params.Set("playerId", "")
@@ -201,11 +232,11 @@ func (c *WhoscoredClient) feedURL(league leagueConfig, page int) string {
 	params.Set("positionOptions", "")
 	params.Set("timeOfTheGame", "")
 	params.Set("timezoneOffset", "")
-	params.Set("tournamentId", strconv.FormatInt(league.tournamentID, 10))
+	params.Set("tournamentId", strconv.FormatInt(tournamentID, 10))
 	params.Set("useStatisticsFilter", "true")
 	params.Set("formationId", "")
 	params.Set("includeZeroMinSubs", "false")
-	params.Set("page", strconv.Itoa(page))
+	params.Set("page", "1")
 	return fmt.Sprintf("%s/statisticsfeed/1/GetPlayerStatistics?%s", c.baseURL, params.Encode())
 }
 

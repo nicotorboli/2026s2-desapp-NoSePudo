@@ -12,6 +12,7 @@ type Container struct {
 	Player         PlayerService
 	Sync           PlayerSyncService
 	StatisticsSync PlayerStatisticsSyncService
+	PlayerStats    PlayerStatisticsService
 	Auth           *Auth
 }
 
@@ -25,6 +26,7 @@ func NewContainer(repos *repository.Container, adapterContainer *adapters.Contai
 			repos.PlayerStatistics,
 			logger,
 		),
+		PlayerStats: NewPlayerStatisticsService(repos.Player, repos.PlayerStatistics),
 		Auth: NewAuthService(
 			repos.User,
 			adapterContainer.Password,

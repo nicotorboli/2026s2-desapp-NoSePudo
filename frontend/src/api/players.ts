@@ -32,6 +32,22 @@ export interface PlayerDetailDTO {
   updatedAt: string;
 }
 
+export interface PlayerStatisticsDTO {
+  createdAt: string;
+  goals: number;
+  assists: number;
+  shots: number;
+  keyPasses: number;
+  dribbles: number;
+  tackles: number;
+  interceptions: number;
+  fouls: number;
+  clears: number;
+  blocks: number;
+  wasDribbled: number;
+  rating: number;
+}
+
 export interface PlayerFilterParams {
   page?: number;
   limit?: number;
@@ -54,4 +70,8 @@ export const getPlayers = async (params?: PlayerFilterParams): Promise<Paginated
 
 export const getPlayerById = async (id: number): Promise<PlayerDetailDTO> => {
   return get<PlayerDetailDTO>(`/players/${id}`);
+};
+
+export const getPlayerStatistics = async (id: number): Promise<PlayerStatisticsDTO[]> => {
+  return get<PlayerStatisticsDTO[]>(`/players/${id}/statistics`);
 };

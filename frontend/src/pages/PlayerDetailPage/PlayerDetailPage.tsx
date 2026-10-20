@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { getPlayerById, PlayerDetailDTO } from '../../api/players';
+import {
+  getPlayerById,
+  getPlayerStatistics,
+  PlayerDetailDTO,
+  PlayerStatisticsDTO,
+} from '../../api/players';
 import { PlayerCard } from '../../components/PlayerCard/PlayerCard';
+import { PlayerStatistics } from '../../components/PlayerStatistics/PlayerStatistics';
 import './PlayerDetailPage.css';
 
 interface PlayerDetailPageProps {
@@ -10,6 +16,7 @@ interface PlayerDetailPageProps {
 
 export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({ playerId, onBack }) => {
   const [player, setPlayer] = useState<PlayerDetailDTO | null>(null);
+  const [stats, setStats] = useState<PlayerStatisticsDTO[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,6 +43,29 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({ playerId, on
       isMounted = false;
     };
   }, [playerId]);
+
+  useEffect(() => {
+    if (!player) {
+      return;
+    }
+    let isMounted = true;
+
+    getPlayerStatistics(playerId)
+      .then((data) => {
+        if (isMounted) {
+          setStats(data);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setStats([]);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [player, playerId]);
 
   return (
     <main className="player-detail-page">
@@ -72,7 +102,12 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({ playerId, on
           </div>
         )}
 
-        {!isLoading && !error && player && <PlayerCard player={player} />}
+        {!isLoading && !error && player && (
+          <>
+            <PlayerCard player={player} />
+            {stats !== null && <PlayerStatistics stats={stats} />}
+          </>
+        )}
       </section>
     </main>
   );

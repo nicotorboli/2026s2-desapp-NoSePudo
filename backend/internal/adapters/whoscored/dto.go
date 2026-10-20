@@ -3,7 +3,6 @@ package whoscored
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
@@ -19,86 +18,63 @@ type paging struct {
 	NumberPages int `json:"numberPages"`
 }
 
+// playerTableStat es la fila plana que devuelve el feed: cada categoría trae
+// sus propias columnas y los campos ausentes quedan en cero.
 type playerTableStat struct {
-	Name     string          `json:"name"`
-	Rating   any             `json:"rating"`
-	Stats    map[string]stat `json:"stats"`
-	TeamName string          `json:"teamName"`
+	Name                   string  `json:"name"`
+	TeamName               string  `json:"teamName"`
+	Goal                   float64 `json:"goal"`
+	AssistTotal            float64 `json:"assistTotal"`
+	ShotsPerGame           float64 `json:"shotsPerGame"`
+	KeyPassPerGame         float64 `json:"keyPassPerGame"`
+	DribbleWonPerGame      float64 `json:"dribbleWonPerGame"`
+	TacklePerGame          float64 `json:"tacklePerGame"`
+	InterceptionPerGame    float64 `json:"interceptionPerGame"`
+	FoulsPerGame           float64 `json:"foulsPerGame"`
+	ClearancePerGame       float64 `json:"clearancePerGame"`
+	OutfielderBlockPerGame float64 `json:"outfielderBlockPerGame"`
+	WasDribbledPerGame     float64 `json:"wasDribbledPerGame"`
+	PlayerID               int64   `json:"playerId"`
+	Rating                 float64 `json:"rating"`
 }
 
-type stat struct {
-	Value any `json:"value"`
-}
-
-type feedPage struct {
-	rows       []model.PlayerStatisticsRow
-	totalPages int
-}
-
-func parseFeedPage(body []byte) (feedPage, error) {
+func parseFeedPage(body []byte) ([]playerTableStat, error) {
 	var feed statisticsFeed
 	if err := json.Unmarshal(body, &feed); err != nil {
-		return feedPage{}, fmt.Errorf("unmarshal statistics feed: %w", err)
+		return nil, fmt.Errorf("unmarshal statistics feed: %w", err)
+	}
+	return feed.PlayerTableStats, nil
+}
+
+// mergeFeeds combina el feed ofensivo con el defensivo por playerId: del
+// ofensivo salen el nombre, el club y las métricas de ataque; del defensivo,
+// las entradas, intercepciones, faltas, despejes, bloqueos y gambetas recibidas.
+func mergeFeeds(offensive, defensive []playerTableStat) []model.PlayerStatisticsRow {
+	defensiveByPlayer := make(map[int64]playerTableStat, len(defensive))
+	for _, row := range defensive {
+		defensiveByPlayer[row.PlayerID] = row
 	}
 
-	rows := make([]model.PlayerStatisticsRow, 0, len(feed.PlayerTableStats))
-	for _, p := range feed.PlayerTableStats {
-		rating, _ := statNumber(p.Rating)
-		if r, ok := firstStat(p.Stats, "rating"); ok {
-			rating = r
-		}
+	rows := make([]model.PlayerStatisticsRow, 0, len(offensive))
+	for _, row := range offensive {
+		def := defensiveByPlayer[row.PlayerID]
 		rows = append(rows, model.PlayerStatisticsRow{
-			Name:      strings.TrimSpace(p.Name),
-			ClubName:  strings.TrimSpace(p.TeamName),
-			Goals:     statInt(p.Stats, "goals"),
-			Assists:   statInt(p.Stats, "assists"),
-			Shots:     statInt(p.Stats, "totalShots", "shots"),
-			KeyPasses: statInt(p.Stats, "keyPasses", "totalKeyPasses"),
-			Dribbles:  statInt(p.Stats, "dribbles", "totalSuccessfulDribbles", "successfulDribbles"),
-			Tackles:   statInt(p.Stats, "tackles", "totalTackles"),
-			Rating:    rating,
+			Name:          strings.TrimSpace(row.Name),
+			ClubName:      strings.TrimSpace(row.TeamName),
+			Goals:         int(row.Goal + 0.5),
+			Assists:       int(row.AssistTotal + 0.5),
+			Shots:         row.ShotsPerGame,
+			KeyPasses:     row.KeyPassPerGame,
+			Dribbles:      row.DribbleWonPerGame,
+			Tackles:       def.TacklePerGame,
+			Interceptions: def.InterceptionPerGame,
+			Fouls:         def.FoulsPerGame,
+			Clears:        def.ClearancePerGame,
+			Blocks:        def.OutfielderBlockPerGame,
+			WasDribbled:   def.WasDribbledPerGame,
+			Rating:        row.Rating,
 		})
 	}
 
-	return feedPage{rows: rows, totalPages: feed.Paging.NumberPages}, nil
-}
-
-func firstStat(stats map[string]stat, keys ...string) (float64, bool) {
-	for _, key := range keys {
-		if s, ok := stats[key]; ok {
-			if v, ok := statNumber(s.Value); ok {
-				return v, true
-			}
-		}
-	}
-	return 0, false
-}
-
-func statInt(stats map[string]stat, keys ...string) int {
-	v, ok := firstStat(stats, keys...)
-	if !ok {
-		return 0
-	}
-	return int(v + 0.5)
-}
-
-func statNumber(raw any) (float64, bool) {
-	switch v := raw.(type) {
-	case float64:
-		return v, true
-	case json.Number:
-		f, err := v.Float64()
-		if err != nil {
-			return 0, false
-		}
-		return f, true
-	case string:
-		f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
-		if err != nil {
-			return 0, false
-		}
-		return f, true
-	default:
-		return 0, false
-	}
+	return rows
 }

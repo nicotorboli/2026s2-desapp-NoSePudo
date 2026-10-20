@@ -4,20 +4,13 @@ info:
   title: NoSePudo API
   version: 0.2.0
   description: |
-    REST API of the NoSePudo backend. This is the maintained document that
-    Principle VII requires: it describes the API as it is, not as one feature
-    designed it, and it keeps describing it after the next delivery.
+    REST API of the NoSePudo backend.
 
     `internal/server` has a test that reads this file and compares its paths and
-    their `x-access-level` against the route table, so an endpoint that ships
-    undocumented — or documented with the wrong level — fails the build rather
-    than ageing quietly.
+    their `x-access-level` against the route table this assures that no endpoint goes undocumented as it fails on the build.
 
-    Every endpoint declares an access level. The declaration is not
-    decorative: it is the value the route table carries, and it is what selects the
-    middleware chain applied to the route. The `x-access-level` extension on each
-    operation mirrors that declaration, so the document and the code state the same
-    thing and a contract test can check they agree.
+    Every endpoint declares an access level, corresponding to the `x-access-level` extension on each
+    operation.
 
     Access levels:
 
@@ -25,11 +18,6 @@ info:
       - `authenticated` a valid access token (`typ: access`)
       - `renewal`       a valid refresh token (`typ: refresh`), and nothing else
       - `superuser`     a valid access token whose `priv` claim is `superuser`
-
-    Transport security is assumed rather than provided here: a bearer token in an
-    `Authorization` header is readable by anything that can see the traffic. Serving
-    this API over TLS is a deployment concern (see the spec's assumptions).
-
 servers:
   - url: http://localhost:8080
     description: Local development
@@ -88,7 +76,7 @@ paths:
       description: |
         Exchanges an email and a password for a short-lived access token and a
         longer-lived refresh token. A wrong password and an unknown account produce
-        the same response, byte for byte.
+        the same response.
       security: []
       requestBody:
         required: true
@@ -196,12 +184,7 @@ paths:
       tags: [players]
       summary: List the player catalog
       operationId: listPlayers
-      x-access-level: authenticated
-      description: |
-        Requires a valid access token. This endpoint existed before the feature and was
-        anonymous; protecting it is what makes the credential govern the API rather than
-        merely exist (US3). The decision is recorded rather than implicit, so a later
-        delivery can reopen it by changing one declaration.
+      x-access-level: anonymous
       security:
         - accessToken: []
       parameters:
@@ -235,7 +218,7 @@ paths:
       tags: [players]
       summary: Get one player of the catalog
       operationId: getPlayer
-      x-access-level: authenticated
+      x-access-level: anonymous
       security:
         - accessToken: []
       parameters:
@@ -247,6 +230,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlayerDetail'
+        '400':
+          description: The id is not a positive integer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: No player has that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: player not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /players/{id}/statistics:
+    get:
+      tags: [players]
+      summary: Get the statistics snapshots of one player
+      operationId: getPlayerStatistics
+      x-access-level: anonymous 
+      description: |
+        Returns the statistics snapshots of the player, newest first. Statistics
+        are append-only: each synchronization run adds one row per player, so a
+        player can have several snapshots and none is ever updated in place.
+      security:
+        - accessToken: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+      responses:
+        '200':
+          description: The player's statistics snapshots, newest first. Empty when the player has no statistics yet.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlayerStatisticsItem'
         '400':
           description: The id is not a positive integer.
           content:
@@ -570,6 +595,24 @@ components:
         totalMatched: {type: integer}
         totalUnmatched: {type: integer}
         totalInserted: {type: integer}
+
+    PlayerStatisticsItem:
+      type: object
+      required: [createdAt, goals, assists, shots, keyPasses, dribbles, tackles, interceptions, fouls, clears, blocks, wasDribbled, rating]
+      properties:
+        createdAt: {type: string, format: date-time, description: When this snapshot was scraped}
+        goals: {type: integer, description: Season total}
+        assists: {type: integer, description: Season total}
+        shots: {type: number, format: double, description: Per game}
+        keyPasses: {type: number, format: double, description: Per game}
+        dribbles: {type: number, format: double, description: Successful dribbles per game}
+        tackles: {type: number, format: double, description: Per game}
+        interceptions: {type: number, format: double, description: Per game}
+        fouls: {type: number, format: double, description: Per game}
+        clears: {type: number, format: double, description: Per game}
+        blocks: {type: number, format: double, description: Outfielder blocks per game}
+        wasDribbled: {type: number, format: double, description: Times dribbled past per game}
+        rating: {type: number, format: double}
 
     Error:
       type: object

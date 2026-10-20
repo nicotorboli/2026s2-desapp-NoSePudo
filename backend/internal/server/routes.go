@@ -10,15 +10,11 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
-// route es la declaración de un endpoint: su patrón, el nivel de acceso que
-// exige y el endpoint en sí.
 type route struct {
 	endpoint httphandler.Endpoint
 	pattern  string
 	access   AccessLevel
 }
-
-// routes describe las rutas y no registra ninguna.
 
 func (s *Server) routes() []route {
 	return []route{
@@ -44,34 +40,32 @@ func (s *Server) routes() []route {
 		},
 		{
 			pattern:  "GET /players",
-			access:   AccessAuthenticated,
+			access:   AccessAnonymous,
 			endpoint: s.controllers.Player.GetPlayers(),
 		},
 		{
 			pattern:  "GET /players/{id}",
-			access:   AccessAuthenticated,
+			access:   AccessAnonymous,
 			endpoint: s.controllers.Player.GetPlayerByID(),
 		},
 		{
-			// Sólo el superusuario: dispara pedidos contra una API externa con
-			// rate limit y reescribe el catálogo.
+			pattern:  "GET /players/{id}/statistics",
+			access:   AccessAuthenticated,
+			endpoint: s.controllers.Sync.GetPlayerStatistics(),
+		},
+		{
 			pattern:  "POST /players/sync",
 			access:   AccessSuperuser,
 			endpoint: s.controllers.Sync.SyncPlayers(),
 		},
 		{
-			// Sólo el superusuario: dispara el scraper contra WhoScored y
-			// anexa una fotografía de estadísticas por jugador.
 			pattern:  "POST /players/statistics/sync",
 			access:   AccessSuperuser,
-			endpoint: s.controllers.StatisticsSync.SyncStatistics(),
+			endpoint: s.controllers.Sync.SyncStatistics(),
 		},
 	}
 }
 
-// buildMux es el único lugar del programa que llama a Handle sobre un
-// ServeMux. Recibe la descripción y la convierte en un router, aplicando a
-// cada ruta la cadena que su nivel implica.
 func buildMux(routes []route, logger *slog.Logger, middlewares *middleware.Container) *http.ServeMux {
 	mux := http.NewServeMux()
 
@@ -82,7 +76,6 @@ func buildMux(routes []route, logger *slog.Logger, middlewares *middleware.Conta
 	return mux
 }
 
-// chainFor devuelve el endpoint ya decorado según el nivel declarado.
 func chainFor(r route, middlewares *middleware.Container) httphandler.Endpoint {
 	switch r.access {
 	case AccessAnonymous:
@@ -98,9 +91,6 @@ func chainFor(r route, middlewares *middleware.Container) httphandler.Endpoint {
 	case AccessUndeclared:
 		panic(fmt.Sprintf("la ruta %q no declara su nivel de acceso", r.pattern))
 	default:
-		// Un nivel que exige credencial pero cuyo middleware todavía no se
-		// construyó tiene que reventar acá. Servir la ruta sin la cadena sería
-		// dejarla abierta mientras la tabla dice que está protegida.
 		panic(fmt.Sprintf(
 			"la ruta %q declara el nivel %s, pero su middleware todavía no existe",
 			r.pattern, r.access,

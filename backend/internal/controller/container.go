@@ -12,10 +12,8 @@ type PlayerController interface {
 
 type SyncController interface {
 	SyncPlayers() httphandler.Endpoint
-}
-
-type StatisticsSyncController interface {
 	SyncStatistics() httphandler.Endpoint
+	GetPlayerStatistics() httphandler.Endpoint
 }
 
 type AuthController interface {
@@ -26,17 +24,19 @@ type AuthController interface {
 }
 
 type Container struct {
-	Player         PlayerController
-	Sync           SyncController
-	StatisticsSync *RestStatisticsSyncController
-	Auth           AuthController
+	Player PlayerController
+	Sync   SyncController
+	Auth   AuthController
 }
 
 func NewContainer(services *service.Container) *Container {
 	return &Container{
-		Player:         NewPlayerController(services.Player),
-		Sync:           NewSyncController(services.Sync),
-		StatisticsSync: NewStatisticsSyncController(services.StatisticsSync),
-		Auth:           NewAuthController(services.Auth),
+		Player: NewPlayerController(services.Player),
+		Sync: NewSyncController(
+			services.Sync,
+			services.StatisticsSync,
+			services.PlayerStats,
+		),
+		Auth: NewAuthController(services.Auth),
 	}
 }

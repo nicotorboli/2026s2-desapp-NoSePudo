@@ -11,6 +11,7 @@ import (
 
 type PlayerStatisticsRepository interface {
 	SaveStatistics(ctx context.Context, rows []model.PlayerStatistics) (int, int, error)
+	GetPlayerStatistics(ctx context.Context, playerID int64) ([]model.PlayerStatistics, error)
 }
 
 type PlayerStatisticsRepositoryImpl struct {
@@ -23,6 +24,14 @@ func NewPlayerStatisticsRepository(db *sql.DB, d dao.PlayerStatisticsDAO) *Playe
 		db:  db,
 		dao: d,
 	}
+}
+
+func (r *PlayerStatisticsRepositoryImpl) GetPlayerStatistics(ctx context.Context, playerID int64) ([]model.PlayerStatistics, error) {
+	stats, err := r.dao.ListByPlayerID(ctx, playerID)
+	if err != nil {
+		return nil, fmt.Errorf("repository list player statistics: %w", err)
+	}
+	return stats, nil
 }
 
 func (r *PlayerStatisticsRepositoryImpl) SaveStatistics(ctx context.Context, rows []model.PlayerStatistics) (int, int, error) {
