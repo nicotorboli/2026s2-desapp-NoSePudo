@@ -91,8 +91,8 @@ func TestLoadCfgAppliesDefaultsForTheOptionalValues(t *testing.T) {
 
 func TestLoadCfgPrefersTheEnvironmentOverTheDefaults(t *testing.T) {
 	withSecret(t)
-	t.Setenv("NSPHOST", "0.0.0.0")
-	t.Setenv("NSPPORT", "9090")
+	t.Setenv("NSP_HOST", "0.0.0.0")
+	t.Setenv("NSP_PORT", "9090")
 	t.Setenv("NSP_ACCESS_TTL", "1s")
 	t.Setenv("NSP_REFRESH_TTL", "48h")
 	t.Setenv("NSP_BCRYPT_COST", "4")
