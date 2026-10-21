@@ -153,10 +153,9 @@ func (s *scrapeState) onResponse(res *colly.Response) {
 }
 
 func (c *WhoscoredClient) newCollector(ctx context.Context) (*colly.Collector, error) {
-	tlsClient, err := tls_client.NewHttpClient(nil,
+	tlsClient, err := tls_client.NewHttpClient(tls_client.NewNoopLogger(),
 		tls_client.WithClientProfile(profiles.Chrome_131),
 		tls_client.WithTimeoutSeconds(30),
-		tls_client.WithForceHttp1(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create tls client: %w", err)
@@ -168,8 +167,23 @@ func (c *WhoscoredClient) newCollector(ctx context.Context) (*colly.Collector, e
 		colly.StdlibContext(ctx),
 		colly.UserAgent(userAgent),
 	)
-	collector.WithTransport(&tlsClientRoundTripper{dialTLS: tlsClient.GetTLSDialer()})
+
+	// Standard net/http.Transport handles the request/response lifecycle cleanly.
+	// We only swap out DialTLSContext so it uses the Chrome 131 TLS fingerprint.
+	transport := &http.Transport{
+		DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			// Enforce IPv4 ("tcp4") to bypass Cloudflare IPv6 blocks
+			return tlsClient.GetTLSDialer()(ctx, "tcp4", addr)
+		},
+		ForceAttemptHTTP2:   true,
+		MaxIdleConns:        100,
+		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
+
+	collector.WithTransport(transport)
 	collector.SetRequestTimeout(30 * time.Second)
+
 	if err := collector.Limit(&colly.LimitRule{
 		DomainGlob:  "*",
 		Parallelism: 1,
@@ -177,6 +191,7 @@ func (c *WhoscoredClient) newCollector(ctx context.Context) (*colly.Collector, e
 	}); err != nil {
 		return nil, fmt.Errorf("configure request rate limit: %w", err)
 	}
+
 	return collector, nil
 }
 
