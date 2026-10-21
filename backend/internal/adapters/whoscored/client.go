@@ -1,7 +1,6 @@
 package whoscored
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -195,36 +194,6 @@ func (c *WhoscoredClient) newCollector(ctx context.Context) (*colly.Collector, e
 	return collector, nil
 }
 
-// tlsClientRoundTripper habla HTTP/1.1 sobre conexiones TLS con el ClientHello
-// de Chrome 131 que produce tls-client. Cloudflare distingue a los clientes
-// por ese fingerprint y bloquea al net/http estándar.
-type tlsClientRoundTripper struct {
-	dialTLS tls_client.TLSDialerFunc
-}
-
-func (t *tlsClientRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	addr := req.URL.Host
-	if !strings.Contains(addr, ":") {
-		addr = net.JoinHostPort(req.URL.Hostname(), "443")
-	}
-
-	conn, err := t.dialTLS(req.Context(), "tcp", addr)
-	if err != nil {
-		return nil, fmt.Errorf("tls dial: %w", err)
-	}
-	defer func() { _ = conn.Close() }()
-
-	if writeErr := req.Write(conn); writeErr != nil {
-		return nil, fmt.Errorf("write request: %w", writeErr)
-	}
-
-	resp, err := http.ReadResponse(bufio.NewReader(conn), req)
-	if err != nil {
-		return nil, fmt.Errorf("read response: %w", err)
-	}
-	return resp, nil
-}
-
 func (c *WhoscoredClient) feedURL(tournamentID int64, subcategory string) string {
 	params := url.Values{}
 	params.Set("category", "summary")
@@ -235,7 +204,7 @@ func (c *WhoscoredClient) feedURL(tournamentID int64, subcategory string) string
 	params.Set("teamIds", "")
 	params.Set("matchId", "")
 	params.Set("stageId", "")
-	params.Set("tournamentOptions", "2")
+	params.Set("tournamentOptions", strconv.FormatInt(tournamentID, 10))
 	params.Set("sortBy", "Rating")
 	params.Set("sortAscending", "")
 	params.Set("age", "")

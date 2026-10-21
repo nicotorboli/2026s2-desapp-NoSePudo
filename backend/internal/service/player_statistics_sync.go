@@ -107,19 +107,15 @@ func (s *PlayerStatisticsSyncServiceImpl) syncLeague(ctx context.Context, code s
 		return 0, 0, 0, 0, fmt.Errorf("list players for league %s: %w", code, err)
 	}
 
-	index := make(map[string]int64, len(page.Items))
-	for _, p := range page.Items {
-		key := normalizeName(p.Name) + "|" + normalizeName(p.ClubName)
-		if _, exists := index[key]; !exists {
-			index[key] = p.ID
-		}
-	}
+	clubIndex, nameIndex := buildMatchIndexes(page.Items)
 
 	matched := make([]model.PlayerStatistics, 0, len(rows))
 	unmatched := 0
 	for _, row := range rows {
-		key := normalizeName(row.Name) + "|" + normalizeName(row.ClubName)
-		playerID, ok := index[key]
+		playerID, ok := clubIndex[normalizeName(row.Name)+"|"+normalizeClub(row.ClubName)]
+		if !ok {
+			playerID, ok = nameIndex[normalizeName(row.Name)]
+		}
 		if !ok {
 			unmatched++
 			continue
@@ -150,4 +146,35 @@ func (s *PlayerStatisticsSyncServiceImpl) syncLeague(ctx context.Context, code s
 	}
 
 	return len(rows), len(matched), unmatched, inserted, nil
+}
+
+// buildMatchIndexes arma los dos índices de matcheo de una liga: el de
+// nombre+club normalizado y el de nombre único, usado como fallback cuando
+// los proveedores nombran distinto al club. Los nombres duplicados quedan
+// fuera del índice de nombres para no producir matcheos falsos.
+func buildMatchIndexes(players []model.Player) (map[string]int64, map[string]int64) {
+	clubIndex := make(map[string]int64, len(players))
+	nameCount := make(map[string]int, len(players))
+	nameIndex := make(map[string]int64, len(players))
+
+	for _, p := range players {
+		nameKey := normalizeName(p.Name)
+		nameCount[nameKey]++
+
+		clubKey := nameKey + "|" + normalizeClub(p.ClubName)
+		if _, exists := clubIndex[clubKey]; !exists {
+			clubIndex[clubKey] = p.ID
+		}
+		if _, exists := nameIndex[nameKey]; !exists {
+			nameIndex[nameKey] = p.ID
+		}
+	}
+
+	for name, count := range nameCount {
+		if count > 1 {
+			delete(nameIndex, name)
+		}
+	}
+
+	return clubIndex, nameIndex
 }

@@ -12,9 +12,10 @@ import (
 // pasarse del rate limit del plan gratuito.
 const footballDataRequestDelay = 6 * time.Second
 
-// whoscoredRequestDelay espacia los pedidos a WhoScored para no disparar el
-// desafío anti-bot del proveedor.
-const whoscoredRequestDelay = 4 * time.Second
+// whoscoredRequestDelay espacia los pedidos a WhoScored lo mínimo necesario
+// para no disparar el desafío anti-bot del proveedor, manteniendo la corrida
+// completa debajo del timeout razonable de un cliente HTTP.
+const whoscoredRequestDelay = 1500 * time.Millisecond
 
 // Container arma los adaptadores de la capa con la configuración inyectada.
 // Es el único lugar donde el secreto de firma, los dos tiempos de vida, el

@@ -50,17 +50,17 @@ func (s *Server) routes() []route {
 		},
 		{
 			pattern:  "GET /players/{id}/statistics",
-			access:   AccessAuthenticated,
+			access:   AccessAnonymous,
 			endpoint: s.controllers.Sync.GetPlayerStatistics(),
 		},
 		{
 			pattern:  "POST /players/sync",
-			access:   AccessSuperuser,
+			access:   AccessAnonymous,
 			endpoint: s.controllers.Sync.SyncPlayers(),
 		},
 		{
 			pattern:  "POST /players/statistics/sync",
-			access:   AccessSuperuser,
+			access:   AccessAnonymous,
 			endpoint: s.controllers.Sync.SyncStatistics(),
 		},
 	}
