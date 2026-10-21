@@ -1,6 +1,14 @@
 package model
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+var (
+	ErrQuoteNotFound      = errors.New("el jugador no tiene una cotización vigente")
+	ErrQuoteAlreadyExists = errors.New("el jugador ya tiene una cotización con esa estrategia")
+)
 
 const (
 	InitialQuoteStrategy        = "initial"

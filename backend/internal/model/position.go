@@ -2,7 +2,10 @@ package model
 
 import "errors"
 
-var ErrInsufficientTokens = errors.New("la posición disponible no alcanza")
+var (
+	ErrInsufficientTokens = errors.New("la posición disponible no alcanza")
+	ErrPositionNotFound   = errors.New("no existe una posición de ese usuario en ese jugador")
+)
 
 type Position struct {
 	UserID            int64

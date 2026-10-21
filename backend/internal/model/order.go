@@ -8,6 +8,7 @@ import (
 var (
 	ErrOrderNotLive    = errors.New("la orden ya no está viva")
 	ErrInvalidQuantity = errors.New("la cantidad no es válida")
+	ErrOrderNotFound   = errors.New("no existe una orden con ese identificador")
 )
 
 type OrderSide string

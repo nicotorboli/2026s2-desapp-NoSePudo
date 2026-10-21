@@ -3,9 +3,11 @@ package model
 import "errors"
 
 var (
-	ErrInvalidAmount       = errors.New("el monto no es válido")
-	ErrInsufficientFunds   = errors.New("el saldo disponible no alcanza")
-	ErrReservationTooSmall = errors.New("la reserva no alcanza para liberar ese monto")
+	ErrInvalidAmount        = errors.New("el monto no es válido")
+	ErrInsufficientFunds    = errors.New("el saldo disponible no alcanza")
+	ErrReservationTooSmall  = errors.New("la reserva no alcanza para liberar ese monto")
+	ErrAccountNotFound      = errors.New("no existe una cuenta de mercado para ese usuario")
+	ErrAccountAlreadyExists = errors.New("el usuario ya tiene una cuenta de mercado")
 )
 
 type Account struct {
