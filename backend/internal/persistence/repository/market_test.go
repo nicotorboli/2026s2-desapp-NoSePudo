@@ -22,7 +22,10 @@ func newMarketRepository(db *sql.DB) *repository.MarketRepository {
 		dao.NewAccountDao(db),
 		dao.NewPositionDao(db),
 		dao.NewOrderDao(db),
+		dao.NewTradeDao(db),
+		dao.NewLedgerDao(db),
 		dao.NewQuoteDao(db),
+		dao.NewAuditDao(db),
 	)
 }
 
@@ -333,5 +336,305 @@ func assertPlayerLockSerializesCompetingTransactions(t *testing.T, db *sql.DB, r
 
 	if lockErr := playerDao.LockPlayer(t.Context(), freed, playerID); lockErr != nil {
 		t.Errorf("tomar el lock después de la operación devolvió %v: la transacción no se cerró", lockErr)
+	}
+}
+
+const settlementQuantity = int64(4)
+
+type settlementFixture struct {
+	settlement repository.ExecutionSettlement
+	buyer      int64
+	seller     int64
+	playerID   int64
+	total      model.Credits
+}
+
+func mustSucceed(t *testing.T, what string, err error) {
+	t.Helper()
+
+	if err != nil {
+		t.Fatalf("%s: %v", what, err)
+	}
+}
+
+func newSettlementFixture(t *testing.T, db *sql.DB) settlementFixture {
+	t.Helper()
+
+	price := model.CreditsFromUnits(2)
+	total := price.Times(settlementQuantity)
+
+	buyer := seedMarketUser(t, db)
+	seller := seedMarketUser(t, db)
+	playerID := seedMarketPlayer(t, db)
+
+	buyerAccount := model.Account{UserID: buyer, AvailableBalance: model.CreditsFromUnits(1000)}
+	sellerAccount := model.Account{UserID: seller}
+	buyerPosition := model.Position{UserID: buyer, PlayerID: playerID}
+	sellerPosition := model.Position{
+		UserID:            seller,
+		PlayerID:          playerID,
+		AvailableQuantity: 10,
+		CostBasis:         model.CreditsFromUnits(10),
+	}
+
+	seedMarketAccount(t, db, buyerAccount)
+	seedMarketAccount(t, db, sellerAccount)
+	seedMarketPosition(t, db, sellerPosition)
+
+	buyOrder := seedMarketOrder(t, db, aRestingOrder(buyer, playerID, model.SideBuy, price, settlementQuantity))
+	sellOrder := seedMarketOrder(t, db, aRestingOrder(seller, playerID, model.SideSell, price, settlementQuantity))
+
+	executedAt := time.Now().UTC()
+
+	filledBuyOrder := buyOrder
+	mustSucceed(t, "ejecutar la orden de compra", filledBuyOrder.Execute(settlementQuantity, executedAt))
+
+	filledSellOrder := sellOrder
+	mustSucceed(t, "ejecutar la orden de venta", filledSellOrder.Execute(settlementQuantity, executedAt))
+
+	settledBuyerAccount := buyerAccount
+	mustSucceed(t, "reservar los créditos del comprador", settledBuyerAccount.Reserve(total))
+	mustSucceed(t, "liquidar la reserva del comprador", settledBuyerAccount.SettleReservation(total))
+
+	creditedSellerAccount := sellerAccount
+	mustSucceed(t, "acreditar al vendedor", creditedSellerAccount.Credit(total))
+
+	deliveredSellerPosition := sellerPosition
+	mustSucceed(t, "reservar los tokens del vendedor", deliveredSellerPosition.ReserveTokens(settlementQuantity))
+	_, deliverErr := deliveredSellerPosition.DeliverReservedTokens(settlementQuantity)
+	mustSucceed(t, "entregar los tokens del vendedor", deliverErr)
+
+	receivedBuyerPosition := buyerPosition
+	mustSucceed(t, "acreditar los tokens al comprador", receivedBuyerPosition.Receive(settlementQuantity, total))
+
+	return settlementFixture{
+		settlement: repository.ExecutionSettlement{
+			BuyOrder:       repository.OrderChange{Before: buyOrder, After: filledBuyOrder},
+			SellOrder:      repository.OrderChange{Before: sellOrder, After: filledSellOrder},
+			BuyerPosition:  repository.PositionChange{Before: buyerPosition, After: receivedBuyerPosition},
+			SellerPosition: repository.PositionChange{Before: sellerPosition, After: deliveredSellerPosition},
+			BuyerAccount:   repository.AccountChange{Before: buyerAccount, After: settledBuyerAccount},
+			SellerAccount:  repository.AccountChange{Before: sellerAccount, After: creditedSellerAccount},
+			Actor:          fmt.Sprintf("comprador-%d@test.local", buyer),
+			Quantity:       settlementQuantity,
+			Price:          price,
+		},
+		buyer:    buyer,
+		seller:   seller,
+		playerID: playerID,
+		total:    total,
+	}
+}
+
+func TestMarketRepositorySettlement(t *testing.T) {
+	db := startPostgres(t)
+	repo := newMarketRepository(db)
+
+	t.Run("una ejecucion deja las ordenes, el dinero y los tokens donde corresponde", func(t *testing.T) {
+		assertSettlementMovesEverything(t, db, repo)
+	})
+
+	t.Run("los asientos de la ejecucion suman cero", func(t *testing.T) {
+		assertLedgerSettlementIsZeroSum(t, db, repo)
+	})
+
+	t.Run("la ejecucion queda auditada entidad por entidad", func(t *testing.T) {
+		assertSettlementIsAudited(t, db, repo)
+	})
+
+	t.Run("una operacion que falla despues de liquidar no deja nada escrito", func(t *testing.T) {
+		assertFailedOperationWritesNothing(t, db, repo)
+	})
+}
+
+func settle(t *testing.T, repo *repository.MarketRepository, fixture settlementFixture) model.Trade {
+	t.Helper()
+
+	var trade model.Trade
+	err := repo.WithPlayerLocked(t.Context(), fixture.playerID, func(ctx context.Context, session *repository.MarketSession) error {
+		settled, settleErr := session.SettleExecution(ctx, fixture.settlement)
+		trade = settled
+		return settleErr
+	})
+	if err != nil {
+		t.Fatalf("WithPlayerLocked devolvió %v", err)
+	}
+
+	return trade
+}
+
+func assertSettlementMovesEverything(t *testing.T, db *sql.DB, repo *repository.MarketRepository) {
+	t.Helper()
+
+	fixture := newSettlementFixture(t, db)
+	trade := settle(t, repo, fixture)
+
+	if trade.ID == 0 || trade.ExecutedAt.IsZero() {
+		t.Errorf("la operación registrada es %+v: la base no le asignó identidad", trade)
+	}
+	if trade.TotalAmount != fixture.total {
+		t.Errorf("el total de la operación es %d, se esperaba %d", trade.TotalAmount, fixture.total)
+	}
+
+	assertAccount(t, db, fixture.settlement.BuyerAccount.After)
+	assertAccount(t, db, fixture.settlement.SellerAccount.After)
+	assertPosition(t, db, fixture.settlement.BuyerPosition.After)
+	assertPosition(t, db, fixture.settlement.SellerPosition.After)
+	assertOrder(t, db, fixture.settlement.BuyOrder.After)
+	assertOrder(t, db, fixture.settlement.SellOrder.After)
+}
+
+func assertLedgerSettlementIsZeroSum(t *testing.T, db *sql.DB, repo *repository.MarketRepository) {
+	t.Helper()
+
+	fixture := newSettlementFixture(t, db)
+	trade := settle(t, repo, fixture)
+
+	unbalanced, err := dao.NewLedgerDao(db).UnbalancedSettlementGroups(t.Context())
+	if err != nil {
+		t.Fatalf("UnbalancedSettlementGroups devolvió %v", err)
+	}
+	if len(unbalanced) != 0 {
+		t.Errorf("los grupos de liquidación %v no suman cero", unbalanced)
+	}
+
+	var (
+		entries int
+		groups  int
+		debit   int64
+		credit  int64
+	)
+	err = db.QueryRowContext(t.Context(),
+		`SELECT COUNT(*), COUNT(DISTINCT settlement_group),
+		        COALESCE(SUM(amount) FILTER (WHERE user_id = $2), 0),
+		        COALESCE(SUM(amount) FILTER (WHERE user_id = $3), 0)
+		 FROM ledger_entries WHERE trade_id = $1`,
+		trade.ID, fixture.buyer, fixture.seller,
+	).Scan(&entries, &groups, &debit, &credit)
+	if err != nil {
+		t.Fatalf("no se pudieron leer los asientos: %v", err)
+	}
+
+	if entries != 2 || groups != 1 {
+		t.Errorf("la ejecución dejó %d asientos en %d grupos, se esperaban 2 en uno solo", entries, groups)
+	}
+	if debit != -int64(fixture.total) {
+		t.Errorf("al comprador se le asentaron %d créditos, se esperaban %d", debit, -int64(fixture.total))
+	}
+	if credit != int64(fixture.total) {
+		t.Errorf("al vendedor se le asentaron %d créditos, se esperaban %d", credit, int64(fixture.total))
+	}
+}
+
+func assertSettlementIsAudited(t *testing.T, db *sql.DB, repo *repository.MarketRepository) {
+	t.Helper()
+
+	fixture := newSettlementFixture(t, db)
+	settle(t, repo, fixture)
+
+	for _, entity := range []string{"market_order", "user_account", "user_position"} {
+		var audited int
+		err := db.QueryRowContext(t.Context(),
+			`SELECT COUNT(*) FROM player_audit_logs WHERE entity_type = $1 AND actor = $2`,
+			entity, fixture.settlement.Actor,
+		).Scan(&audited)
+		if err != nil {
+			t.Fatalf("no se pudieron contar las auditorías de %s: %v", entity, err)
+		}
+		if audited != 2 {
+			t.Errorf("la ejecución dejó %d auditorías de %s, se esperaban 2", audited, entity)
+		}
+	}
+}
+
+func assertFailedOperationWritesNothing(t *testing.T, db *sql.DB, repo *repository.MarketRepository) {
+	t.Helper()
+
+	fixture := newSettlementFixture(t, db)
+	failure := errors.New("la operación se arrepintió después de liquidar")
+
+	err := repo.WithPlayerLocked(t.Context(), fixture.playerID, func(ctx context.Context, session *repository.MarketSession) error {
+		if _, settleErr := session.SettleExecution(ctx, fixture.settlement); settleErr != nil {
+			return settleErr
+		}
+		return failure
+	})
+	if !errors.Is(err, failure) {
+		t.Fatalf("WithPlayerLocked devolvió %v, se esperaba el error de la operación", err)
+	}
+
+	assertAccount(t, db, fixture.settlement.BuyerAccount.Before)
+	assertAccount(t, db, fixture.settlement.SellerAccount.Before)
+	assertPosition(t, db, fixture.settlement.SellerPosition.Before)
+	assertOrder(t, db, fixture.settlement.BuyOrder.Before)
+
+	trades, err := dao.NewTradeDao(db).CountByParticipant(t.Context(), fixture.buyer)
+	if err != nil {
+		t.Fatalf("CountByParticipant devolvió %v", err)
+	}
+	if trades != 0 {
+		t.Errorf("quedaron %d operaciones registradas después del rollback", trades)
+	}
+
+	if _, positionErr := dao.NewPositionDao(db).LockByUserAndPlayer(t.Context(), beginTxFor(t, db), fixture.buyer, fixture.playerID); !errors.Is(positionErr, model.ErrPositionNotFound) {
+		t.Errorf("la posición del comprador sobrevivió al rollback: %v", positionErr)
+	}
+}
+
+func beginTxFor(t *testing.T, db *sql.DB) *sql.Tx {
+	t.Helper()
+
+	tx, err := db.BeginTx(t.Context(), nil)
+	if err != nil {
+		t.Fatalf("no se pudo abrir la transacción: %v", err)
+	}
+	t.Cleanup(func() { _ = tx.Rollback() })
+
+	return tx
+}
+
+func assertAccount(t *testing.T, db *sql.DB, expected model.Account) {
+	t.Helper()
+
+	stored, err := dao.NewAccountDao(db).GetByUser(t.Context(), expected.UserID)
+	if err != nil {
+		t.Fatalf("GetByUser devolvió %v", err)
+	}
+	if stored != expected {
+		t.Errorf("la cuenta guardada es %+v, se esperaba %+v", stored, expected)
+	}
+}
+
+func assertPosition(t *testing.T, db *sql.DB, expected model.Position) {
+	t.Helper()
+
+	positions, err := dao.NewPositionDao(db).ListByUser(t.Context(), expected.UserID)
+	if err != nil {
+		t.Fatalf("ListByUser devolvió %v", err)
+	}
+
+	for _, position := range positions {
+		if position.PlayerID != expected.PlayerID {
+			continue
+		}
+		if position != expected {
+			t.Errorf("la posición guardada es %+v, se esperaba %+v", position, expected)
+		}
+		return
+	}
+
+	t.Errorf("no quedó guardada una posición del usuario %d en el jugador %d", expected.UserID, expected.PlayerID)
+}
+
+func assertOrder(t *testing.T, db *sql.DB, expected model.Order) {
+	t.Helper()
+
+	stored, err := dao.NewOrderDao(db).GetByID(t.Context(), nil, expected.ID)
+	if err != nil {
+		t.Fatalf("GetByID devolvió %v", err)
+	}
+	if stored.Status != expected.Status || stored.ExecutedQuantity != expected.ExecutedQuantity {
+		t.Errorf("la orden %d quedó en %s con %d ejecutados, se esperaba %s con %d",
+			expected.ID, stored.Status, stored.ExecutedQuantity, expected.Status, expected.ExecutedQuantity)
 	}
 }

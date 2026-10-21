@@ -18,7 +18,10 @@ type MarketRepository struct {
 	accountDao  *dao.AccountSql
 	positionDao *dao.PositionSql
 	orderDao    *dao.OrderSql
+	tradeDao    *dao.TradeSql
+	ledgerDao   *dao.LedgerSql
 	quoteDao    *dao.QuoteSql
+	auditDao    dao.AuditDAO
 }
 
 func NewMarketRepository(
@@ -27,7 +30,10 @@ func NewMarketRepository(
 	accountDao *dao.AccountSql,
 	positionDao *dao.PositionSql,
 	orderDao *dao.OrderSql,
+	tradeDao *dao.TradeSql,
+	ledgerDao *dao.LedgerSql,
 	quoteDao *dao.QuoteSql,
+	auditDao dao.AuditDAO,
 ) *MarketRepository {
 	return &MarketRepository{
 		db:          db,
@@ -35,7 +41,10 @@ func NewMarketRepository(
 		accountDao:  accountDao,
 		positionDao: positionDao,
 		orderDao:    orderDao,
+		tradeDao:    tradeDao,
+		ledgerDao:   ledgerDao,
 		quoteDao:    quoteDao,
+		auditDao:    auditDao,
 	}
 }
 
@@ -62,7 +71,10 @@ func (r *MarketRepository) WithPlayerLocked(ctx context.Context, playerID int64,
 		accountDao:  r.accountDao,
 		positionDao: r.positionDao,
 		orderDao:    r.orderDao,
+		tradeDao:    r.tradeDao,
+		ledgerDao:   r.ledgerDao,
 		quoteDao:    r.quoteDao,
+		auditDao:    r.auditDao,
 	}
 
 	if operationErr := operation(ctx, session); operationErr != nil {
@@ -81,7 +93,10 @@ type MarketSession struct {
 	accountDao  *dao.AccountSql
 	positionDao *dao.PositionSql
 	orderDao    *dao.OrderSql
+	tradeDao    *dao.TradeSql
+	ledgerDao   *dao.LedgerSql
 	quoteDao    *dao.QuoteSql
+	auditDao    dao.AuditDAO
 }
 
 func (s *MarketSession) LockAccount(ctx context.Context, userID int64) (model.Account, error) {
@@ -98,4 +113,190 @@ func (s *MarketSession) LockOppositeBook(ctx context.Context, playerID int64, in
 
 func (s *MarketSession) LatestQuote(ctx context.Context, playerID int64) (model.PlayerQuote, error) {
 	return s.quoteDao.GetLatestByPlayer(ctx, s.tx, playerID)
+}
+
+type OrderChange struct {
+	Before model.Order
+	After  model.Order
+}
+
+type AccountChange struct {
+	Before model.Account
+	After  model.Account
+}
+
+type PositionChange struct {
+	Before model.Position
+	After  model.Position
+}
+
+type ExecutionSettlement struct {
+	Actor          string
+	BuyOrder       OrderChange
+	SellOrder      OrderChange
+	BuyerPosition  PositionChange
+	SellerPosition PositionChange
+	BuyerAccount   AccountChange
+	SellerAccount  AccountChange
+	Quantity       int64
+	Price          model.Credits
+}
+
+func (s *MarketSession) SettleExecution(ctx context.Context, settlement ExecutionSettlement) (model.Trade, error) {
+	if err := s.applySettlementChanges(ctx, settlement); err != nil {
+		return model.Trade{}, err
+	}
+
+	trade, err := s.tradeDao.Insert(ctx, s.tx, tradeOf(settlement))
+	if err != nil {
+		return model.Trade{}, err
+	}
+
+	if ledgerErr := s.recordTradeSettlement(ctx, trade); ledgerErr != nil {
+		return model.Trade{}, ledgerErr
+	}
+
+	return trade, nil
+}
+
+func (s *MarketSession) applySettlementChanges(ctx context.Context, settlement ExecutionSettlement) error {
+	if err := s.saveOrder(ctx, settlement.Actor, settlement.BuyOrder); err != nil {
+		return err
+	}
+	if err := s.saveOrder(ctx, settlement.Actor, settlement.SellOrder); err != nil {
+		return err
+	}
+	if err := s.savePosition(ctx, settlement.Actor, settlement.SellerPosition); err != nil {
+		return err
+	}
+	if err := s.savePosition(ctx, settlement.Actor, settlement.BuyerPosition); err != nil {
+		return err
+	}
+	if err := s.saveAccount(ctx, settlement.Actor, settlement.BuyerAccount); err != nil {
+		return err
+	}
+
+	return s.saveAccount(ctx, settlement.Actor, settlement.SellerAccount)
+}
+
+func (s *MarketSession) saveOrder(ctx context.Context, actor string, change OrderChange) error {
+	if err := s.orderDao.Update(ctx, s.tx, change.After); err != nil {
+		return fmt.Errorf("actualizar la orden %d: %w", change.After.ID, err)
+	}
+
+	return s.auditDao.InsertAuditLog(ctx, s.tx, model.AuditLog{
+		EntityType: "market_order",
+		EntityID:   change.After.ID,
+		Action:     "EXECUTE",
+		Actor:      actor,
+		DiffOld:    orderDiff(change.Before),
+		DiffNew:    orderDiff(change.After),
+	})
+}
+
+func (s *MarketSession) saveAccount(ctx context.Context, actor string, change AccountChange) error {
+	if err := s.accountDao.UpdateBalances(ctx, s.tx, change.After); err != nil {
+		return fmt.Errorf("actualizar la cuenta del usuario %d: %w", change.After.UserID, err)
+	}
+
+	return s.auditDao.InsertAuditLog(ctx, s.tx, model.AuditLog{
+		EntityType: "user_account",
+		EntityID:   change.After.UserID,
+		Action:     "SETTLE",
+		Actor:      actor,
+		DiffOld:    accountDiff(change.Before),
+		DiffNew:    accountDiff(change.After),
+	})
+}
+
+func (s *MarketSession) savePosition(ctx context.Context, actor string, change PositionChange) error {
+	if _, err := s.positionDao.InsertIfAbsent(ctx, s.tx, change.After); err != nil {
+		return fmt.Errorf("crear la posición del usuario %d: %w", change.After.UserID, err)
+	}
+	if err := s.positionDao.Update(ctx, s.tx, change.After); err != nil {
+		return fmt.Errorf("actualizar la posición del usuario %d: %w", change.After.UserID, err)
+	}
+
+	return s.auditDao.InsertAuditLog(ctx, s.tx, model.AuditLog{
+		EntityType: "user_position",
+		EntityID:   change.After.UserID,
+		Action:     "SETTLE",
+		Actor:      actor,
+		DiffOld:    positionDiff(change.Before),
+		DiffNew:    positionDiff(change.After),
+	})
+}
+
+func (s *MarketSession) recordTradeSettlement(ctx context.Context, trade model.Trade) error {
+	settlementGroup, err := s.ledgerDao.NextSettlementGroup(ctx, s.tx)
+	if err != nil {
+		return err
+	}
+
+	tradeID := trade.ID
+	buyerID := trade.BuyerID
+	sellerID := trade.SellerID
+
+	entries := []model.LedgerEntry{
+		{
+			TradeID:         &tradeID,
+			UserID:          &buyerID,
+			Reason:          model.ReasonTrade,
+			Description:     fmt.Sprintf("compra de %d tokens del jugador %d", trade.Quantity, trade.PlayerID),
+			SettlementGroup: settlementGroup,
+			Amount:          -trade.TotalAmount,
+		},
+		{
+			TradeID:         &tradeID,
+			UserID:          &sellerID,
+			Reason:          model.ReasonTrade,
+			Description:     fmt.Sprintf("venta de %d tokens del jugador %d", trade.Quantity, trade.PlayerID),
+			SettlementGroup: settlementGroup,
+			Amount:          trade.TotalAmount,
+		},
+	}
+
+	for i := range entries {
+		if _, insertErr := s.ledgerDao.Insert(ctx, s.tx, entries[i]); insertErr != nil {
+			return insertErr
+		}
+	}
+
+	return nil
+}
+
+func tradeOf(settlement ExecutionSettlement) model.Trade {
+	return model.Trade{
+		BuyOrderID:  settlement.BuyOrder.After.ID,
+		SellOrderID: settlement.SellOrder.After.ID,
+		BuyerID:     settlement.BuyOrder.After.UserID,
+		SellerID:    settlement.SellOrder.After.UserID,
+		PlayerID:    settlement.BuyOrder.After.PlayerID,
+		Quantity:    settlement.Quantity,
+		Price:       settlement.Price,
+		TotalAmount: settlement.Price.Times(settlement.Quantity),
+	}
+}
+
+func orderDiff(order model.Order) map[string]any {
+	return map[string]any{
+		"status":           string(order.Status),
+		"executedQuantity": order.ExecutedQuantity,
+	}
+}
+
+func accountDiff(account model.Account) map[string]any {
+	return map[string]any{
+		"availableBalance": int64(account.AvailableBalance),
+		"reservedBalance":  int64(account.ReservedBalance),
+	}
+}
+
+func positionDiff(position model.Position) map[string]any {
+	return map[string]any{
+		"playerId":          position.PlayerID,
+		"availableQuantity": position.AvailableQuantity,
+		"reservedQuantity":  position.ReservedQuantity,
+		"costBasis":         int64(position.CostBasis),
+	}
 }
