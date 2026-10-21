@@ -55,12 +55,12 @@ func (s *Server) routes() []route {
 		},
 		{
 			pattern:  "POST /players/sync",
-			access:   AccessAnonymous,
+			access:   AccessSuperuser,
 			endpoint: s.controllers.Sync.SyncPlayers(),
 		},
 		{
 			pattern:  "POST /players/statistics/sync",
-			access:   AccessAnonymous,
+			access:   AccessSuperuser,
 			endpoint: s.controllers.Sync.SyncStatistics(),
 		},
 	}
