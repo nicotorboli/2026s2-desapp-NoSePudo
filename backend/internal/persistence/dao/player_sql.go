@@ -201,6 +201,53 @@ func (d *PlayerSql) GetPlayerByExternalID(ctx context.Context, externalID int64)
 	return p, nil
 }
 
+func (d *PlayerSql) LockPlayer(ctx context.Context, tx *sql.Tx, id int64) error {
+	const query = `SELECT id FROM players WHERE id = $1 FOR UPDATE`
+
+	if tx == nil {
+		return errLockNeedsTransaction
+	}
+
+	var locked int64
+	if err := tx.QueryRowContext(ctx, query, id).Scan(&locked); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("tomar el lock del jugador: %w", err)
+	}
+
+	return nil
+}
+
+func (d *PlayerSql) ListActiveIDs(ctx context.Context) ([]int64, error) {
+	const query = `SELECT id FROM players WHERE active = TRUE ORDER BY id`
+
+	if d.db == nil {
+		return nil, errNilDatabase
+	}
+
+	rows, err := d.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("listar los jugadores activos: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	ids := make([]int64, 0)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("leer el identificador del jugador: %w", err)
+		}
+		ids = append(ids, id)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("recorrer los jugadores activos: %w", err)
+	}
+
+	return ids, nil
+}
+
 func (d *PlayerSql) UpsertPlayer(ctx context.Context, tx *sql.Tx, p model.Player) (int64, error) {
 	query := `INSERT INTO players (external_id, name, club_name, league_name, league_code, date_of_birth, nationality, position, shirt_number, active, updated_at)
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
