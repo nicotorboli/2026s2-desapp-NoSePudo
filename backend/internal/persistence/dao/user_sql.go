@@ -43,6 +43,40 @@ func (dao *UserSql) Insert(ctx context.Context, user model.User) (model.User, er
 	return user, nil
 }
 
+func (dao *UserSql) InsertTx(ctx context.Context, tx *sql.Tx, user model.User) (model.User, error) {
+	const query = `
+		INSERT INTO users (email, password_hash, privilege, active)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, created_at`
+
+	querier, err := querierFor(tx, dao.Db)
+	if err != nil {
+		return model.User{}, err
+	}
+
+	err = querier.QueryRowContext(ctx, query, user.Email, user.PasswordHash, int16(user.Privilege), user.Active).
+		Scan(&user.ID, &user.CreatedAt)
+	if err != nil {
+		if pqErr, ok := errors.AsType[*pq.Error](err); ok && pqErr.Code == uniqueViolation {
+			return model.User{}, model.ErrEmailTaken
+		}
+		return model.User{}, fmt.Errorf("insertar cuenta: %w", err)
+	}
+
+	return user, nil
+}
+
+func (dao *UserSql) GetSuperuser(ctx context.Context) (model.User, error) {
+	const query = `
+		SELECT id, email, password_hash, privilege, active, created_at
+		FROM users
+		WHERE privilege = $1
+		ORDER BY id
+		LIMIT 1`
+
+	return dao.queryOne(ctx, query, int16(model.PrivilegeSuperuser))
+}
+
 func (dao *UserSql) GetByEmail(ctx context.Context, email string) (model.User, error) {
 	const query = `
 		SELECT id, email, password_hash, privilege, active, created_at
