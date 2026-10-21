@@ -52,19 +52,31 @@ func requireOneRow(result sql.Result, absent error) error {
 }
 
 type Container struct {
-	Player       PlayerDAO
 	Audit        AuditDAO
+	Player       *PlayerSql
 	User         *UserSql
 	RefreshToken *RefreshTokenSql
 	Schema       *SchemaSql
+	Account      *AccountSql
+	Position     *PositionSql
+	Order        *OrderSql
+	Trade        *TradeSql
+	Ledger       *LedgerSql
+	Quote        *QuoteSql
 }
 
 func NewContainer(db *sql.DB) *Container {
 	return &Container{
-		Player:       NewPlayerDao(db),
 		Audit:        NewAuditDao(db),
+		Player:       NewPlayerDao(db),
 		User:         NewUserDao(db),
 		RefreshToken: NewRefreshTokenDao(db),
 		Schema:       NewSchemaDao(db),
+		Account:      NewAccountDao(db),
+		Position:     NewPositionDao(db),
+		Order:        NewOrderDao(db),
+		Trade:        NewTradeDao(db),
+		Ledger:       NewLedgerDao(db),
+		Quote:        NewQuoteDao(db),
 	}
 }
