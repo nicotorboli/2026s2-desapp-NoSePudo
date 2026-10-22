@@ -242,6 +242,32 @@ func (f *marketFixture) orderStatus(t *testing.T, orderID int64) model.OrderStat
 	return model.OrderStatus(status)
 }
 
+func (f *marketFixture) countOrders(t *testing.T, userID int64) int {
+	t.Helper()
+
+	var total int
+	if err := f.db.QueryRowContext(t.Context(),
+		`SELECT COUNT(*) FROM market_orders WHERE user_id = $1`, userID,
+	).Scan(&total); err != nil {
+		t.Fatalf("no se pudieron contar las órdenes del usuario %d: %v", userID, err)
+	}
+
+	return total
+}
+
+func (f *marketFixture) countTrades(t *testing.T, playerID int64) int {
+	t.Helper()
+
+	var total int
+	if err := f.db.QueryRowContext(t.Context(),
+		`SELECT COUNT(*) FROM market_trades WHERE player_id = $1`, playerID,
+	).Scan(&total); err != nil {
+		t.Fatalf("no se pudieron contar las operaciones del jugador %d: %v", playerID, err)
+	}
+
+	return total
+}
+
 func (f *marketFixture) account(t *testing.T, userID int64) model.Account {
 	t.Helper()
 

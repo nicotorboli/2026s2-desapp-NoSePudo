@@ -366,3 +366,144 @@ func TestPlaceOrderDeVentaPorEncimaDelLibroQuedaEnReposoConLosTokensReservados(t
 			position.AvailableQuantity, position.ReservedQuantity)
 	}
 }
+
+func withTimeInForce(command service.PlaceOrderCommand, timeInForce model.TimeInForce) service.PlaceOrderCommand {
+	command.TimeInForce = &timeInForce
+
+	return command
+}
+
+type libroEscaso struct {
+	fixture  *marketFixture
+	playerID int64
+	buyer    int64
+	seller   int64
+}
+
+func nuevoLibroEscaso(t *testing.T) libroEscaso {
+	t.Helper()
+
+	fixture := newMarketFixture(t)
+	playerID := fixture.seedPlayer(t)
+	buyer := fixture.seedUser(t, model.CreditsFromUnits(1000))
+	seller := fixture.seedUser(t, 0)
+
+	fixture.seedQuote(t, playerID, model.CreditsFromUnits(1))
+	fixture.seedRestingSell(t, seller, playerID, model.CreditsFromUnits(1), 5)
+
+	return libroEscaso{fixture: fixture, playerID: playerID, buyer: buyer, seller: seller}
+}
+
+func TestPlaceOrderFillOrKillNoDejaNiOrdenNiReserva(t *testing.T) {
+	libro := nuevoLibroEscaso(t)
+
+	_, err := libro.fixture.market.PlaceOrder(t.Context(), buyCommand(libro.buyer, libro.playerID, 10))
+	if !errors.Is(err, service.ErrNoLiquidity) {
+		t.Fatalf("PlaceOrder devolvió %v, se esperaba ErrNoLiquidity", err)
+	}
+
+	account := libro.fixture.account(t, libro.buyer)
+	if account.AvailableBalance != model.CreditsFromUnits(1000) || account.ReservedBalance != 0 {
+		t.Errorf("la cuenta quedó en %d disponibles y %d reservados, se esperaban 1000 y 0",
+			account.AvailableBalance, account.ReservedBalance)
+	}
+	if orders := libro.fixture.countOrders(t, libro.buyer); orders != 0 {
+		t.Errorf("quedaron %d órdenes de una compra que se deshizo entera", orders)
+	}
+	if trades := libro.fixture.countTrades(t, libro.playerID); trades != 0 {
+		t.Errorf("quedaron %d operaciones de una compra que se deshizo entera", trades)
+	}
+	posicion := libro.fixture.position(t, libro.buyer, libro.playerID)
+	if quantity := posicion.TotalQuantity(); quantity != 0 {
+		t.Errorf("el comprador quedó con %d tokens tras un FOK rechazado", quantity)
+	}
+}
+
+func TestPlaceOrderGoodTillCancelledDejaElRemanenteEnReposoConSuReserva(t *testing.T) {
+	libro := nuevoLibroEscaso(t)
+
+	command := withPrice(buyCommand(libro.buyer, libro.playerID, 10), model.CreditsFromUnits(2))
+
+	placed, err := libro.fixture.market.PlaceOrder(t.Context(), command)
+	if err != nil {
+		t.Fatalf("PlaceOrder devolvió %v", err)
+	}
+
+	if placed.Order.Status != model.StatusPartiallyFilled {
+		t.Errorf("la orden quedó en %s, se esperaba PARTIALLY_FILLED", placed.Order.Status)
+	}
+	if placed.Order.ExecutedQuantity != 5 {
+		t.Errorf("se ejecutaron %d tokens, se esperaban 5", placed.Order.ExecutedQuantity)
+	}
+	if libro.fixture.orderStatus(t, placed.Order.ID) != model.StatusPartiallyFilled {
+		t.Error("la orden no quedó PARTIALLY_FILLED en la base")
+	}
+
+	account := libro.fixture.account(t, libro.buyer)
+	if account.ReservedBalance != model.CreditsFromUnits(10) {
+		t.Errorf("quedaron %d créditos reservados, se esperaban 10: cinco tokens al límite de 2", account.ReservedBalance)
+	}
+	if account.AvailableBalance != model.CreditsFromUnits(985) {
+		t.Errorf("quedaron %d disponibles, se esperaban 985: reservó 20, gastó 5 y retiene 10", account.AvailableBalance)
+	}
+}
+
+func TestPlaceOrderImmediateOrCancelLiberaLaReservaDelRemanente(t *testing.T) {
+	libro := nuevoLibroEscaso(t)
+
+	command := withTimeInForce(
+		withPrice(buyCommand(libro.buyer, libro.playerID, 10), model.CreditsFromUnits(2)),
+		model.ImmediateOrCancel,
+	)
+
+	placed, err := libro.fixture.market.PlaceOrder(t.Context(), command)
+	if err != nil {
+		t.Fatalf("PlaceOrder devolvió %v", err)
+	}
+
+	if placed.Order.Status != model.StatusCancelled {
+		t.Errorf("la orden quedó en %s, se esperaba CANCELLED", placed.Order.Status)
+	}
+	if placed.Order.ExecutedQuantity != 5 {
+		t.Errorf("se ejecutaron %d tokens, se esperaban 5", placed.Order.ExecutedQuantity)
+	}
+	if libro.fixture.orderStatus(t, placed.Order.ID) != model.StatusCancelled {
+		t.Error("la orden no quedó CANCELLED en la base")
+	}
+
+	account := libro.fixture.account(t, libro.buyer)
+	if account.ReservedBalance != 0 {
+		t.Errorf("quedaron %d créditos reservados por un remanente que se cancelo", account.ReservedBalance)
+	}
+	if account.AvailableBalance != model.CreditsFromUnits(995) {
+		t.Errorf("quedaron %d disponibles, se esperaban 995: solo se gastaron los 5 ejecutados", account.AvailableBalance)
+	}
+}
+
+func TestPlaceOrderSinLibroNoEjecutaNada(t *testing.T) {
+	fixture := newMarketFixture(t)
+	playerID := fixture.seedPlayer(t)
+	buyer := fixture.seedUser(t, model.CreditsFromUnits(1000))
+
+	fixture.seedQuote(t, playerID, model.CreditsFromUnits(1))
+
+	if _, err := fixture.market.PlaceOrder(t.Context(), buyCommand(buyer, playerID, 10)); !errors.Is(err, service.ErrNoLiquidity) {
+		t.Fatalf("con el libro vacío PlaceOrder devolvió %v, se esperaba ErrNoLiquidity", err)
+	}
+
+	command := withPrice(buyCommand(buyer, playerID, 10), model.CreditsFromUnits(3))
+
+	placed, err := fixture.market.PlaceOrder(t.Context(), command)
+	if err != nil {
+		t.Fatalf("con el libro vacío y precio explícito PlaceOrder devolvió %v", err)
+	}
+	if placed.Order.Status != model.StatusPending {
+		t.Errorf("la orden quedó en %s, se esperaba PENDING", placed.Order.Status)
+	}
+	if len(placed.Trades) != 0 {
+		t.Errorf("se registraron %d operaciones contra un libro vacío", len(placed.Trades))
+	}
+	if reserved := fixture.account(t, buyer).ReservedBalance; reserved != model.CreditsFromUnits(30) {
+		t.Errorf("quedaron %d créditos reservados, se esperaban 30 por la orden en reposo", reserved)
+	}
+}
