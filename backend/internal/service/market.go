@@ -16,6 +16,7 @@ var (
 	ErrPlayerInactive  = errors.New("el jugador no está activo")
 	ErrNoLiquidity     = errors.New("la orden no se puede completar en su totalidad")
 	ErrUnknownSide     = errors.New("el lado de la orden es desconocido")
+	ErrNotOwner        = errors.New("la orden pertenece a otro usuario")
 )
 
 type PlaceOrderCommand struct {
@@ -393,7 +394,7 @@ func (s *MarketService) cancelRemainder(
 	submitter *tradingParty,
 	remaining int64,
 ) error {
-	if err := s.releaseReservation(ctx, session, command, incoming, submitter, remaining); err != nil {
+	if _, err := s.releaseReservation(ctx, session, command.Actor, incoming, submitter, remaining); err != nil {
 		return err
 	}
 
@@ -407,38 +408,137 @@ func (s *MarketService) cancelRemainder(
 	return session.SaveOrder(ctx, command.Actor, repository.ActionCancel, orderChange)
 }
 
+type releasedReservation struct {
+	credits model.Credits
+	tokens  int64
+}
+
 func (s *MarketService) releaseReservation(
 	ctx context.Context,
 	session *repository.MarketSession,
-	command PlaceOrderCommand,
-	incoming *model.Order,
-	submitter *tradingParty,
+	actor string,
+	order *model.Order,
+	holder *tradingParty,
 	remaining int64,
-) error {
-	if incoming.Side == model.SideBuy {
-		before := submitter.account
-		if err := submitter.account.ReleaseReservation(incoming.Price.Times(remaining)); err != nil {
-			return err
+) (releasedReservation, error) {
+	if order.Side == model.SideBuy {
+		credits := order.Price.Times(remaining)
+
+		before := holder.account
+		if err := holder.account.ReleaseReservation(credits); err != nil {
+			return releasedReservation{}, err
 		}
 
-		change := repository.AccountChange{Before: before, After: submitter.account}
+		change := repository.AccountChange{Before: before, After: holder.account}
+		if err := session.SaveAccount(ctx, actor, repository.ActionRelease, change); err != nil {
+			return releasedReservation{}, err
+		}
 
-		return session.SaveAccount(ctx, command.Actor, repository.ActionRelease, change)
+		return releasedReservation{credits: credits}, nil
 	}
 
-	before := submitter.position
-	if err := submitter.position.ReleaseReservedTokens(remaining); err != nil {
-		return err
+	before := holder.position
+	if err := holder.position.ReleaseReservedTokens(remaining); err != nil {
+		return releasedReservation{}, err
 	}
 
-	change := repository.PositionChange{Before: before, After: submitter.position}
+	change := repository.PositionChange{Before: before, After: holder.position}
+	if err := session.SavePosition(ctx, actor, repository.ActionRelease, change); err != nil {
+		return releasedReservation{}, err
+	}
 
-	return session.SavePosition(ctx, command.Actor, repository.ActionRelease, change)
+	return releasedReservation{tokens: remaining}, nil
+}
+
+type CancelOrderCommand struct {
+	Actor   string
+	UserID  int64
+	OrderID int64
+}
+
+type CancelledOrder struct {
+	Order           model.Order
+	ReleasedCredits model.Credits
+	ReleasedTokens  int64
+}
+
+func (s *MarketService) CancelOrder(ctx context.Context, command CancelOrderCommand) (CancelledOrder, error) {
+	known, err := s.market.Order(ctx, command.OrderID)
+	if err != nil {
+		return CancelledOrder{}, translateMarketError(err)
+	}
+	if known.UserID != command.UserID {
+		return CancelledOrder{}, ErrNotOwner
+	}
+
+	var cancelled CancelledOrder
+
+	err = s.market.WithPlayerLocked(ctx, known.PlayerID, func(ctx context.Context, session *repository.MarketSession) error {
+		result, cancelErr := s.cancelWithinLock(ctx, session, command)
+		if cancelErr != nil {
+			return cancelErr
+		}
+		cancelled = result
+
+		return nil
+	})
+	if err != nil {
+		return CancelledOrder{}, translateMarketError(err)
+	}
+
+	return cancelled, nil
+}
+
+func (s *MarketService) cancelWithinLock(
+	ctx context.Context,
+	session *repository.MarketSession,
+	command CancelOrderCommand,
+) (CancelledOrder, error) {
+	order, err := session.Order(ctx, command.OrderID)
+	if err != nil {
+		return CancelledOrder{}, err
+	}
+	if order.UserID != command.UserID {
+		return CancelledOrder{}, ErrNotOwner
+	}
+	if !order.IsLive() {
+		return CancelledOrder{}, model.ErrOrderNotLive
+	}
+
+	holder, err := loadParty(ctx, session, order.UserID, order.PlayerID)
+	if err != nil {
+		return CancelledOrder{}, err
+	}
+
+	released, err := s.releaseReservation(ctx, session, command.Actor, &order, holder, order.RemainingQuantity())
+	if err != nil {
+		return CancelledOrder{}, err
+	}
+
+	before := order
+	if cancelErr := order.Cancel(s.now()); cancelErr != nil {
+		return CancelledOrder{}, cancelErr
+	}
+
+	change := repository.OrderChange{Before: before, After: order}
+	if saveErr := session.SaveOrder(ctx, command.Actor, repository.ActionCancel, change); saveErr != nil {
+		return CancelledOrder{}, saveErr
+	}
+
+	return CancelledOrder{
+		Order:           order,
+		ReleasedCredits: released.credits,
+		ReleasedTokens:  released.tokens,
+	}, nil
+}
+
+func (s *MarketService) ListOpenOrders(ctx context.Context, userID int64, playerID *int64) ([]model.Order, error) {
+	return s.market.LiveOrdersOf(ctx, userID, playerID)
 }
 
 func translateMarketError(err error) error {
 	switch {
-	case errors.Is(err, repository.ErrNotFound):
+	case errors.Is(err, repository.ErrNotFound), errors.Is(err, model.ErrOrderNotFound):
 		return ErrNotFound
 	case errors.Is(err, repository.ErrPlayerInactive):
 		return ErrPlayerInactive

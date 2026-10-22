@@ -12,6 +12,7 @@ type Container struct {
 	Player PlayerService
 	Sync   PlayerSyncService
 	Auth   *Auth
+	Market *MarketService
 }
 
 func NewContainer(repos *repository.Container, adapterContainer *adapters.Container, logger *slog.Logger) *Container {
@@ -25,5 +26,6 @@ func NewContainer(repos *repository.Container, adapterContainer *adapters.Contai
 			repos.RefreshToken,
 			time.Now,
 		),
+		Market: NewMarketService(repos.Market, time.Now),
 	}
 }

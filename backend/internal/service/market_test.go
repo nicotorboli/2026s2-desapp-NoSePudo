@@ -507,3 +507,165 @@ func TestPlaceOrderSinLibroNoEjecutaNada(t *testing.T) {
 		t.Errorf("quedaron %d créditos reservados, se esperaban 30 por la orden en reposo", reserved)
 	}
 }
+
+func cancelCommand(userID, orderID int64) service.CancelOrderCommand {
+	return service.CancelOrderCommand{
+		Actor:   "cancelador@test.local",
+		UserID:  userID,
+		OrderID: orderID,
+	}
+}
+
+func TestCancelOrderDeUnaCompraParcialLiberaSoloElRemanente(t *testing.T) {
+	libro := nuevoLibroEscaso(t)
+
+	command := withPrice(buyCommand(libro.buyer, libro.playerID, 10), model.CreditsFromUnits(2))
+
+	placed, err := libro.fixture.market.PlaceOrder(t.Context(), command)
+	if err != nil {
+		t.Fatalf("PlaceOrder devolvió %v", err)
+	}
+	if placed.Order.Status != model.StatusPartiallyFilled {
+		t.Fatalf("la orden quedó en %s, se esperaba PARTIALLY_FILLED para poder cancelarla", placed.Order.Status)
+	}
+
+	cancelled, err := libro.fixture.market.CancelOrder(t.Context(), cancelCommand(libro.buyer, placed.Order.ID))
+	if err != nil {
+		t.Fatalf("CancelOrder devolvió %v", err)
+	}
+
+	if cancelled.Order.Status != model.StatusCancelled {
+		t.Errorf("la orden quedó en %s, se esperaba CANCELLED", cancelled.Order.Status)
+	}
+	if cancelled.Order.ExecutedQuantity != 5 {
+		t.Errorf("la orden cancelada informa %d ejecutados, se esperaban 5", cancelled.Order.ExecutedQuantity)
+	}
+	if cancelled.ReleasedCredits != model.CreditsFromUnits(10) {
+		t.Errorf("se liberaron %d créditos, se esperaban 10 por los cinco tokens pendientes", cancelled.ReleasedCredits)
+	}
+
+	account := libro.fixture.account(t, libro.buyer)
+	if account.ReservedBalance != 0 {
+		t.Errorf("quedaron %d créditos reservados por una orden cancelada", account.ReservedBalance)
+	}
+	if account.AvailableBalance != model.CreditsFromUnits(995) {
+		t.Errorf("quedaron %d disponibles, se esperaban 995: solo se gastaron los 5 ejecutados", account.AvailableBalance)
+	}
+	if libro.fixture.orderStatus(t, placed.Order.ID) != model.StatusCancelled {
+		t.Error("la orden no quedó CANCELLED en la base")
+	}
+}
+
+func TestCancelOrderDeUnaVentaDevuelveLosTokensReservados(t *testing.T) {
+	fixture := newMarketFixture(t)
+	playerID := fixture.seedPlayer(t)
+	seller := fixture.seedUser(t, 0)
+
+	fixture.seedQuote(t, playerID, model.CreditsFromUnits(1))
+	fixture.seedPosition(t, seller, playerID, 10, model.CreditsFromUnits(10))
+
+	placed, err := fixture.market.PlaceOrder(t.Context(), withPrice(sellCommand(seller, playerID, 7), model.CreditsFromUnits(50)))
+	if err != nil {
+		t.Fatalf("PlaceOrder devolvió %v", err)
+	}
+
+	cancelled, err := fixture.market.CancelOrder(t.Context(), cancelCommand(seller, placed.Order.ID))
+	if err != nil {
+		t.Fatalf("CancelOrder devolvió %v", err)
+	}
+
+	if cancelled.ReleasedTokens != 7 {
+		t.Errorf("se liberaron %d tokens, se esperaban 7", cancelled.ReleasedTokens)
+	}
+
+	position := fixture.position(t, seller, playerID)
+	if position.AvailableQuantity != 10 || position.ReservedQuantity != 0 {
+		t.Errorf("la posición quedó en %d disponibles y %d reservados, se esperaban 10 y 0",
+			position.AvailableQuantity, position.ReservedQuantity)
+	}
+}
+
+func TestCancelOrderRechazaAlQueNoEsDuenoYALaOrdenYaFinal(t *testing.T) {
+	fixture := newMarketFixture(t)
+	playerID := fixture.seedPlayer(t)
+	owner := fixture.seedUser(t, model.CreditsFromUnits(1000))
+	intruso := fixture.seedUser(t, model.CreditsFromUnits(1000))
+
+	fixture.seedQuote(t, playerID, model.CreditsFromUnits(1))
+
+	placed, err := fixture.market.PlaceOrder(t.Context(), withPrice(buyCommand(owner, playerID, 3), model.CreditsFromUnits(2)))
+	if err != nil {
+		t.Fatalf("PlaceOrder devolvió %v", err)
+	}
+
+	if _, err := fixture.market.CancelOrder(t.Context(), cancelCommand(intruso, placed.Order.ID)); !errors.Is(err, service.ErrNotOwner) {
+		t.Errorf("cancelar la orden de otro devolvió %v, se esperaba ErrNotOwner", err)
+	}
+
+	if _, err := fixture.market.CancelOrder(t.Context(), cancelCommand(owner, placed.Order.ID)); err != nil {
+		t.Fatalf("la primera cancelación devolvió %v", err)
+	}
+
+	if _, err := fixture.market.CancelOrder(t.Context(), cancelCommand(owner, placed.Order.ID)); !errors.Is(err, model.ErrOrderNotLive) {
+		t.Errorf("cancelar dos veces devolvió %v, se esperaba ErrOrderNotLive", err)
+	}
+
+	if _, err := fixture.market.CancelOrder(t.Context(), cancelCommand(owner, 999999)); !errors.Is(err, service.ErrNotFound) {
+		t.Errorf("cancelar una orden inexistente devolvió %v, se esperaba ErrNotFound", err)
+	}
+}
+
+func TestListOpenOrdersNuncaDevuelveLasDeOtroUsuario(t *testing.T) {
+	fixture := newMarketFixture(t)
+	playerID := fixture.seedPlayer(t)
+	otroPlayer := fixture.seedPlayer(t)
+	propio := fixture.seedUser(t, model.CreditsFromUnits(1000))
+	ajeno := fixture.seedUser(t, model.CreditsFromUnits(1000))
+
+	fixture.seedQuote(t, playerID, model.CreditsFromUnits(1))
+	fixture.seedQuote(t, otroPlayer, model.CreditsFromUnits(1))
+
+	propia, err := fixture.market.PlaceOrder(t.Context(), withPrice(buyCommand(propio, playerID, 3), model.CreditsFromUnits(2)))
+	if err != nil {
+		t.Fatalf("la orden propia devolvió %v", err)
+	}
+	if _, err = fixture.market.PlaceOrder(t.Context(), withPrice(buyCommand(propio, otroPlayer, 2), model.CreditsFromUnits(2))); err != nil {
+		t.Fatalf("la segunda orden propia devolvió %v", err)
+	}
+	if _, err = fixture.market.PlaceOrder(t.Context(), withPrice(buyCommand(ajeno, playerID, 4), model.CreditsFromUnits(2))); err != nil {
+		t.Fatalf("la orden ajena devolvió %v", err)
+	}
+
+	orders, err := fixture.market.ListOpenOrders(t.Context(), propio, nil)
+	if err != nil {
+		t.Fatalf("ListOpenOrders devolvió %v", err)
+	}
+	if len(orders) != 2 {
+		t.Fatalf("se devolvieron %d órdenes, se esperaban las 2 propias", len(orders))
+	}
+	for _, order := range orders {
+		if order.UserID != propio {
+			t.Errorf("se devolvió una orden del usuario %d: el listado es solo del que pregunta", order.UserID)
+		}
+	}
+
+	filtradas, err := fixture.market.ListOpenOrders(t.Context(), propio, &playerID)
+	if err != nil {
+		t.Fatalf("ListOpenOrders con filtro devolvió %v", err)
+	}
+	if len(filtradas) != 1 || filtradas[0].PlayerID != playerID {
+		t.Errorf("el filtro por jugador devolvió %d órdenes, se esperaba solo la de ese jugador", len(filtradas))
+	}
+
+	if _, err = fixture.market.CancelOrder(t.Context(), cancelCommand(propio, propia.Order.ID)); err != nil {
+		t.Fatalf("CancelOrder devolvió %v", err)
+	}
+
+	restantes, err := fixture.market.ListOpenOrders(t.Context(), propio, nil)
+	if err != nil {
+		t.Fatalf("ListOpenOrders tras cancelar devolvió %v", err)
+	}
+	if len(restantes) != 1 {
+		t.Errorf("quedaron %d órdenes vivas, se esperaba 1: la cancelada no se lista", len(restantes))
+	}
+}

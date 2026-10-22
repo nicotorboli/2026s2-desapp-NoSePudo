@@ -103,6 +103,14 @@ func (r *MarketRepository) WithPlayerLocked(ctx context.Context, playerID int64,
 	return nil
 }
 
+func (r *MarketRepository) Order(ctx context.Context, id int64) (model.Order, error) {
+	return r.orderDao.GetByID(ctx, nil, id)
+}
+
+func (r *MarketRepository) LiveOrdersOf(ctx context.Context, userID int64, playerID *int64) ([]model.Order, error) {
+	return r.orderDao.ListLiveByUser(ctx, userID, playerID)
+}
+
 type MarketSession struct {
 	tx          *sql.Tx
 	accountDao  *dao.AccountSql
@@ -124,6 +132,10 @@ func (s *MarketSession) LockPosition(ctx context.Context, userID, playerID int64
 
 func (s *MarketSession) LockOppositeBook(ctx context.Context, playerID int64, incomingSide model.OrderSide) ([]model.Order, error) {
 	return s.orderDao.LockLiveBook(ctx, s.tx, playerID, model.OppositeSide(incomingSide))
+}
+
+func (s *MarketSession) Order(ctx context.Context, id int64) (model.Order, error) {
+	return s.orderDao.GetByID(ctx, s.tx, id)
 }
 
 func (s *MarketSession) LatestQuote(ctx context.Context, playerID int64) (model.PlayerQuote, error) {
