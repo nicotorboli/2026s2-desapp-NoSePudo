@@ -40,6 +40,18 @@ func (m *mockSyncService) SyncPlayers(ctx context.Context, actor string) (dto.Sy
 	return dto.SyncPlayersResponse{Status: "success"}, nil
 }
 
+type mockStatisticsSyncService struct{}
+
+func (m *mockStatisticsSyncService) SyncStatistics(ctx context.Context) (dto.SyncStatisticsResponse, error) {
+	return dto.SyncStatisticsResponse{Status: "success"}, nil
+}
+
+type mockPlayerStatisticsService struct{}
+
+func (m *mockPlayerStatisticsService) GetPlayerStatistics(ctx context.Context, id int64) ([]dto.PlayerStatisticsResponse, error) {
+	return []dto.PlayerStatisticsResponse{{Goals: 5, Rating: 7.8}}, nil
+}
+
 type mockAuthController struct{}
 
 func (m *mockAuthController) Register() httphandler.Endpoint {
@@ -93,8 +105,12 @@ func newTestServerWith(verifier middleware.TokenVerifier) *server.Server {
 		logger.NewLog(),
 		&controller.Container{
 			Player: controller.NewPlayerController(&mockPlayerService{}),
-			Sync:   controller.NewSyncController(&mockSyncService{}),
-			Auth:   &mockAuthController{},
+			Sync: controller.NewSyncController(
+				&mockSyncService{},
+				&mockStatisticsSyncService{},
+				&mockPlayerStatisticsService{},
+			),
+			Auth: &mockAuthController{},
 		},
 		middleware.NewContainer(verifier),
 	)

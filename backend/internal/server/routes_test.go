@@ -27,13 +27,17 @@ func (stubController) endpoint() httphandler.Endpoint {
 	return func(http.ResponseWriter, *http.Request) error { return nil }
 }
 
-func (s stubController) GetPlayers() httphandler.Endpoint    { return s.endpoint() }
-func (s stubController) GetPlayerByID() httphandler.Endpoint { return s.endpoint() }
-func (s stubController) SyncPlayers() httphandler.Endpoint   { return s.endpoint() }
-func (s stubController) Register() httphandler.Endpoint      { return s.endpoint() }
-func (s stubController) Login() httphandler.Endpoint         { return s.endpoint() }
-func (s stubController) Refresh() httphandler.Endpoint       { return s.endpoint() }
-func (s stubController) Logout() httphandler.Endpoint        { return s.endpoint() }
+func (s stubController) GetPlayers() httphandler.Endpoint     { return s.endpoint() }
+func (s stubController) GetPlayerByID() httphandler.Endpoint  { return s.endpoint() }
+func (s stubController) SyncPlayers() httphandler.Endpoint    { return s.endpoint() }
+func (s stubController) SyncStatistics() httphandler.Endpoint { return s.endpoint() }
+func (s stubController) GetPlayerStatistics() httphandler.Endpoint {
+	return s.endpoint()
+}
+func (s stubController) Register() httphandler.Endpoint { return s.endpoint() }
+func (s stubController) Login() httphandler.Endpoint    { return s.endpoint() }
+func (s stubController) Refresh() httphandler.Endpoint  { return s.endpoint() }
+func (s stubController) Logout() httphandler.Endpoint   { return s.endpoint() }
 
 func routesUnderTest() []route {
 	server := &Server{
@@ -63,13 +67,15 @@ func TestEveryRouteDeclaresAnAccessLevel(t *testing.T) {
 
 func TestDeclaredLevelsMatchTheSpecification(t *testing.T) {
 	expected := map[string]AccessLevel{
-		"POST /auth/register": AccessAnonymous,
-		"POST /auth/login":    AccessAnonymous,
-		"POST /auth/refresh":  AccessRenewal,
-		"POST /auth/logout":   AccessAuthenticated,
-		"GET /players":        AccessAnonymous,
-		"GET /players/{id}":   AccessAnonymous,
-		"POST /players/sync":  AccessSuperuser,
+		"POST /auth/register":           AccessAnonymous,
+		"POST /auth/login":              AccessAnonymous,
+		"POST /auth/refresh":            AccessRenewal,
+		"POST /auth/logout":             AccessAuthenticated,
+		"GET /players":                  AccessAnonymous,
+		"GET /players/{id}":             AccessAnonymous,
+		"GET /players/{id}/statistics":  AccessAnonymous,
+		"POST /players/sync":            AccessSuperuser,
+		"POST /players/statistics/sync": AccessSuperuser,
 	}
 
 	declared := map[string]AccessLevel{}
