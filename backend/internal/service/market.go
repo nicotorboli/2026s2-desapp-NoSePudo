@@ -15,8 +15,7 @@ var (
 	ErrInvalidPrice    = errors.New("el precio debe ser mayor a cero")
 	ErrPlayerInactive  = errors.New("el jugador no está activo")
 	ErrNoLiquidity     = errors.New("la orden no se puede completar en su totalidad")
-
-	ErrSellPathUnavailable = errors.New("la venta todavía no está habilitada")
+	ErrUnknownSide     = errors.New("el lado de la orden es desconocido")
 )
 
 type PlaceOrderCommand struct {
@@ -67,8 +66,8 @@ func (s *MarketService) PlaceOrder(ctx context.Context, command PlaceOrderComman
 }
 
 func validatePlaceOrder(command PlaceOrderCommand) error {
-	if command.Side != model.SideBuy {
-		return ErrSellPathUnavailable
+	if command.Side != model.SideBuy && command.Side != model.SideSell {
+		return ErrUnknownSide
 	}
 	if command.Quantity <= 0 {
 		return ErrInvalidQuantity
@@ -86,9 +85,13 @@ func (s *MarketService) placeWithinLock(ctx context.Context, session *repository
 		return PlacedOrder{}, err
 	}
 
-	account, err := s.reserveCredits(ctx, session, command, price)
+	submitter, err := loadParty(ctx, session, command.UserID, command.PlayerID)
 	if err != nil {
 		return PlacedOrder{}, err
+	}
+
+	if reserveErr := s.reserve(ctx, session, command, submitter, price); reserveErr != nil {
+		return PlacedOrder{}, reserveErr
 	}
 
 	incoming, err := session.InsertOrder(ctx, command.Actor, model.Order{
@@ -111,12 +114,12 @@ func (s *MarketService) placeWithinLock(ctx context.Context, session *repository
 		return PlacedOrder{}, err
 	}
 
-	trades, err := s.settleExecutions(ctx, session, command, &incoming, &account, book)
+	trades, err := s.settleExecutions(ctx, session, command, &incoming, submitter, book)
 	if err != nil {
 		return PlacedOrder{}, err
 	}
 
-	if err := s.applyRemainder(ctx, session, command, &incoming, &account); err != nil {
+	if err := s.applyRemainder(ctx, session, command, &incoming, submitter); err != nil {
 		return PlacedOrder{}, err
 	}
 
@@ -147,28 +150,55 @@ func resolveTimeInForce(command PlaceOrderCommand) model.TimeInForce {
 	return model.GoodTillCancelled
 }
 
-func (s *MarketService) reserveCredits(
+type tradingParty struct {
+	account  model.Account
+	position model.Position
+	userID   int64
+}
+
+func loadParty(ctx context.Context, session *repository.MarketSession, userID, playerID int64) (*tradingParty, error) {
+	account, err := session.LockAccount(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	position, err := session.LockPosition(ctx, userID, playerID)
+	if err != nil {
+		if !errors.Is(err, model.ErrPositionNotFound) {
+			return nil, err
+		}
+		position = model.Position{UserID: userID, PlayerID: playerID}
+	}
+
+	return &tradingParty{userID: userID, account: account, position: position}, nil
+}
+
+func (s *MarketService) reserve(
 	ctx context.Context,
 	session *repository.MarketSession,
 	command PlaceOrderCommand,
+	submitter *tradingParty,
 	price model.Credits,
-) (model.Account, error) {
-	account, err := session.LockAccount(ctx, command.UserID)
-	if err != nil {
-		return model.Account{}, err
+) error {
+	if command.Side == model.SideBuy {
+		before := submitter.account
+		if err := submitter.account.Reserve(price.Times(command.Quantity)); err != nil {
+			return err
+		}
+
+		change := repository.AccountChange{Before: before, After: submitter.account}
+
+		return session.SaveAccount(ctx, command.Actor, repository.ActionReserve, change)
 	}
 
-	before := account
-	if reserveErr := account.Reserve(price.Times(command.Quantity)); reserveErr != nil {
-		return model.Account{}, reserveErr
+	before := submitter.position
+	if err := submitter.position.ReserveTokens(command.Quantity); err != nil {
+		return err
 	}
 
-	change := repository.AccountChange{Before: before, After: account}
-	if saveErr := session.SaveAccount(ctx, command.Actor, repository.ActionReserve, change); saveErr != nil {
-		return model.Account{}, saveErr
-	}
+	change := repository.PositionChange{Before: before, After: submitter.position}
 
-	return account, nil
+	return session.SavePosition(ctx, command.Actor, repository.ActionReserve, change)
 }
 
 func (s *MarketService) settleExecutions(
@@ -176,11 +206,12 @@ func (s *MarketService) settleExecutions(
 	session *repository.MarketSession,
 	command PlaceOrderCommand,
 	incoming *model.Order,
-	account *model.Account,
+	submitter *tradingParty,
 	book []model.Order,
 ) ([]model.Trade, error) {
 	executions := model.MatchOrder(*incoming, book)
 	trades := make([]model.Trade, 0, len(executions))
+	counterparties := make(map[int64]*tradingParty, len(executions))
 
 	for _, execution := range executions {
 		resting, found := findOrder(book, execution.RestingOrderID)
@@ -188,7 +219,12 @@ func (s *MarketService) settleExecutions(
 			return nil, fmt.Errorf("la orden en reposo %d no está en el libro leído", execution.RestingOrderID)
 		}
 
-		trade, err := s.settleOne(ctx, session, command, incoming, account, resting, execution)
+		counterparty, err := partyOf(ctx, session, counterparties, resting.UserID, command.PlayerID)
+		if err != nil {
+			return nil, err
+		}
+
+		trade, err := s.settleOne(ctx, session, command, incoming, submitter, resting, counterparty, execution)
 		if err != nil {
 			return nil, err
 		}
@@ -197,6 +233,25 @@ func (s *MarketService) settleExecutions(
 	}
 
 	return trades, nil
+}
+
+func partyOf(
+	ctx context.Context,
+	session *repository.MarketSession,
+	known map[int64]*tradingParty,
+	userID, playerID int64,
+) (*tradingParty, error) {
+	if party, seen := known[userID]; seen {
+		return party, nil
+	}
+
+	party, err := loadParty(ctx, session, userID, playerID)
+	if err != nil {
+		return nil, err
+	}
+	known[userID] = party
+
+	return party, nil
 }
 
 func findOrder(book []model.Order, id int64) (model.Order, bool) {
@@ -214,8 +269,9 @@ func (s *MarketService) settleOne(
 	session *repository.MarketSession,
 	command PlaceOrderCommand,
 	incoming *model.Order,
-	account *model.Account,
+	submitter *tradingParty,
 	resting model.Order,
+	counterparty *tradingParty,
 	execution model.Execution,
 ) (model.Trade, error) {
 	at := s.now()
@@ -230,102 +286,79 @@ func (s *MarketService) settleOne(
 		return model.Trade{}, err
 	}
 
-	buyer, seller := settlementParties{
-		order:   OrderChangeOf(incomingBefore, *incoming),
-		userID:  command.UserID,
-		account: account,
-	}, settlementParties{
-		order:  OrderChangeOf(restingBefore, resting),
-		userID: resting.UserID,
+	incomingChange := repository.OrderChange{Before: incomingBefore, After: *incoming}
+	restingChange := repository.OrderChange{Before: restingBefore, After: resting}
+
+	sides := settlementSides{
+		buyOrder:    incomingChange,
+		sellOrder:   restingChange,
+		buyerParty:  submitter,
+		sellerParty: counterparty,
+	}
+	if command.Side == model.SideSell {
+		sides = settlementSides{
+			buyOrder:    restingChange,
+			sellOrder:   incomingChange,
+			buyerParty:  counterparty,
+			sellerParty: submitter,
+		}
 	}
 
-	return s.exchange(ctx, session, command, buyer, seller, execution)
+	return s.exchange(ctx, session, command, sides, execution)
 }
 
-type settlementParties struct {
-	account *model.Account
-	order   repository.OrderChange
-	userID  int64
-}
-
-func OrderChangeOf(before, after model.Order) repository.OrderChange {
-	return repository.OrderChange{Before: before, After: after}
+type settlementSides struct {
+	buyerParty  *tradingParty
+	sellerParty *tradingParty
+	buyOrder    repository.OrderChange
+	sellOrder   repository.OrderChange
 }
 
 func (s *MarketService) exchange(
 	ctx context.Context,
 	session *repository.MarketSession,
 	command PlaceOrderCommand,
-	buyer settlementParties,
-	seller settlementParties,
+	sides settlementSides,
 	execution model.Execution,
 ) (model.Trade, error) {
 	amount := execution.Price.Times(execution.Quantity)
 
-	buyerAccountBefore := *buyer.account
-	if err := buyer.account.SettleReservation(amount); err != nil {
+	buyerAccountBefore := sides.buyerParty.account
+	if err := sides.buyerParty.account.SettleReservation(amount); err != nil {
 		return model.Trade{}, err
 	}
-	if improvement := buyer.order.After.Price.Minus(execution.Price); improvement > 0 {
-		if err := buyer.account.ReleaseReservation(improvement.Times(execution.Quantity)); err != nil {
+	if improvement := sides.buyOrder.After.Price.Minus(execution.Price); improvement > 0 {
+		if err := sides.buyerParty.account.ReleaseReservation(improvement.Times(execution.Quantity)); err != nil {
 			return model.Trade{}, err
 		}
 	}
 
-	sellerAccount, err := session.LockAccount(ctx, seller.userID)
-	if err != nil {
+	sellerAccountBefore := sides.sellerParty.account
+	if err := sides.sellerParty.account.Credit(amount); err != nil {
 		return model.Trade{}, err
-	}
-	sellerAccountBefore := sellerAccount
-	if creditErr := sellerAccount.Credit(amount); creditErr != nil {
-		return model.Trade{}, creditErr
 	}
 
-	sellerPosition, err := session.LockPosition(ctx, seller.userID, command.PlayerID)
-	if err != nil {
+	sellerPositionBefore := sides.sellerParty.position
+	if _, err := sides.sellerParty.position.DeliverReservedTokens(execution.Quantity); err != nil {
 		return model.Trade{}, err
-	}
-	sellerPositionBefore := sellerPosition
-	if _, deliverErr := sellerPosition.DeliverReservedTokens(execution.Quantity); deliverErr != nil {
-		return model.Trade{}, deliverErr
 	}
 
-	buyerPosition, err := loadOrEmptyPosition(ctx, session, buyer.userID, command.PlayerID)
-	if err != nil {
+	buyerPositionBefore := sides.buyerParty.position
+	if err := sides.buyerParty.position.Receive(execution.Quantity, amount); err != nil {
 		return model.Trade{}, err
-	}
-	buyerPositionBefore := buyerPosition
-	if receiveErr := buyerPosition.Receive(execution.Quantity, amount); receiveErr != nil {
-		return model.Trade{}, receiveErr
 	}
 
 	return session.SettleExecution(ctx, repository.ExecutionSettlement{
 		Actor:          command.Actor,
-		BuyOrder:       buyer.order,
-		SellOrder:      seller.order,
-		BuyerPosition:  repository.PositionChange{Before: buyerPositionBefore, After: buyerPosition},
-		SellerPosition: repository.PositionChange{Before: sellerPositionBefore, After: sellerPosition},
-		BuyerAccount:   repository.AccountChange{Before: buyerAccountBefore, After: *buyer.account},
-		SellerAccount:  repository.AccountChange{Before: sellerAccountBefore, After: sellerAccount},
+		BuyOrder:       sides.buyOrder,
+		SellOrder:      sides.sellOrder,
+		BuyerPosition:  repository.PositionChange{Before: buyerPositionBefore, After: sides.buyerParty.position},
+		SellerPosition: repository.PositionChange{Before: sellerPositionBefore, After: sides.sellerParty.position},
+		BuyerAccount:   repository.AccountChange{Before: buyerAccountBefore, After: sides.buyerParty.account},
+		SellerAccount:  repository.AccountChange{Before: sellerAccountBefore, After: sides.sellerParty.account},
 		Quantity:       execution.Quantity,
 		Price:          execution.Price,
 	})
-}
-
-func loadOrEmptyPosition(
-	ctx context.Context,
-	session *repository.MarketSession,
-	userID, playerID int64,
-) (model.Position, error) {
-	position, err := session.LockPosition(ctx, userID, playerID)
-	if err == nil {
-		return position, nil
-	}
-	if errors.Is(err, model.ErrPositionNotFound) {
-		return model.Position{UserID: userID, PlayerID: playerID}, nil
-	}
-
-	return model.Position{}, err
 }
 
 func (s *MarketService) applyRemainder(
@@ -333,7 +366,7 @@ func (s *MarketService) applyRemainder(
 	session *repository.MarketSession,
 	command PlaceOrderCommand,
 	incoming *model.Order,
-	account *model.Account,
+	submitter *tradingParty,
 ) error {
 	remaining := incoming.RemainingQuantity()
 	if remaining == 0 {
@@ -346,7 +379,7 @@ func (s *MarketService) applyRemainder(
 	case model.FillOrKill:
 		return ErrNoLiquidity
 	case model.ImmediateOrCancel:
-		return s.cancelRemainder(ctx, session, command, incoming, account, remaining)
+		return s.cancelRemainder(ctx, session, command, incoming, submitter, remaining)
 	}
 
 	return fmt.Errorf("vigencia desconocida: %s", incoming.TimeInForce)
@@ -357,16 +390,10 @@ func (s *MarketService) cancelRemainder(
 	session *repository.MarketSession,
 	command PlaceOrderCommand,
 	incoming *model.Order,
-	account *model.Account,
+	submitter *tradingParty,
 	remaining int64,
 ) error {
-	before := *account
-	if err := account.ReleaseReservation(incoming.Price.Times(remaining)); err != nil {
-		return err
-	}
-
-	releaseChange := repository.AccountChange{Before: before, After: *account}
-	if err := session.SaveAccount(ctx, command.Actor, repository.ActionRelease, releaseChange); err != nil {
+	if err := s.releaseReservation(ctx, session, command, incoming, submitter, remaining); err != nil {
 		return err
 	}
 
@@ -378,6 +405,35 @@ func (s *MarketService) cancelRemainder(
 	orderChange := repository.OrderChange{Before: orderBefore, After: *incoming}
 
 	return session.SaveOrder(ctx, command.Actor, repository.ActionCancel, orderChange)
+}
+
+func (s *MarketService) releaseReservation(
+	ctx context.Context,
+	session *repository.MarketSession,
+	command PlaceOrderCommand,
+	incoming *model.Order,
+	submitter *tradingParty,
+	remaining int64,
+) error {
+	if incoming.Side == model.SideBuy {
+		before := submitter.account
+		if err := submitter.account.ReleaseReservation(incoming.Price.Times(remaining)); err != nil {
+			return err
+		}
+
+		change := repository.AccountChange{Before: before, After: submitter.account}
+
+		return session.SaveAccount(ctx, command.Actor, repository.ActionRelease, change)
+	}
+
+	before := submitter.position
+	if err := submitter.position.ReleaseReservedTokens(remaining); err != nil {
+		return err
+	}
+
+	change := repository.PositionChange{Before: before, After: submitter.position}
+
+	return session.SavePosition(ctx, command.Actor, repository.ActionRelease, change)
 }
 
 func translateMarketError(err error) error {

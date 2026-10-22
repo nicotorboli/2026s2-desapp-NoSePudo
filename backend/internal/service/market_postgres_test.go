@@ -189,6 +189,59 @@ func (f *marketFixture) seedRestingSell(t *testing.T, sellerID, playerID int64, 
 	return orderID
 }
 
+func (f *marketFixture) seedPosition(t *testing.T, userID, playerID, available int64, costBasis model.Credits) {
+	t.Helper()
+
+	if _, err := f.db.ExecContext(t.Context(),
+		`INSERT INTO user_positions (user_id, player_id, available_quantity, reserved_quantity, cost_basis)
+		 VALUES ($1, $2, $3, 0, $4)
+		 ON CONFLICT (user_id, player_id)
+		 DO UPDATE SET available_quantity = $3, cost_basis = $4`,
+		userID, playerID, available, int64(costBasis),
+	); err != nil {
+		t.Fatalf("no se pudo sembrar la posición del usuario %d: %v", userID, err)
+	}
+}
+
+func (f *marketFixture) seedRestingBuy(t *testing.T, buyerID, playerID int64, price model.Credits, quantity int64) int64 {
+	t.Helper()
+
+	reserved := int64(price.Times(quantity))
+	if _, err := f.db.ExecContext(t.Context(),
+		`UPDATE user_accounts
+		 SET available_balance = available_balance - $2, reserved_balance = reserved_balance + $2
+		 WHERE user_id = $1`,
+		buyerID, reserved,
+	); err != nil {
+		t.Fatalf("no se pudieron reservar los créditos del comprador %d: %v", buyerID, err)
+	}
+
+	var orderID int64
+	err := f.db.QueryRowContext(t.Context(),
+		`INSERT INTO market_orders (user_id, player_id, side, time_in_force, status, price, quantity, created_at)
+		 VALUES ($1, $2, 'BUY', 'GTC', 'PENDING', $3, $4, $5) RETURNING id`,
+		buyerID, playerID, int64(price), quantity, f.clock,
+	).Scan(&orderID)
+	if err != nil {
+		t.Fatalf("no se pudo sembrar la orden de compra: %v", err)
+	}
+
+	return orderID
+}
+
+func (f *marketFixture) orderStatus(t *testing.T, orderID int64) model.OrderStatus {
+	t.Helper()
+
+	var status string
+	if err := f.db.QueryRowContext(t.Context(),
+		`SELECT status FROM market_orders WHERE id = $1`, orderID,
+	).Scan(&status); err != nil {
+		t.Fatalf("no se pudo leer el estado de la orden %d: %v", orderID, err)
+	}
+
+	return model.OrderStatus(status)
+}
+
 func (f *marketFixture) account(t *testing.T, userID int64) model.Account {
 	t.Helper()
 

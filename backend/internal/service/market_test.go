@@ -212,3 +212,157 @@ func TestPlaceOrderRechazaAlJugadorDesconocidoYAlInactivo(t *testing.T) {
 		t.Errorf("la cuenta quedó en %d disponibles y %d reservados tras dos rechazos", account.AvailableBalance, account.ReservedBalance)
 	}
 }
+
+func sellCommand(userID, playerID, quantity int64) service.PlaceOrderCommand {
+	return service.PlaceOrderCommand{
+		Actor:    "vendedor@test.local",
+		Side:     model.SideSell,
+		UserID:   userID,
+		PlayerID: playerID,
+		Quantity: quantity,
+	}
+}
+
+func TestPlaceOrderDeVentaEjecutaContraLaCompraEnReposoYCobraElPrecio(t *testing.T) {
+	fixture := newMarketFixture(t)
+	playerID := fixture.seedPlayer(t)
+	seller := fixture.seedUser(t, 0)
+	buyer := fixture.seedUser(t, model.CreditsFromUnits(1000))
+
+	fixture.seedQuote(t, playerID, model.CreditsFromUnits(1))
+	fixture.seedPosition(t, seller, playerID, 10, model.CreditsFromUnits(10))
+	fixture.seedRestingBuy(t, buyer, playerID, model.CreditsFromUnits(1), 100)
+
+	placed, err := fixture.market.PlaceOrder(t.Context(), sellCommand(seller, playerID, 4))
+	if err != nil {
+		t.Fatalf("PlaceOrder devolvió %v", err)
+	}
+
+	if placed.Order.Status != model.StatusFilled {
+		t.Errorf("la orden quedó en %s, se esperaba FILLED", placed.Order.Status)
+	}
+
+	if balance := fixture.account(t, seller).AvailableBalance; balance != model.CreditsFromUnits(4) {
+		t.Errorf("el vendedor quedó con %d, se esperaban 4 créditos", balance)
+	}
+
+	sellerPosition := fixture.position(t, seller, playerID)
+	if sellerPosition.TotalQuantity() != 6 {
+		t.Errorf("al vendedor le quedaron %d tokens, se esperaban 6", sellerPosition.TotalQuantity())
+	}
+
+	if quantity := fixture.position(t, buyer, playerID).AvailableQuantity; quantity != 4 {
+		t.Errorf("el comprador recibió %d tokens, se esperaban 4", quantity)
+	}
+
+	if !fixture.ledgerIsBalanced(t) {
+		t.Error("hay una liquidación del libro mayor que no suma cero")
+	}
+}
+
+func TestPlaceOrderDeVentaSinTokensSuficientesEsRechazada(t *testing.T) {
+	fixture := newMarketFixture(t)
+	playerID := fixture.seedPlayer(t)
+	seller := fixture.seedUser(t, 0)
+	buyer := fixture.seedUser(t, model.CreditsFromUnits(1000))
+
+	fixture.seedQuote(t, playerID, model.CreditsFromUnits(1))
+	fixture.seedPosition(t, seller, playerID, 3, model.CreditsFromUnits(3))
+	fixture.seedRestingBuy(t, buyer, playerID, model.CreditsFromUnits(1), 100)
+
+	_, err := fixture.market.PlaceOrder(t.Context(), sellCommand(seller, playerID, 10))
+	if !errors.Is(err, model.ErrInsufficientTokens) {
+		t.Fatalf("PlaceOrder devolvió %v, se esperaba ErrInsufficientTokens", err)
+	}
+
+	position := fixture.position(t, seller, playerID)
+	if position.AvailableQuantity != 3 || position.ReservedQuantity != 0 {
+		t.Errorf("la posición quedó en %d disponibles y %d reservados, se esperaban 3 y 0",
+			position.AvailableQuantity, position.ReservedQuantity)
+	}
+}
+
+func TestPlaceOrderDeVentaNoPuedeUsarLosTokensYaReservados(t *testing.T) {
+	fixture := newMarketFixture(t)
+	playerID := fixture.seedPlayer(t)
+	seller := fixture.seedUser(t, 0)
+
+	fixture.seedQuote(t, playerID, model.CreditsFromUnits(1))
+	fixture.seedPosition(t, seller, playerID, 10, model.CreditsFromUnits(10))
+
+	primera := withPrice(sellCommand(seller, playerID, 6), model.CreditsFromUnits(50))
+	if _, err := fixture.market.PlaceOrder(t.Context(), primera); err != nil {
+		t.Fatalf("la primera venta devolvió %v", err)
+	}
+
+	segunda := withPrice(sellCommand(seller, playerID, 6), model.CreditsFromUnits(50))
+	if _, err := fixture.market.PlaceOrder(t.Context(), segunda); !errors.Is(err, model.ErrInsufficientTokens) {
+		t.Fatalf("la segunda venta devolvió %v, se esperaba ErrInsufficientTokens", err)
+	}
+
+	position := fixture.position(t, seller, playerID)
+	if position.AvailableQuantity != 4 || position.ReservedQuantity != 6 {
+		t.Errorf("la posición quedó en %d disponibles y %d reservados, se esperaban 4 y 6",
+			position.AvailableQuantity, position.ReservedQuantity)
+	}
+}
+
+func TestPlaceOrderDeVentaDejaIntactoElPrecioPromedioDeCompra(t *testing.T) {
+	fixture := newMarketFixture(t)
+	playerID := fixture.seedPlayer(t)
+	seller := fixture.seedUser(t, 0)
+	buyer := fixture.seedUser(t, model.CreditsFromUnits(1000))
+
+	fixture.seedQuote(t, playerID, model.CreditsFromUnits(1))
+	fixture.seedPosition(t, seller, playerID, 10, model.CreditsFromUnits(30))
+	fixture.seedRestingBuy(t, buyer, playerID, model.CreditsFromUnits(9), 100)
+
+	posicionPrevia := fixture.position(t, seller, playerID)
+	antes := posicionPrevia.AveragePrice()
+
+	if _, err := fixture.market.PlaceOrder(t.Context(), sellCommand(seller, playerID, 4)); err != nil {
+		t.Fatalf("PlaceOrder devolvió %v", err)
+	}
+
+	position := fixture.position(t, seller, playerID)
+	if despues := position.AveragePrice(); despues != antes {
+		t.Errorf("el precio promedio pasó de %d a %d: la venta no debe moverlo", antes, despues)
+	}
+	if position.CostBasis != model.CreditsFromUnits(18) {
+		t.Errorf("el costo quedó en %d, se esperaban 18: seis tokens a un promedio de 3", position.CostBasis)
+	}
+}
+
+func TestPlaceOrderDeVentaPorEncimaDelLibroQuedaEnReposoConLosTokensReservados(t *testing.T) {
+	fixture := newMarketFixture(t)
+	playerID := fixture.seedPlayer(t)
+	seller := fixture.seedUser(t, 0)
+	buyer := fixture.seedUser(t, model.CreditsFromUnits(1000))
+
+	fixture.seedQuote(t, playerID, model.CreditsFromUnits(1))
+	fixture.seedPosition(t, seller, playerID, 10, model.CreditsFromUnits(10))
+	fixture.seedRestingBuy(t, buyer, playerID, model.CreditsFromUnits(2), 5)
+
+	command := withPrice(sellCommand(seller, playerID, 10), model.CreditsFromUnits(50))
+
+	placed, err := fixture.market.PlaceOrder(t.Context(), command)
+	if err != nil {
+		t.Fatalf("PlaceOrder devolvió %v", err)
+	}
+
+	if placed.Order.Status != model.StatusPending {
+		t.Errorf("la orden quedó en %s, se esperaba PENDING", placed.Order.Status)
+	}
+	if len(placed.Trades) != 0 {
+		t.Errorf("se registraron %d operaciones, se esperaba ninguna", len(placed.Trades))
+	}
+	if fixture.orderStatus(t, placed.Order.ID) != model.StatusPending {
+		t.Error("la orden no quedó en reposo en la base")
+	}
+
+	position := fixture.position(t, seller, playerID)
+	if position.AvailableQuantity != 0 || position.ReservedQuantity != 10 {
+		t.Errorf("la posición quedó en %d disponibles y %d reservados, se esperaban 0 y 10",
+			position.AvailableQuantity, position.ReservedQuantity)
+	}
+}
