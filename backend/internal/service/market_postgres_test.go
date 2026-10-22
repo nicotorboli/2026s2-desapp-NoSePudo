@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -24,11 +25,12 @@ const marketFakeHash = "$2a$04$" + "abcdefghijklmnopqrstuv" + "wxyz0123456789ABC
 var marketSeedCounter int64
 
 type marketFixture struct {
-	db      *sql.DB
-	daos    *dao.Container
-	market  *service.MarketService
-	clock   time.Time
-	players *dao.PlayerSql
+	db          *sql.DB
+	daos        *dao.Container
+	market      *service.MarketService
+	marketMaker *service.MarketMakerService
+	clock       time.Time
+	players     *dao.PlayerSql
 }
 
 func newMarketFixture(t *testing.T) *marketFixture {
@@ -45,8 +47,81 @@ func newMarketFixture(t *testing.T) *marketFixture {
 		players: daos.Player,
 	}
 	fixture.market = service.NewMarketService(repos.Market, func() time.Time { return fixture.clock })
+	fixture.marketMaker = service.NewMarketMakerService(repos.Market, func() time.Time { return fixture.clock })
 
 	return fixture
+}
+
+func (f *marketFixture) registrationRepository(initialBalance model.Credits) *repository.RegistrationRepository {
+	return repository.NewRegistrationRepository(f.db, f.daos.User, f.daos.Account, f.daos.Ledger, initialBalance)
+}
+
+func (f *marketFixture) seedSuperuser(t *testing.T) int64 {
+	t.Helper()
+
+	marketSeedCounter++
+
+	var id int64
+	err := f.db.QueryRowContext(t.Context(),
+		`INSERT INTO users (email, password_hash, privilege, active) VALUES ($1, $2, $3, TRUE) RETURNING id`,
+		fmt.Sprintf("superusuario-%d@test.local", marketSeedCounter),
+		marketFakeHash,
+		int16(model.PrivilegeSuperuser),
+	).Scan(&id)
+	if err != nil {
+		t.Fatalf("no se pudo sembrar el superusuario: %v", err)
+	}
+
+	if _, err = f.db.ExecContext(t.Context(),
+		`INSERT INTO user_accounts (user_id, available_balance, reserved_balance) VALUES ($1, 0, 0)`, id,
+	); err != nil {
+		t.Fatalf("no se pudo sembrar la cuenta del superusuario: %v", err)
+	}
+
+	return id
+}
+
+func (f *marketFixture) liveMarketMakerOrder(t *testing.T, playerID int64) (model.Order, bool) {
+	t.Helper()
+
+	var (
+		order  model.Order
+		price  int64
+		side   string
+		status string
+	)
+
+	err := f.db.QueryRowContext(t.Context(),
+		`SELECT id, user_id, player_id, side, status, price, quantity, executed_quantity
+		 FROM market_orders
+		 WHERE player_id = $1 AND market_maker AND status IN ('PENDING', 'PARTIALLY_FILLED')`,
+		playerID,
+	).Scan(&order.ID, &order.UserID, &order.PlayerID, &side, &status, &price, &order.Quantity, &order.ExecutedQuantity)
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.Order{}, false
+	}
+	if err != nil {
+		t.Fatalf("no se pudo leer la orden del creador de mercado: %v", err)
+	}
+
+	order.Side = model.OrderSide(side)
+	order.Status = model.OrderStatus(status)
+	order.Price = model.Credits(price)
+
+	return order, true
+}
+
+func (f *marketFixture) countQuotes(t *testing.T, playerID int64) int {
+	t.Helper()
+
+	var total int
+	if err := f.db.QueryRowContext(t.Context(),
+		`SELECT COUNT(*) FROM player_quotes WHERE player_id = $1`, playerID,
+	).Scan(&total); err != nil {
+		t.Fatalf("no se pudieron contar las cotizaciones del jugador %d: %v", playerID, err)
+	}
+
+	return total
 }
 
 func startMarketPostgres(t *testing.T) *sql.DB {

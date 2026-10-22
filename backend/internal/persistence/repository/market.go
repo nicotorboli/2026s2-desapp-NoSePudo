@@ -33,6 +33,7 @@ type MarketRepository struct {
 	ledgerDao   *dao.LedgerSql
 	quoteDao    *dao.QuoteSql
 	auditDao    dao.AuditDAO
+	userDao     *dao.UserSql
 }
 
 func NewMarketRepository(
@@ -45,6 +46,7 @@ func NewMarketRepository(
 	ledgerDao *dao.LedgerSql,
 	quoteDao *dao.QuoteSql,
 	auditDao dao.AuditDAO,
+	userDao *dao.UserSql,
 ) *MarketRepository {
 	return &MarketRepository{
 		db:          db,
@@ -56,6 +58,7 @@ func NewMarketRepository(
 		ledgerDao:   ledgerDao,
 		quoteDao:    quoteDao,
 		auditDao:    auditDao,
+		userDao:     userDao,
 	}
 }
 
@@ -103,6 +106,14 @@ func (r *MarketRepository) WithPlayerLocked(ctx context.Context, playerID int64,
 	return nil
 }
 
+func (r *MarketRepository) ActivePlayerIDs(ctx context.Context) ([]int64, error) {
+	return r.playerDao.ListActiveIDs(ctx)
+}
+
+func (r *MarketRepository) MarketMaker(ctx context.Context) (model.User, error) {
+	return r.userDao.GetSuperuser(ctx)
+}
+
 func (r *MarketRepository) Order(ctx context.Context, id int64) (model.Order, error) {
 	return r.orderDao.GetByID(ctx, nil, id)
 }
@@ -136,6 +147,22 @@ func (s *MarketSession) LockOppositeBook(ctx context.Context, playerID int64, in
 
 func (s *MarketSession) Order(ctx context.Context, id int64) (model.Order, error) {
 	return s.orderDao.GetByID(ctx, s.tx, id)
+}
+
+func (s *MarketSession) InsertInitialQuote(ctx context.Context, playerID int64, price model.Credits) (bool, error) {
+	return s.quoteDao.InsertInitialIfAbsent(ctx, s.tx, playerID, price)
+}
+
+func (s *MarketSession) RecordQuote(ctx context.Context, quote model.PlayerQuote) (model.PlayerQuote, error) {
+	return s.quoteDao.Insert(ctx, s.tx, quote)
+}
+
+func (s *MarketSession) CreatePositionIfAbsent(ctx context.Context, position model.Position) (bool, error) {
+	return s.positionDao.InsertIfAbsent(ctx, s.tx, position)
+}
+
+func (s *MarketSession) LiveMarketMakerOrder(ctx context.Context, playerID int64, side model.OrderSide) (model.Order, error) {
+	return s.orderDao.GetLiveMarketMaker(ctx, s.tx, playerID, side)
 }
 
 func (s *MarketSession) LatestQuote(ctx context.Context, playerID int64) (model.PlayerQuote, error) {

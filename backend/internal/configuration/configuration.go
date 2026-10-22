@@ -14,11 +14,12 @@ const (
 	minBcryptCost   = 4
 	maxBcryptCost   = 31
 
-	defaultHost       = "127.0.0.1"
-	defaultPort       = "8080"
-	defaultAccessTTL  = "15m"
-	defaultRefreshTTL = "168h"
-	defaultBcryptCost = "12"
+	defaultHost               = "127.0.0.1"
+	defaultPort               = "8080"
+	defaultAccessTTL          = "15m"
+	defaultRefreshTTL         = "168h"
+	defaultBcryptCost         = "12"
+	defaultInitialUserBalance = "1000"
 )
 
 var ErrMissingJWTSecret = errors.New("NSP_JWT_SECRET es obligatorio y debe tener al menos 32 bytes")
@@ -34,6 +35,7 @@ type Cfg struct {
 	AccessTTL          time.Duration
 	RefreshTTL         time.Duration
 	BcryptCost         int
+	InitialUserBalance int64
 }
 
 func LoadCfg() (*Cfg, error) {
@@ -57,6 +59,11 @@ func LoadCfg() (*Cfg, error) {
 		return nil, err
 	}
 
+	initialUserBalance, err := initialUserBalanceFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Cfg{
 		PostgresDataSource: os.Getenv("NSPPSQLDS"),
 		FootballDataAPIKey: os.Getenv("NSPFOOTBALLDATAAPIKEY"),
@@ -68,6 +75,7 @@ func LoadCfg() (*Cfg, error) {
 		AccessTTL:          accessTTL,
 		RefreshTTL:         refreshTTL,
 		BcryptCost:         bcryptCost,
+		InitialUserBalance: initialUserBalance,
 	}, nil
 }
 
@@ -88,6 +96,21 @@ func durationFromEnv(name, fallback string) (time.Duration, error) {
 	}
 	if value <= 0 {
 		return 0, fmt.Errorf("%s: %q debe ser una duración positiva", name, raw)
+	}
+
+	return value, nil
+}
+
+func initialUserBalanceFromEnv() (int64, error) {
+	const name = "NSP_INITIAL_USER_BALANCE"
+	raw := cmp.Or(os.Getenv(name), defaultInitialUserBalance)
+
+	value, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%s: %q no es un entero: %w", name, raw, err)
+	}
+	if value < 0 {
+		return 0, fmt.Errorf("%s: %d no puede ser negativo", name, value)
 	}
 
 	return value, nil

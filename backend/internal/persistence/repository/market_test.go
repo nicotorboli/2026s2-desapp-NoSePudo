@@ -26,6 +26,7 @@ func newMarketRepository(db *sql.DB) *repository.MarketRepository {
 		dao.NewLedgerDao(db),
 		dao.NewQuoteDao(db),
 		dao.NewAuditDao(db),
+		dao.NewUserDao(db),
 	)
 }
 
