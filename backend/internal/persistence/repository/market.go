@@ -10,6 +10,17 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/dao"
 )
 
+var ErrPlayerInactive = errors.New("player is not active")
+
+const (
+	ActionPlace   = "PLACE"
+	ActionReserve = "RESERVE"
+	ActionRelease = "RELEASE"
+	ActionExecute = "EXECUTE"
+	ActionSettle  = "SETTLE"
+	ActionCancel  = "CANCEL"
+)
+
 type MarketOperation func(ctx context.Context, session *MarketSession) error
 
 type MarketRepository struct {
@@ -59,11 +70,15 @@ func (r *MarketRepository) WithPlayerLocked(ctx context.Context, playerID int64,
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if lockErr := r.playerDao.LockPlayer(ctx, tx, playerID); lockErr != nil {
+	active, lockErr := r.playerDao.LockPlayer(ctx, tx, playerID)
+	if lockErr != nil {
 		if errors.Is(lockErr, dao.ErrNotFound) {
 			return ErrNotFound
 		}
 		return lockErr
+	}
+	if !active {
+		return ErrPlayerInactive
 	}
 
 	session := &MarketSession{
@@ -160,26 +175,47 @@ func (s *MarketSession) SettleExecution(ctx context.Context, settlement Executio
 }
 
 func (s *MarketSession) applySettlementChanges(ctx context.Context, settlement ExecutionSettlement) error {
-	if err := s.saveOrder(ctx, settlement.Actor, settlement.BuyOrder); err != nil {
+	if err := s.SaveOrder(ctx, settlement.Actor, ActionExecute, settlement.BuyOrder); err != nil {
 		return err
 	}
-	if err := s.saveOrder(ctx, settlement.Actor, settlement.SellOrder); err != nil {
+	if err := s.SaveOrder(ctx, settlement.Actor, ActionExecute, settlement.SellOrder); err != nil {
 		return err
 	}
-	if err := s.savePosition(ctx, settlement.Actor, settlement.SellerPosition); err != nil {
+	if err := s.SavePosition(ctx, settlement.Actor, ActionSettle, settlement.SellerPosition); err != nil {
 		return err
 	}
-	if err := s.savePosition(ctx, settlement.Actor, settlement.BuyerPosition); err != nil {
+	if err := s.SavePosition(ctx, settlement.Actor, ActionSettle, settlement.BuyerPosition); err != nil {
 		return err
 	}
-	if err := s.saveAccount(ctx, settlement.Actor, settlement.BuyerAccount); err != nil {
+	if err := s.SaveAccount(ctx, settlement.Actor, ActionSettle, settlement.BuyerAccount); err != nil {
 		return err
 	}
 
-	return s.saveAccount(ctx, settlement.Actor, settlement.SellerAccount)
+	return s.SaveAccount(ctx, settlement.Actor, ActionSettle, settlement.SellerAccount)
 }
 
-func (s *MarketSession) saveOrder(ctx context.Context, actor string, change OrderChange) error {
+func (s *MarketSession) InsertOrder(ctx context.Context, actor string, order model.Order) (model.Order, error) {
+	stored, err := s.orderDao.Insert(ctx, s.tx, order)
+	if err != nil {
+		return model.Order{}, fmt.Errorf("registrar la orden del usuario %d: %w", order.UserID, err)
+	}
+
+	auditErr := s.auditDao.InsertAuditLog(ctx, s.tx, model.AuditLog{
+		EntityType: "market_order",
+		EntityID:   stored.ID,
+		Action:     ActionPlace,
+		Actor:      actor,
+		DiffOld:    map[string]any{},
+		DiffNew:    orderDiff(stored),
+	})
+	if auditErr != nil {
+		return model.Order{}, auditErr
+	}
+
+	return stored, nil
+}
+
+func (s *MarketSession) SaveOrder(ctx context.Context, actor, action string, change OrderChange) error {
 	if err := s.orderDao.Update(ctx, s.tx, change.After); err != nil {
 		return fmt.Errorf("actualizar la orden %d: %w", change.After.ID, err)
 	}
@@ -187,14 +223,14 @@ func (s *MarketSession) saveOrder(ctx context.Context, actor string, change Orde
 	return s.auditDao.InsertAuditLog(ctx, s.tx, model.AuditLog{
 		EntityType: "market_order",
 		EntityID:   change.After.ID,
-		Action:     "EXECUTE",
+		Action:     action,
 		Actor:      actor,
 		DiffOld:    orderDiff(change.Before),
 		DiffNew:    orderDiff(change.After),
 	})
 }
 
-func (s *MarketSession) saveAccount(ctx context.Context, actor string, change AccountChange) error {
+func (s *MarketSession) SaveAccount(ctx context.Context, actor, action string, change AccountChange) error {
 	if err := s.accountDao.UpdateBalances(ctx, s.tx, change.After); err != nil {
 		return fmt.Errorf("actualizar la cuenta del usuario %d: %w", change.After.UserID, err)
 	}
@@ -202,14 +238,14 @@ func (s *MarketSession) saveAccount(ctx context.Context, actor string, change Ac
 	return s.auditDao.InsertAuditLog(ctx, s.tx, model.AuditLog{
 		EntityType: "user_account",
 		EntityID:   change.After.UserID,
-		Action:     "SETTLE",
+		Action:     action,
 		Actor:      actor,
 		DiffOld:    accountDiff(change.Before),
 		DiffNew:    accountDiff(change.After),
 	})
 }
 
-func (s *MarketSession) savePosition(ctx context.Context, actor string, change PositionChange) error {
+func (s *MarketSession) SavePosition(ctx context.Context, actor, action string, change PositionChange) error {
 	if _, err := s.positionDao.InsertIfAbsent(ctx, s.tx, change.After); err != nil {
 		return fmt.Errorf("crear la posición del usuario %d: %w", change.After.UserID, err)
 	}
@@ -220,7 +256,7 @@ func (s *MarketSession) savePosition(ctx context.Context, actor string, change P
 	return s.auditDao.InsertAuditLog(ctx, s.tx, model.AuditLog{
 		EntityType: "user_position",
 		EntityID:   change.After.UserID,
-		Action:     "SETTLE",
+		Action:     action,
 		Actor:      actor,
 		DiffOld:    positionDiff(change.Before),
 		DiffNew:    positionDiff(change.After),

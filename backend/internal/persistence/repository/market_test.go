@@ -314,7 +314,7 @@ func assertPlayerLockSerializesCompetingTransactions(t *testing.T, db *sql.DB, r
 		}
 		defer func() { _ = competing.Rollback() }()
 
-		lockErr := playerDao.LockPlayer(blockedCtx, competing, playerID)
+		_, lockErr := playerDao.LockPlayer(blockedCtx, competing, playerID)
 		if lockErr == nil {
 			t.Error("la transacción que compite tomó el lock mientras la operación lo tenía")
 		}
@@ -334,7 +334,7 @@ func assertPlayerLockSerializesCompetingTransactions(t *testing.T, db *sql.DB, r
 	}
 	defer func() { _ = freed.Rollback() }()
 
-	if lockErr := playerDao.LockPlayer(t.Context(), freed, playerID); lockErr != nil {
+	if _, lockErr := playerDao.LockPlayer(t.Context(), freed, playerID); lockErr != nil {
 		t.Errorf("tomar el lock después de la operación devolvió %v: la transacción no se cerró", lockErr)
 	}
 }

@@ -15,8 +15,31 @@ func TestPlayerSqlLockPlayerTomaLaFila(t *testing.T) {
 	playerID := seedPlayer(t, db)
 
 	tx := beginTx(t, db)
-	if err := playerDao.LockPlayer(t.Context(), tx, playerID); err != nil {
+	active, err := playerDao.LockPlayer(t.Context(), tx, playerID)
+	if err != nil {
 		t.Fatalf("LockPlayer devolvió %v", err)
+	}
+	if !active {
+		t.Error("LockPlayer informó inactivo a un jugador recién sembrado")
+	}
+}
+
+func TestPlayerSqlLockPlayerInformaAlJugadorInactivo(t *testing.T) {
+	db := startPostgres(t)
+	playerDao := dao.NewPlayerDao(db)
+	playerID := seedPlayer(t, db)
+
+	if _, err := db.ExecContext(t.Context(), `UPDATE players SET active = FALSE WHERE id = $1`, playerID); err != nil {
+		t.Fatalf("no se pudo desactivar el jugador: %v", err)
+	}
+
+	tx := beginTx(t, db)
+	active, err := playerDao.LockPlayer(t.Context(), tx, playerID)
+	if err != nil {
+		t.Fatalf("LockPlayer devolvió %v", err)
+	}
+	if active {
+		t.Error("LockPlayer informó activo a un jugador desactivado")
 	}
 }
 
@@ -31,7 +54,7 @@ func TestPlayerSqlLockPlayerSerializaALosQueCompiten(t *testing.T) {
 	}
 	defer func() { _ = first.Rollback() }()
 
-	if err = playerDao.LockPlayer(t.Context(), first, playerID); err != nil {
+	if _, err = playerDao.LockPlayer(t.Context(), first, playerID); err != nil {
 		t.Fatalf("el primer LockPlayer devolvió %v", err)
 	}
 
@@ -44,7 +67,7 @@ func TestPlayerSqlLockPlayerSerializaALosQueCompiten(t *testing.T) {
 	}
 	defer func() { _ = second.Rollback() }()
 
-	err = playerDao.LockPlayer(blockedCtx, second, playerID)
+	_, err = playerDao.LockPlayer(blockedCtx, second, playerID)
 	if err == nil {
 		t.Fatal("el segundo LockPlayer obtuvo el lock mientras la primera transacción lo tenía tomado")
 	}
@@ -58,7 +81,7 @@ func TestPlayerSqlLockPlayerDeUnJugadorInexistente(t *testing.T) {
 	playerDao := dao.NewPlayerDao(db)
 
 	tx := beginTx(t, db)
-	if err := playerDao.LockPlayer(t.Context(), tx, 9999); !errors.Is(err, dao.ErrNotFound) {
+	if _, err := playerDao.LockPlayer(t.Context(), tx, 9999); !errors.Is(err, dao.ErrNotFound) {
 		t.Errorf("LockPlayer devolvió %v, se esperaba ErrNotFound", err)
 	}
 }
@@ -66,7 +89,7 @@ func TestPlayerSqlLockPlayerDeUnJugadorInexistente(t *testing.T) {
 func TestPlayerSqlLockPlayerSinTransaccionEsRechazado(t *testing.T) {
 	playerDao := dao.NewPlayerDao(nil)
 
-	if err := playerDao.LockPlayer(t.Context(), nil, 1); err == nil {
+	if _, err := playerDao.LockPlayer(t.Context(), nil, 1); err == nil {
 		t.Error("LockPlayer sin transacción devolvió nil")
 	}
 }

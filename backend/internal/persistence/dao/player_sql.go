@@ -201,22 +201,22 @@ func (d *PlayerSql) GetPlayerByExternalID(ctx context.Context, externalID int64)
 	return p, nil
 }
 
-func (d *PlayerSql) LockPlayer(ctx context.Context, tx *sql.Tx, id int64) error {
-	const query = `SELECT id FROM players WHERE id = $1 FOR UPDATE`
+func (d *PlayerSql) LockPlayer(ctx context.Context, tx *sql.Tx, id int64) (bool, error) {
+	const query = `SELECT active FROM players WHERE id = $1 FOR UPDATE`
 
 	if tx == nil {
-		return errLockNeedsTransaction
+		return false, errLockNeedsTransaction
 	}
 
-	var locked int64
-	if err := tx.QueryRowContext(ctx, query, id).Scan(&locked); err != nil {
+	var active bool
+	if err := tx.QueryRowContext(ctx, query, id).Scan(&active); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNotFound
+			return false, ErrNotFound
 		}
-		return fmt.Errorf("tomar el lock del jugador: %w", err)
+		return false, fmt.Errorf("tomar el lock del jugador: %w", err)
 	}
 
-	return nil
+	return active, nil
 }
 
 func (d *PlayerSql) ListActiveIDs(ctx context.Context) ([]int64, error) {
