@@ -121,7 +121,7 @@ Phases are the five phases of [plan.md](./plan.md), not one phase per user story
 - [X] T047 Publish the six paths with their schemas, status codes and `x-access-level` in `backend/api/openapi.yaml`, taking the definitions from `specs/005-mercado-de-tokens/contracts/openapi.yaml`, until the existing `backend/internal/server/contract_test.go` passes with no route missing from the document, satisfying FR-016 and SC-003 (depends on T046)
 - [X] T048 [US6] Add the bootstrap idempotency end-to-end test in `backend/test/e2e/market_bootstrap_test.go`: boot on an empty database, synchronize, assert one initial quote per player, exactly 100 tokens per player held by the superuser and one resting market maker sell order; then boot again and assert nothing was duplicated (depends on T047)
 - [X] T049 Add the evaluation scenario of section 8.3 as an end-to-end test in `backend/test/e2e/market_test.go`: four users created, each buying tokens of five players, the quotes moved, and the valuation of every position reported, with the zero-sum ledger and the 100-tokens-per-player assertions run after the whole scenario; this is SC-004 (depends on T048)
-- [ ] T050 Run the full validation of `specs/005-mercado-de-tokens/quickstart.md` by hand and `cd backend && go test ./... && golangci-lint run` until both are clean, which is SC-006 and SC-007 (depends on T049)
+- [X] T050 Run the full validation of `specs/005-mercado-de-tokens/quickstart.md` by hand and `cd backend && go test ./... && golangci-lint run` until both are clean, which is SC-006 and SC-007 (depends on T049)
 
 **Checkpoint**: every success criterion of the spec is covered by an automated check.
 
