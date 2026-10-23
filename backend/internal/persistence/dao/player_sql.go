@@ -167,6 +167,45 @@ func (d *PlayerSql) GetPlayerByID(ctx context.Context, id int64) (model.Player, 
 	return p, nil
 }
 
+func (d *PlayerSql) ListByIDs(ctx context.Context, ids []int64) (map[int64]model.Player, error) {
+	players := make(map[int64]model.Player, len(ids))
+	if len(ids) == 0 {
+		return players, nil
+	}
+	if d.db == nil {
+		return nil, fmt.Errorf("database connection is nil")
+	}
+
+	const query = `
+		SELECT id, external_id, name, club_name, league_name, league_code, date_of_birth,
+		       nationality, position, shirt_number, active, created_at, updated_at
+		FROM players WHERE id = ANY($1)`
+
+	rows, err := d.db.QueryContext(ctx, query, pq.Array(ids))
+	if err != nil {
+		return nil, fmt.Errorf("listar jugadores por identificador: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var p model.Player
+		if scanErr := rows.Scan(
+			&p.ID, &p.ExternalID, &p.Name, &p.ClubName, &p.LeagueName, &p.LeagueCode,
+			&p.DateOfBirth, &p.Nationality, &p.Position, &p.ShirtNumber, &p.Active,
+			&p.CreatedAt, &p.UpdatedAt,
+		); scanErr != nil {
+			return nil, fmt.Errorf("leer el jugador: %w", scanErr)
+		}
+		players[p.ID] = p
+	}
+
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("recorrer los jugadores: %w", rowsErr)
+	}
+
+	return players, nil
+}
+
 func (d *PlayerSql) GetPlayerByExternalID(ctx context.Context, externalID int64) (model.Player, error) {
 	if d.db == nil {
 		return model.Player{}, fmt.Errorf("database connection is nil")

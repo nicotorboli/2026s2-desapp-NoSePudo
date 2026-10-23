@@ -14,6 +14,7 @@ type Container struct {
 	Auth        *Auth
 	Market      *MarketService
 	MarketMaker *MarketMakerService
+	Portfolio   *PortfolioService
 }
 
 func NewContainer(repos *repository.Container, adapterContainer *adapters.Container, logger *slog.Logger) *Container {
@@ -32,5 +33,6 @@ func NewContainer(repos *repository.Container, adapterContainer *adapters.Contai
 		),
 		Market:      NewMarketService(repos.Market, time.Now),
 		MarketMaker: marketMaker,
+		Portfolio:   NewPortfolioService(repos.Portfolio),
 	}
 }

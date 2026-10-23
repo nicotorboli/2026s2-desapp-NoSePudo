@@ -15,6 +15,7 @@ type PortfolioRepository struct {
 	positionDao *dao.PositionSql
 	quoteDao    *dao.QuoteSql
 	tradeDao    *dao.TradeSql
+	playerDao   *dao.PlayerSql
 }
 
 func NewPortfolioRepository(
@@ -22,13 +23,19 @@ func NewPortfolioRepository(
 	positionDao *dao.PositionSql,
 	quoteDao *dao.QuoteSql,
 	tradeDao *dao.TradeSql,
+	playerDao *dao.PlayerSql,
 ) *PortfolioRepository {
 	return &PortfolioRepository{
 		accountDao:  accountDao,
 		positionDao: positionDao,
 		quoteDao:    quoteDao,
 		tradeDao:    tradeDao,
+		playerDao:   playerDao,
 	}
+}
+
+func (r *PortfolioRepository) Players(ctx context.Context, playerIDs []int64) (map[int64]model.Player, error) {
+	return r.playerDao.ListByIDs(ctx, playerIDs)
 }
 
 func (r *PortfolioRepository) Account(ctx context.Context, userID int64) (model.Account, error) {

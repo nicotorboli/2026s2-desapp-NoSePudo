@@ -50,7 +50,7 @@ func NewContainer(db *sql.DB, daos *dao.Container, options ...ContainerOption) *
 			daos.Audit,
 			daos.User,
 		),
-		Portfolio:    NewPortfolioRepository(daos.Account, daos.Position, daos.Quote, daos.Trade),
+		Portfolio:    NewPortfolioRepository(daos.Account, daos.Position, daos.Quote, daos.Trade, daos.Player),
 		Registration: NewRegistrationRepository(db, daos.User, daos.Account, daos.Ledger, settings.initialUserBalance),
 	}
 }

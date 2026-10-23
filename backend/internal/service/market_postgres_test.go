@@ -29,6 +29,7 @@ type marketFixture struct {
 	daos        *dao.Container
 	market      *service.MarketService
 	marketMaker *service.MarketMakerService
+	portfolio   *service.PortfolioService
 	clock       time.Time
 	players     *dao.PlayerSql
 }
@@ -48,6 +49,7 @@ func newMarketFixture(t *testing.T) *marketFixture {
 	}
 	fixture.market = service.NewMarketService(repos.Market, func() time.Time { return fixture.clock })
 	fixture.marketMaker = service.NewMarketMakerService(repos.Market, func() time.Time { return fixture.clock })
+	fixture.portfolio = service.NewPortfolioService(repos.Portfolio)
 
 	return fixture
 }

@@ -16,6 +16,7 @@ func newPortfolioRepository(db *sql.DB) *repository.PortfolioRepository {
 		dao.NewPositionDao(db),
 		dao.NewQuoteDao(db),
 		dao.NewTradeDao(db),
+		dao.NewPlayerDao(db),
 	)
 }
 
