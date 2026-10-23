@@ -34,6 +34,8 @@ const (
 	// El costo mínimo de bcrypt. Lo que estos casos prueban es el recorrido
 	// completo, no cuánto tarda en hashear.
 	testBcryptCost = 4
+
+	initialBalanceUnits = 1000
 )
 
 // startPostgres levanta un Postgres real sembrado con el mismo db/init.sql que
@@ -92,10 +94,11 @@ func startPostgres(t *testing.T) *sql.DB {
 // stack es la aplicación entera corriendo sobre una base real: el mismo
 // armado de dependencias que hace cmd, servido por httptest.
 type stack struct {
-	db     *sql.DB
-	server *httptest.Server
-	auth   *service.Auth
-	logs   *capturedLogs
+	db          *sql.DB
+	server      *httptest.Server
+	auth        *service.Auth
+	marketMaker *service.MarketMakerService
+	logs        *capturedLogs
 }
 
 // capturedLogs junta lo que el servidor escribe, para poder revisarlo después.
@@ -165,7 +168,7 @@ func newStackWith(t *testing.T, accessTTL, refreshTTL time.Duration) *stack {
 	}
 
 	daos := dao.NewContainer(db)
-	repos := repository.NewContainer(db, daos)
+	repos := repository.NewContainer(db, daos, repository.WithInitialUserBalance(model.CreditsFromUnits(initialBalanceUnits)))
 	adapterContainer := adapters.NewContainer(cfg)
 	logs := &capturedLogs{}
 	log := slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
@@ -182,7 +185,7 @@ func newStackWith(t *testing.T, accessTTL, refreshTTL time.Duration) *stack {
 	))
 	t.Cleanup(httpServer.Close)
 
-	return &stack{db: db, server: httpServer, auth: services.Auth, logs: logs}
+	return &stack{db: db, server: httpServer, auth: services.Auth, marketMaker: services.MarketMaker, logs: logs}
 }
 
 // ensureSuperuser aprovisiona el superusuario como lo hace cmd al arrancar.
