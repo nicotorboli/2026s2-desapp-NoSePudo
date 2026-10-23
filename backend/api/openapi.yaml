@@ -278,6 +278,299 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /orders/buy:
+    post:
+      tags: [market]
+      summary: Place a buy order
+      operationId: placeBuyOrder
+      x-access-level: authenticated
+      description: |
+        Reserves `quantity * price` from the caller's available balance, then crosses
+        against resting sell orders of the player priced at or below the order price,
+        cheapest first and, at equal price, oldest first. The caller's own resting
+        orders are skipped. Each execution is priced at the resting order's price and
+        the difference against the reservation is released back.
+
+        The remainder follows `timeInForce`: GTC leaves it resting with its reservation
+        held, IOC cancels it and releases the reservation, FOK rejects the whole order
+        with HTTP 409 and leaves no state at all.
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaceOrderRequest'
+      responses:
+        '201':
+          description: Order accepted, with whatever it executed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Player not found or inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: The order could not be executed in full and its time in force forbids a remainder
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Insufficient available balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /orders/sell:
+    post:
+      tags: [market]
+      summary: Place a sell order
+      operationId: placeSellOrder
+      x-access-level: authenticated
+      description: |
+        Reserves the tokens from the caller's available position, then crosses against
+        resting buy orders of the player priced at or above the order price, most
+        expensive first and, at equal price, oldest first. Remainder handling and
+        execution pricing mirror the buy side.
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaceOrderRequest'
+      responses:
+        '201':
+          description: Order accepted, with whatever it executed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Player not found or inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: The order could not be executed in full and its time in force forbids a remainder
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Insufficient available token position
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /orders:
+    get:
+      tags: [market]
+      summary: List the caller's live orders
+      operationId: listOpenOrders
+      x-access-level: authenticated
+      description: |
+        Returns only the caller's own orders that are still live, that is PENDING or
+        PARTIALLY_FILLED. Final orders are not returned here; executed trades are in
+        the transaction history instead.
+      security:
+        - accessToken: []
+      parameters:
+        - name: playerId
+          in: query
+          required: false
+          description: Restrict the listing to one player
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: The caller's live orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenOrderList'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /orders/{id}:
+    delete:
+      tags: [market]
+      summary: Cancel a live order
+      operationId: cancelOrder
+      x-access-level: authenticated
+      description: |
+        Cancels a live order of the caller and releases the reservation covering its
+        remaining quantity. Already executed quantity is untouched. An order that is
+        already final cannot be cancelled.
+      security:
+        - accessToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Order cancelled and reservation released
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelOrderResponse'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: The order is already filled or cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /users/{id}/portfolio:
+    get:
+      tags: [market]
+      summary: Portfolio of a user
+      operationId: getUserPortfolio
+      x-access-level: authenticated
+      description: |
+        Cash balance and token positions with their average purchase price, current
+        valuation and unrealized result. A regular user may read only their own
+        portfolio; the superuser may read any.
+
+        Position quantities include tokens reserved by a live sell order, because
+        those are still owned. Reserved cash is reported separately from available
+        cash so that a balance partly committed to live orders is legible.
+      security:
+        - accessToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: The user's portfolio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioResponse'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /users/{id}/transactions:
+    get:
+      tags: [market]
+      summary: Executed operations of a user
+      operationId: getUserTransactions
+      x-access-level: authenticated
+      description: |
+        Executed trades, newest first, one entry per execution. The side is reported
+        from the requested user's perspective. A regular user may read only their own
+        history; the superuser may read any.
+      security:
+        - accessToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: The user's executed operations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionPage'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
 components:
 
   securitySchemes:
@@ -357,6 +650,211 @@ components:
             error: Internal Server Error
 
   schemas:
+
+    PlaceOrderRequest:
+      type: object
+      description: |
+        `price` and `timeInForce` are optional and interact: omitting the price prices
+        the order at the player's active quote and defaults the time in force to FOK,
+        while providing a price defaults it to GTC.
+      required: [playerId, quantity]
+      properties:
+        playerId: {type: integer, format: int64, minimum: 1, example: 7}
+        quantity: {type: integer, format: int64, minimum: 1, example: 10}
+        price:
+          type: number
+          exclusiveMinimum: 0
+          multipleOf: 0.0001
+          description: Limit price in credits. Omitted means the player's active quote.
+          example: 1.0
+        timeInForce:
+          $ref: '#/components/schemas/TimeInForce'
+
+    TimeInForce:
+      type: string
+      description: |
+        What happens to the part of the order that could not execute.
+        GTC leaves it resting until cancelled, IOC cancels it and releases its
+        reservation, FOK rejects the entire order unless it executes in full.
+      enum: [GTC, IOC, FOK]
+
+    OrderSide:
+      type: string
+      enum: [BUY, SELL]
+
+    OrderStatus:
+      type: string
+      description: |
+        Live states are PENDING and PARTIALLY_FILLED; final states are FILLED and
+        CANCELLED. An order rejected in full is never recorded and never has a status.
+      enum: [PENDING, PARTIALLY_FILLED, FILLED, CANCELLED]
+
+    Execution:
+      type: object
+      description: One match of the order against a counterparty, priced at the resting order's price.
+      required: [quantity, price, totalAmount, executedAt]
+      properties:
+        quantity: {type: integer, format: int64, example: 4}
+        price: {type: number, example: 1.0}
+        totalAmount: {type: number, example: 4.0}
+        executedAt: {type: string, format: date-time}
+
+    OrderResponse:
+      type: object
+      required:
+        - id
+        - side
+        - playerId
+        - price
+        - quantity
+        - executedQuantity
+        - remainingQuantity
+        - timeInForce
+        - status
+        - createdAt
+        - trades
+      properties:
+        id: {type: integer, format: int64}
+        side: {$ref: '#/components/schemas/OrderSide'}
+        playerId: {type: integer, format: int64}
+        price: {type: number, example: 1.0}
+        quantity: {type: integer, format: int64, example: 10}
+        executedQuantity: {type: integer, format: int64, example: 10}
+        remainingQuantity: {type: integer, format: int64, example: 0}
+        timeInForce: {$ref: '#/components/schemas/TimeInForce'}
+        status: {$ref: '#/components/schemas/OrderStatus'}
+        createdAt: {type: string, format: date-time}
+        trades:
+          type: array
+          items:
+            $ref: '#/components/schemas/Execution'
+
+    OpenOrder:
+      type: object
+      required:
+        - id
+        - side
+        - playerId
+        - price
+        - quantity
+        - executedQuantity
+        - remainingQuantity
+        - timeInForce
+        - status
+        - createdAt
+      properties:
+        id: {type: integer, format: int64}
+        side: {$ref: '#/components/schemas/OrderSide'}
+        playerId: {type: integer, format: int64}
+        price: {type: number}
+        quantity: {type: integer, format: int64}
+        executedQuantity: {type: integer, format: int64}
+        remainingQuantity: {type: integer, format: int64}
+        timeInForce: {$ref: '#/components/schemas/TimeInForce'}
+        status: {$ref: '#/components/schemas/OrderStatus'}
+        createdAt: {type: string, format: date-time}
+
+    OpenOrderList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OpenOrder'
+
+    CancelOrderResponse:
+      type: object
+      description: |
+        Exactly one of the released fields is present, matching the cancelled order's
+        side: credits for a buy order, tokens for a sell order.
+      required: [id, status]
+      properties:
+        id: {type: integer, format: int64}
+        status: {$ref: '#/components/schemas/OrderStatus'}
+        releasedCredits: {type: number, example: 30.0}
+        releasedTokens: {type: integer, format: int64, example: 30}
+
+    PortfolioPosition:
+      type: object
+      required:
+        - playerId
+        - playerName
+        - clubName
+        - position
+        - quantity
+        - averagePrice
+        - currentPrice
+        - currentValuation
+        - unrealizedResult
+      properties:
+        playerId: {type: integer, format: int64, example: 7}
+        playerName: {type: string, example: Bukayo Saka}
+        clubName: {type: string, example: Arsenal FC}
+        position: {type: string, example: Offence}
+        quantity:
+          type: integer
+          format: int64
+          description: Tokens owned, including those reserved by a live sell order.
+          example: 20
+        averagePrice: {type: number, example: 1.5}
+        currentPrice: {type: number, example: 2.0}
+        currentValuation: {type: number, example: 40.0}
+        unrealizedResult: {type: number, example: 10.0}
+
+    PortfolioResponse:
+      type: object
+      required:
+        - userId
+        - availableCash
+        - reservedCash
+        - tokensValuation
+        - totalValue
+        - unrealizedResult
+        - positions
+      properties:
+        userId: {type: integer, format: int64}
+        availableCash: {type: number, example: 960.0}
+        reservedCash:
+          type: number
+          description: Credits committed by live buy orders and therefore not spendable.
+          example: 0.0
+        tokensValuation: {type: number, example: 40.0}
+        totalValue: {type: number, example: 1000.0}
+        unrealizedResult: {type: number, example: 10.0}
+        positions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortfolioPosition'
+
+    Transaction:
+      type: object
+      required: [id, side, playerId, playerName, quantity, price, totalAmount, executedAt]
+      properties:
+        id: {type: integer, format: int64}
+        side:
+          allOf:
+            - $ref: '#/components/schemas/OrderSide'
+          description: The side from the requested user's perspective.
+        playerId: {type: integer, format: int64}
+        playerName: {type: string}
+        quantity: {type: integer, format: int64}
+        price: {type: number}
+        totalAmount: {type: number}
+        executedAt: {type: string, format: date-time}
+
+    TransactionPage:
+      type: object
+      required: [items, total, page, limit, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        total: {type: integer, format: int64}
+        page: {type: integer}
+        limit: {type: integer}
+        totalPages: {type: integer}
 
     RegisterRequest:
       type: object

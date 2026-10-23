@@ -21,10 +21,20 @@ type AuthController interface {
 	Logout() httphandler.Endpoint
 }
 
+type MarketController interface {
+	PlaceBuyOrder() httphandler.Endpoint
+	PlaceSellOrder() httphandler.Endpoint
+	ListOpenOrders() httphandler.Endpoint
+	CancelOrder() httphandler.Endpoint
+	Portfolio() httphandler.Endpoint
+	Transactions() httphandler.Endpoint
+}
+
 type Container struct {
 	Player PlayerController
 	Sync   SyncController
 	Auth   AuthController
+	Market MarketController
 }
 
 func NewContainer(services *service.Container) *Container {
@@ -32,5 +42,6 @@ func NewContainer(services *service.Container) *Container {
 		Player: NewPlayerController(services.Player),
 		Sync:   NewSyncController(services.Sync),
 		Auth:   NewAuthController(services.Auth),
+		Market: NewMarketController(services.Market, services.Portfolio),
 	}
 }

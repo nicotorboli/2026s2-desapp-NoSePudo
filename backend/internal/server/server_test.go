@@ -96,6 +96,7 @@ func newTestServerWith(verifier middleware.TokenVerifier) *server.Server {
 			Player: controller.NewPlayerController(&mockPlayerService{}),
 			Sync:   controller.NewSyncController(&mockSyncService{}),
 			Auth:   &mockAuthController{},
+			Market: controller.NewMarketController(nil, nil),
 		},
 		middleware.NewContainer(verifier),
 		filepath.Join("..", "..", "api", "openapi.yaml"),
