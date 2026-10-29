@@ -1,7 +1,3 @@
-// Verificaciones sobre la tabla de rutas routes() y que no existan
-// rutas registradas por fuera de buildMux.
-//
-// Vive en el paquete server porque necesita llamar a routes(), que no está exportado.
 package server
 
 import (
@@ -21,8 +17,6 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
-// Los controllers de estos casos no hacen nada: lo que se examina es la tabla
-// de rutas, no lo que cada endpoint responde.
 type stubController struct{}
 
 func (stubController) endpoint() httphandler.Endpoint {
