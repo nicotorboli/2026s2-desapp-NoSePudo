@@ -13,19 +13,25 @@ import (
 
 var ErrNotFound = errors.New("player not found")
 
-type PlayerRepository interface {
-	ListPlayers(ctx context.Context, filter model.PlayerFilter) (model.PageResult[model.Player], error)
+type PlayerDAO interface {
+	ListPlayers(ctx context.Context, f model.PlayerFilter) ([]model.Player, int64, error)
 	GetPlayerByID(ctx context.Context, id int64) (model.Player, error)
-	SavePlayers(ctx context.Context, players []model.Player, leagueCode, actor string) (int, int, int, error)
+	GetPlayerByExternalID(ctx context.Context, externalID int64) (model.Player, error)
+	UpsertPlayer(ctx context.Context, tx *sql.Tx, p model.Player) (int64, error)
+	DeactivateMissingPlayers(ctx context.Context, tx *sql.Tx, activeExternalIDs []int64, leagueCode string) ([]int64, error)
+}
+
+type AuditDAO interface {
+	InsertAuditLog(ctx context.Context, tx *sql.Tx, log model.AuditLog) error
 }
 
 type PlayerRepositoryImpl struct {
 	db        *sql.DB
-	playerDAO dao.PlayerDAO
-	auditDAO  dao.AuditDAO
+	playerDAO PlayerDAO
+	auditDAO  AuditDAO
 }
 
-func NewPlayerRepository(db *sql.DB, playerDAO dao.PlayerDAO, auditDAO dao.AuditDAO) *PlayerRepositoryImpl {
+func NewPlayerRepository(db *sql.DB, playerDAO PlayerDAO, auditDAO AuditDAO) *PlayerRepositoryImpl {
 	return &PlayerRepositoryImpl{
 		db:        db,
 		playerDAO: playerDAO,

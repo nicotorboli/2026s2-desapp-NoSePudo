@@ -11,16 +11,11 @@ import (
 
 var ErrNotFound = errors.New("player not found")
 
-type PlayerService interface {
-	ListPlayers(ctx context.Context, filter dto.PlayerFilterDTO) (dto.PaginatedResponse[dto.PlayerListItemResponse], error)
-	GetPlayerByID(ctx context.Context, id int64) (dto.PlayerDetailResponse, error)
-}
-
 type PlayerServiceImpl struct {
-	repo repository.PlayerRepository
+	repo PlayerRepository
 }
 
-func NewPlayerService(repo repository.PlayerRepository) *PlayerServiceImpl {
+func NewPlayerService(repo PlayerRepository) *PlayerServiceImpl {
 	return &PlayerServiceImpl{repo: repo}
 }
 

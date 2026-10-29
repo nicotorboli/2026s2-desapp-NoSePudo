@@ -22,10 +22,6 @@ var (
 	ErrRateLimitExceeded = errors.New("rate limit exceeded")
 )
 
-type Client interface {
-	FetchLeagueStatistics(ctx context.Context, leagueCode string) ([]model.PlayerStatisticsRow, error)
-}
-
 // leagueTournamentIDs mapea cada código de liga del catálogo al tournamentId
 // que WhoScored usa en su feed de estadísticas.
 var leagueTournamentIDs = map[string]int64{

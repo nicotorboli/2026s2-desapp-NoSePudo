@@ -9,16 +9,12 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 )
 
-type PlayerStatisticsService interface {
-	GetPlayerStatistics(ctx context.Context, playerID int64) ([]dto.PlayerStatisticsResponse, error)
-}
-
 type PlayerStatisticsServiceImpl struct {
-	players    repository.PlayerRepository
-	statistics repository.PlayerStatisticsRepository
+	players    PlayerRepository
+	statistics PlayerStatisticsRepository
 }
 
-func NewPlayerStatisticsService(players repository.PlayerRepository, statistics repository.PlayerStatisticsRepository) *PlayerStatisticsServiceImpl {
+func NewPlayerStatisticsService(players PlayerRepository, statistics PlayerStatisticsRepository) *PlayerStatisticsServiceImpl {
 	return &PlayerStatisticsServiceImpl{
 		players:    players,
 		statistics: statistics,

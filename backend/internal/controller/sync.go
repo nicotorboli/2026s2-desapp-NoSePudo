@@ -1,24 +1,38 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
 
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
 )
+
+type PlayerSyncService interface {
+	SyncPlayers(ctx context.Context, actor string) (dto.SyncPlayersResponse, error)
+}
+
+type PlayerStatisticsSyncService interface {
+	SyncStatistics(ctx context.Context) (dto.SyncStatisticsResponse, error)
+}
+
+type PlayerStatisticsService interface {
+	GetPlayerStatistics(ctx context.Context, playerID int64) ([]dto.PlayerStatisticsResponse, error)
+}
 
 // RestSyncController reúne la sincronización del catálogo con football-data.org,
 // la sincronización de estadísticas con WhoScored y la lectura de estadísticas
 // de un jugador: son operaciones relacionadas y comparten el mismo borde.
 type RestSyncController struct {
-	svc          service.PlayerSyncService
-	statsSyncSvc service.PlayerStatisticsSyncService
-	statsReadSvc service.PlayerStatisticsService
+	svc          PlayerSyncService
+	statsSyncSvc PlayerStatisticsSyncService
+	statsReadSvc PlayerStatisticsService
 }
 
-func NewSyncController(svc service.PlayerSyncService, statsSyncSvc service.PlayerStatisticsSyncService, statsReadSvc service.PlayerStatisticsService) *RestSyncController {
+func NewSyncController(svc PlayerSyncService, statsSyncSvc PlayerStatisticsSyncService, statsReadSvc PlayerStatisticsService) *RestSyncController {
 	return &RestSyncController{
 		svc:          svc,
 		statsSyncSvc: statsSyncSvc,

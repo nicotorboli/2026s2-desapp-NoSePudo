@@ -4,12 +4,12 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/logger"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/middleware"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
@@ -52,31 +52,22 @@ func (m *mockPlayerStatisticsService) GetPlayerStatistics(ctx context.Context, i
 	return []dto.PlayerStatisticsResponse{{Goals: 5, Rating: 7.8}}, nil
 }
 
-type mockAuthController struct{}
+type mockAuthService struct{}
 
-func (m *mockAuthController) Register() httphandler.Endpoint {
-	return func(w http.ResponseWriter, req *http.Request) error {
-		return httphandler.Encode(w, http.StatusCreated, map[string]string{"status": "created"})
-	}
+func (m *mockAuthService) Register(ctx context.Context, email, password string) (model.User, error) {
+	return model.User{}, nil
 }
 
-func (m *mockAuthController) Login() httphandler.Endpoint {
-	return func(w http.ResponseWriter, req *http.Request) error {
-		return httphandler.Encode(w, http.StatusOK, map[string]string{"status": "signed in"})
-	}
+func (m *mockAuthService) Login(ctx context.Context, email, password string) (model.Session, error) {
+	return model.Session{}, nil
 }
 
-func (m *mockAuthController) Refresh() httphandler.Endpoint {
-	return func(w http.ResponseWriter, req *http.Request) error {
-		return httphandler.Encode(w, http.StatusOK, map[string]string{"status": "renewed"})
-	}
+func (m *mockAuthService) Refresh(ctx context.Context, presentedID string, userID int64, sessionID string) (model.Session, error) {
+	return model.Session{}, nil
 }
 
-func (m *mockAuthController) Logout() httphandler.Endpoint {
-	return func(w http.ResponseWriter, req *http.Request) error {
-		w.WriteHeader(http.StatusNoContent)
-		return nil
-	}
+func (m *mockAuthService) Logout(ctx context.Context, userID int64, sessionID string) error {
+	return nil
 }
 
 // stubTokenVerifier acepta o rechaza sin firmar nada. Lo que estos casos
@@ -110,7 +101,7 @@ func newTestServerWith(verifier middleware.TokenVerifier) *server.Server {
 				&mockStatisticsSyncService{},
 				&mockPlayerStatisticsService{},
 			),
-			Auth: &mockAuthController{},
+			Auth: controller.NewAuthController(&mockAuthService{}),
 		},
 		middleware.NewContainer(verifier),
 	)
@@ -166,17 +157,18 @@ func TestServer_ServeHTTP_GetPlayers_CredencialInvalida(t *testing.T) {
 func TestServer_ServeHTTP_RutasAnonimas(t *testing.T) {
 	cases := []struct {
 		pattern string
+		body    string
 		want    int
 	}{
-		{"/auth/register", http.StatusCreated},
-		{"/auth/login", http.StatusOK},
+		{"/auth/register", `{"email":"a@b.com","password":"password123"}`, http.StatusCreated},
+		{"/auth/login", `{"email":"a@b.com","password":"password123"}`, http.StatusOK},
 	}
 
 	for _, c := range cases {
 		t.Run(c.pattern, func(t *testing.T) {
 			srv := newTestServer()
 
-			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, c.pattern, nil)
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, c.pattern, strings.NewReader(c.body))
 			w := httptest.NewRecorder()
 
 			srv.ServeHTTP(w, req)

@@ -6,20 +6,19 @@ import (
 	"fmt"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/dao"
 )
 
-type PlayerStatisticsRepository interface {
-	SaveStatistics(ctx context.Context, rows []model.PlayerStatistics) (int, int, error)
-	GetPlayerStatistics(ctx context.Context, playerID int64) ([]model.PlayerStatistics, error)
+type PlayerStatisticsDAO interface {
+	InsertStatistics(ctx context.Context, tx *sql.Tx, rows []model.PlayerStatistics) (int64, error)
+	ListByPlayerID(ctx context.Context, playerID int64) ([]model.PlayerStatistics, error)
 }
 
 type PlayerStatisticsRepositoryImpl struct {
 	db  *sql.DB
-	dao dao.PlayerStatisticsDAO
+	dao PlayerStatisticsDAO
 }
 
-func NewPlayerStatisticsRepository(db *sql.DB, d dao.PlayerStatisticsDAO) *PlayerStatisticsRepositoryImpl {
+func NewPlayerStatisticsRepository(db *sql.DB, d PlayerStatisticsDAO) *PlayerStatisticsRepositoryImpl {
 	return &PlayerStatisticsRepositoryImpl{
 		db:  db,
 		dao: d,

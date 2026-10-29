@@ -8,11 +8,6 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
-type PlayerStatisticsDAO interface {
-	InsertStatistics(ctx context.Context, tx *sql.Tx, rows []model.PlayerStatistics) (int64, error)
-	ListByPlayerID(ctx context.Context, playerID int64) ([]model.PlayerStatistics, error)
-}
-
 type PlayerStatisticsSql struct {
 	db *sql.DB
 }

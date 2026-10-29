@@ -9,7 +9,6 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters/whoscored"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 )
 
 var (
@@ -19,18 +18,14 @@ var (
 
 const maxPlayersPerLeague = 10000
 
-type PlayerStatisticsSyncService interface {
-	SyncStatistics(ctx context.Context) (dto.SyncStatisticsResponse, error)
-}
-
 type PlayerStatisticsSyncServiceImpl struct {
-	adapter    whoscored.Client
-	players    repository.PlayerRepository
-	statistics repository.PlayerStatisticsRepository
+	adapter    WhoscoredClient
+	players    PlayerRepository
+	statistics PlayerStatisticsRepository
 	logger     *slog.Logger
 }
 
-func NewPlayerStatisticsSyncService(adapter whoscored.Client, players repository.PlayerRepository, statistics repository.PlayerStatisticsRepository, logger *slog.Logger) *PlayerStatisticsSyncServiceImpl {
+func NewPlayerStatisticsSyncService(adapter WhoscoredClient, players PlayerRepository, statistics PlayerStatisticsRepository, logger *slog.Logger) *PlayerStatisticsSyncServiceImpl {
 	return &PlayerStatisticsSyncServiceImpl{
 		adapter:    adapter,
 		players:    players,

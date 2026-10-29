@@ -5,6 +5,7 @@
 package server
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/middleware"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
@@ -27,24 +29,62 @@ func (stubController) endpoint() httphandler.Endpoint {
 	return func(http.ResponseWriter, *http.Request) error { return nil }
 }
 
-func (s stubController) GetPlayers() httphandler.Endpoint     { return s.endpoint() }
-func (s stubController) GetPlayerByID() httphandler.Endpoint  { return s.endpoint() }
-func (s stubController) SyncPlayers() httphandler.Endpoint    { return s.endpoint() }
-func (s stubController) SyncStatistics() httphandler.Endpoint { return s.endpoint() }
-func (s stubController) GetPlayerStatistics() httphandler.Endpoint {
-	return s.endpoint()
+type stubPlayerService struct{}
+
+func (stubPlayerService) ListPlayers(ctx context.Context, filter dto.PlayerFilterDTO) (dto.PaginatedResponse[dto.PlayerListItemResponse], error) {
+	return dto.PaginatedResponse[dto.PlayerListItemResponse]{}, nil
 }
-func (s stubController) Register() httphandler.Endpoint { return s.endpoint() }
-func (s stubController) Login() httphandler.Endpoint    { return s.endpoint() }
-func (s stubController) Refresh() httphandler.Endpoint  { return s.endpoint() }
-func (s stubController) Logout() httphandler.Endpoint   { return s.endpoint() }
+
+func (stubPlayerService) GetPlayerByID(ctx context.Context, id int64) (dto.PlayerDetailResponse, error) {
+	return dto.PlayerDetailResponse{}, nil
+}
+
+type stubPlayerSyncService struct{}
+
+func (stubPlayerSyncService) SyncPlayers(ctx context.Context, actor string) (dto.SyncPlayersResponse, error) {
+	return dto.SyncPlayersResponse{}, nil
+}
+
+type stubStatisticsSyncService struct{}
+
+func (stubStatisticsSyncService) SyncStatistics(ctx context.Context) (dto.SyncStatisticsResponse, error) {
+	return dto.SyncStatisticsResponse{}, nil
+}
+
+type stubPlayerStatisticsService struct{}
+
+func (stubPlayerStatisticsService) GetPlayerStatistics(ctx context.Context, playerID int64) ([]dto.PlayerStatisticsResponse, error) {
+	return nil, nil
+}
+
+type stubAuthService struct{}
+
+func (stubAuthService) Register(ctx context.Context, email, password string) (model.User, error) {
+	return model.User{}, nil
+}
+
+func (stubAuthService) Login(ctx context.Context, email, password string) (model.Session, error) {
+	return model.Session{}, nil
+}
+
+func (stubAuthService) Refresh(ctx context.Context, presentedID string, userID int64, sessionID string) (model.Session, error) {
+	return model.Session{}, nil
+}
+
+func (stubAuthService) Logout(ctx context.Context, userID int64, sessionID string) error {
+	return nil
+}
 
 func routesUnderTest() []route {
 	server := &Server{
 		controllers: &controller.Container{
-			Player: stubController{},
-			Sync:   stubController{},
-			Auth:   stubController{},
+			Player: controller.NewPlayerController(stubPlayerService{}),
+			Sync: controller.NewSyncController(
+				stubPlayerSyncService{},
+				stubStatisticsSyncService{},
+				stubPlayerStatisticsService{},
+			),
+			Auth: controller.NewAuthController(stubAuthService{}),
 		},
 	}
 

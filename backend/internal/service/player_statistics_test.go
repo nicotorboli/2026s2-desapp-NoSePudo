@@ -11,7 +11,7 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
 )
 
-func newPlayerStatisticsService(t *testing.T, db *sql.DB) service.PlayerStatisticsService {
+func newPlayerStatisticsService(t *testing.T, db *sql.DB) *service.PlayerStatisticsServiceImpl {
 	t.Helper()
 	daos := dao.NewContainer(db)
 	repos := repository.NewContainer(db, daos)

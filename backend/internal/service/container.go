@@ -9,10 +9,10 @@ import (
 )
 
 type Container struct {
-	Player         PlayerService
-	Sync           PlayerSyncService
-	StatisticsSync PlayerStatisticsSyncService
-	PlayerStats    PlayerStatisticsService
+	Player         *PlayerServiceImpl
+	Sync           *PlayerSyncServiceImpl
+	StatisticsSync *PlayerStatisticsSyncServiceImpl
+	PlayerStats    *PlayerStatisticsServiceImpl
 	Auth           *Auth
 }
 

@@ -11,9 +11,9 @@ import (
 var errNilDatabase = errors.New("la conexión a la base de datos es nil")
 
 type Container struct {
-	Player           PlayerDAO
-	PlayerStatistics PlayerStatisticsDAO
-	Audit            AuditDAO
+	Player           *PlayerSql
+	PlayerStatistics *PlayerStatisticsSql
+	Audit            *AuditSql
 	User             *UserSql
 	RefreshToken     *RefreshTokenSql
 	Schema           *SchemaSql

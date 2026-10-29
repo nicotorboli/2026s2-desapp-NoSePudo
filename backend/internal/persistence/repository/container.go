@@ -7,8 +7,8 @@ import (
 )
 
 type Container struct {
-	Player           PlayerRepository
-	PlayerStatistics PlayerStatisticsRepository
+	Player           *PlayerRepositoryImpl
+	PlayerStatistics *PlayerStatisticsRepositoryImpl
 	User             *UserRepository
 	RefreshToken     *RefreshTokenRepository
 }

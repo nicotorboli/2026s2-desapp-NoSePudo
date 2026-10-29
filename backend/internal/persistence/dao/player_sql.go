@@ -13,14 +13,6 @@ import (
 
 var ErrNotFound = errors.New("player not found")
 
-type PlayerDAO interface {
-	ListPlayers(ctx context.Context, f model.PlayerFilter) ([]model.Player, int64, error)
-	GetPlayerByID(ctx context.Context, id int64) (model.Player, error)
-	GetPlayerByExternalID(ctx context.Context, externalID int64) (model.Player, error)
-	UpsertPlayer(ctx context.Context, tx *sql.Tx, p model.Player) (int64, error)
-	DeactivateMissingPlayers(ctx context.Context, tx *sql.Tx, activeExternalIDs []int64, leagueCode string) ([]int64, error)
-}
-
 type PlayerSql struct {
 	db *sql.DB
 }

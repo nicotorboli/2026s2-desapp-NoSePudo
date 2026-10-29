@@ -8,7 +8,6 @@ import (
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters/footballdata"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 )
 
 var (
@@ -16,17 +15,13 @@ var (
 	ErrRateLimitExceeded = errors.New("rate limit exceeded")
 )
 
-type PlayerSyncService interface {
-	SyncPlayers(ctx context.Context, actor string) (dto.SyncPlayersResponse, error)
-}
-
 type PlayerSyncServiceImpl struct {
-	adapter footballdata.Client
-	repo    repository.PlayerRepository
+	adapter FootballDataClient
+	repo    PlayerRepository
 	logger  *slog.Logger
 }
 
-func NewPlayerSyncService(adapter footballdata.Client, repo repository.PlayerRepository, logger *slog.Logger) *PlayerSyncServiceImpl {
+func NewPlayerSyncService(adapter FootballDataClient, repo PlayerRepository, logger *slog.Logger) *PlayerSyncServiceImpl {
 	return &PlayerSyncServiceImpl{
 		adapter: adapter,
 		repo:    repo,
