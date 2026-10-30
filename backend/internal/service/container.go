@@ -9,24 +9,20 @@ import (
 )
 
 type Container struct {
-	Player         *PlayerServiceImpl
-	Sync           *PlayerSyncServiceImpl
-	StatisticsSync *PlayerStatisticsSyncServiceImpl
-	PlayerStats    *PlayerStatisticsServiceImpl
-	Auth           *Auth
+	Player      *PlayerServiceImpl
+	PlayerStats *PlayerStatisticsServiceImpl
+	Auth        *Auth
 }
 
 func NewContainer(repos *repository.Container, adapterContainer *adapters.Container, logger *slog.Logger) *Container {
 	return &Container{
-		Player: NewPlayerService(repos.Player),
-		Sync:   NewPlayerSyncService(adapterContainer.FootballData, repos.Player, logger),
-		StatisticsSync: NewPlayerStatisticsSyncService(
+		Player: NewPlayerService(adapterContainer.FootballData, repos.Player, logger),
+		PlayerStats: NewPlayerStatisticsService(
 			adapterContainer.Whoscored,
 			repos.Player,
 			repos.PlayerStatistics,
 			logger,
 		),
-		PlayerStats: NewPlayerStatisticsService(repos.Player, repos.PlayerStatistics),
 		Auth: NewAuthService(
 			repos.User,
 			adapterContainer.Password,

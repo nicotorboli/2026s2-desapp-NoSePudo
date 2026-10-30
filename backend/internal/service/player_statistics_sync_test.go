@@ -107,12 +107,12 @@ func (f *fakeWhoscoredClient) FetchLeagueStatistics(ctx context.Context, code st
 	return nil, nil
 }
 
-func newStatisticsSyncService(t *testing.T, db *sql.DB, adapter *fakeWhoscoredClient) *service.PlayerStatisticsSyncServiceImpl {
+func newStatisticsSyncService(t *testing.T, db *sql.DB, adapter *fakeWhoscoredClient) *service.PlayerStatisticsServiceImpl {
 	t.Helper()
 	daos := dao.NewContainer(db)
 	repos := repository.NewContainer(db, daos)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	return service.NewPlayerStatisticsSyncService(adapter, repos.Player, repos.PlayerStatistics, logger)
+	return service.NewPlayerStatisticsService(adapter, repos.Player, repos.PlayerStatistics, logger)
 }
 
 func TestSyncStatistics_MatchesAndPersists(t *testing.T) {

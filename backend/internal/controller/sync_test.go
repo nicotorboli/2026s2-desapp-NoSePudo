@@ -27,19 +27,9 @@ func (m *mockPlayerSyncService) SyncPlayers(ctx context.Context, actor string) (
 	return dto.SyncPlayersResponse{}, nil
 }
 
-type mockStatisticsSyncService struct {
-	syncStatisticsFn func(ctx context.Context) (dto.SyncStatisticsResponse, error)
-}
-
-func (m *mockStatisticsSyncService) SyncStatistics(ctx context.Context) (dto.SyncStatisticsResponse, error) {
-	if m.syncStatisticsFn != nil {
-		return m.syncStatisticsFn(ctx)
-	}
-	return dto.SyncStatisticsResponse{}, nil
-}
-
 type mockPlayerStatisticsService struct {
 	getPlayerStatisticsFn func(ctx context.Context, id int64) ([]dto.PlayerStatisticsResponse, error)
+	syncStatisticsFn      func(ctx context.Context) (dto.SyncStatisticsResponse, error)
 }
 
 func (m *mockPlayerStatisticsService) GetPlayerStatistics(ctx context.Context, id int64) ([]dto.PlayerStatisticsResponse, error) {
@@ -49,8 +39,15 @@ func (m *mockPlayerStatisticsService) GetPlayerStatistics(ctx context.Context, i
 	return nil, nil
 }
 
-func newSyncController(players *mockPlayerSyncService, statsSync *mockStatisticsSyncService, statsRead *mockPlayerStatisticsService) *controller.RestSyncController {
-	return controller.NewSyncController(players, statsSync, statsRead)
+func (m *mockPlayerStatisticsService) SyncStatistics(ctx context.Context) (dto.SyncStatisticsResponse, error) {
+	if m.syncStatisticsFn != nil {
+		return m.syncStatisticsFn(ctx)
+	}
+	return dto.SyncStatisticsResponse{}, nil
+}
+
+func newSyncController(players *mockPlayerSyncService, stats *mockPlayerStatisticsService) *controller.RestSyncController {
+	return controller.NewSyncController(players, stats)
 }
 
 func TestSyncController_SyncPlayers_Success(t *testing.T) {
@@ -67,7 +64,7 @@ func TestSyncController_SyncPlayers_Success(t *testing.T) {
 		},
 	}
 
-	c := newSyncController(mockSvc, &mockStatisticsSyncService{}, &mockPlayerStatisticsService{})
+	c := newSyncController(mockSvc, &mockPlayerStatisticsService{})
 	handler := httphandler.Wrap(c.SyncPlayers(), logger)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/players/sync", nil)
@@ -97,7 +94,7 @@ func TestSyncController_SyncPlayers_RateLimit(t *testing.T) {
 		},
 	}
 
-	c := newSyncController(mockSvc, &mockStatisticsSyncService{}, &mockPlayerStatisticsService{})
+	c := newSyncController(mockSvc, &mockPlayerStatisticsService{})
 	handler := httphandler.Wrap(c.SyncPlayers(), logger)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/players/sync", nil)
@@ -118,7 +115,7 @@ func TestSyncController_SyncPlayers_InternalError(t *testing.T) {
 		},
 	}
 
-	c := newSyncController(mockSvc, &mockStatisticsSyncService{}, &mockPlayerStatisticsService{})
+	c := newSyncController(mockSvc, &mockPlayerStatisticsService{})
 	handler := httphandler.Wrap(c.SyncPlayers(), logger)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/players/sync", nil)
@@ -133,7 +130,7 @@ func TestSyncController_SyncPlayers_InternalError(t *testing.T) {
 
 func TestSyncController_SyncStatistics_Success(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	mockSvc := &mockStatisticsSyncService{
+	mockSvc := &mockPlayerStatisticsService{
 		syncStatisticsFn: func(ctx context.Context) (dto.SyncStatisticsResponse, error) {
 			return dto.SyncStatisticsResponse{
 				Status:         "success",
@@ -146,7 +143,7 @@ func TestSyncController_SyncStatistics_Success(t *testing.T) {
 		},
 	}
 
-	c := newSyncController(&mockPlayerSyncService{}, mockSvc, &mockPlayerStatisticsService{})
+	c := newSyncController(&mockPlayerSyncService{}, mockSvc)
 	handler := httphandler.Wrap(c.SyncStatistics(), logger)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/players/statistics/sync", nil)
@@ -169,13 +166,13 @@ func TestSyncController_SyncStatistics_Success(t *testing.T) {
 
 func TestSyncController_SyncStatistics_RateLimit(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	mockSvc := &mockStatisticsSyncService{
+	mockSvc := &mockPlayerStatisticsService{
 		syncStatisticsFn: func(ctx context.Context) (dto.SyncStatisticsResponse, error) {
 			return dto.SyncStatisticsResponse{}, service.ErrStatisticsRateLimitExceeded
 		},
 	}
 
-	c := newSyncController(&mockPlayerSyncService{}, mockSvc, &mockPlayerStatisticsService{})
+	c := newSyncController(&mockPlayerSyncService{}, mockSvc)
 	handler := httphandler.Wrap(c.SyncStatistics(), logger)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/players/statistics/sync", nil)
@@ -190,13 +187,13 @@ func TestSyncController_SyncStatistics_RateLimit(t *testing.T) {
 
 func TestSyncController_SyncStatistics_Blocked(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	mockSvc := &mockStatisticsSyncService{
+	mockSvc := &mockPlayerStatisticsService{
 		syncStatisticsFn: func(ctx context.Context) (dto.SyncStatisticsResponse, error) {
 			return dto.SyncStatisticsResponse{}, service.ErrStatisticsProviderBlocked
 		},
 	}
 
-	c := newSyncController(&mockPlayerSyncService{}, mockSvc, &mockPlayerStatisticsService{})
+	c := newSyncController(&mockPlayerSyncService{}, mockSvc)
 	handler := httphandler.Wrap(c.SyncStatistics(), logger)
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/players/statistics/sync", nil)
@@ -222,7 +219,7 @@ func TestSyncController_GetPlayerStatistics_Success(t *testing.T) {
 		},
 	}
 
-	c := newSyncController(&mockPlayerSyncService{}, &mockStatisticsSyncService{}, mockSvc)
+	c := newSyncController(&mockPlayerSyncService{}, mockSvc)
 	mux := http.NewServeMux()
 	mux.Handle("GET /players/{id}/statistics", httphandler.Wrap(c.GetPlayerStatistics(), logger))
 
@@ -252,7 +249,7 @@ func TestSyncController_GetPlayerStatistics_NotFound(t *testing.T) {
 		},
 	}
 
-	c := newSyncController(&mockPlayerSyncService{}, &mockStatisticsSyncService{}, mockSvc)
+	c := newSyncController(&mockPlayerSyncService{}, mockSvc)
 	mux := http.NewServeMux()
 	mux.Handle("GET /players/{id}/statistics", httphandler.Wrap(c.GetPlayerStatistics(), logger))
 
@@ -269,7 +266,7 @@ func TestSyncController_GetPlayerStatistics_NotFound(t *testing.T) {
 func TestSyncController_GetPlayerStatistics_InvalidID(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	c := newSyncController(&mockPlayerSyncService{}, &mockStatisticsSyncService{}, &mockPlayerStatisticsService{})
+	c := newSyncController(&mockPlayerSyncService{}, &mockPlayerStatisticsService{})
 	mux := http.NewServeMux()
 	mux.Handle("GET /players/{id}/statistics", httphandler.Wrap(c.GetPlayerStatistics(), logger))
 

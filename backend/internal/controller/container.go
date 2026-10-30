@@ -14,8 +14,7 @@ func NewContainer(services *service.Container) *Container {
 	return &Container{
 		Player: NewPlayerController(services.Player),
 		Sync: NewSyncController(
-			services.Sync,
-			services.StatisticsSync,
+			services.Player,
 			services.PlayerStats,
 		),
 		Auth: NewAuthController(services.Auth),

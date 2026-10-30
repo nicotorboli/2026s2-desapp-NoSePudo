@@ -13,6 +13,26 @@ import (
 
 var ErrNotFound = errors.New("player not found")
 
+const playerColumns = "id, external_id, name, club_name, league_name, league_code, " +
+	"date_of_birth, nationality, position, shirt_number, active, created_at, updated_at"
+
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanPlayer(r rowScanner) (model.Player, error) {
+	var p model.Player
+	err := r.Scan(
+		&p.ID, &p.ExternalID, &p.Name, &p.ClubName, &p.LeagueName, &p.LeagueCode,
+		&p.DateOfBirth, &p.Nationality, &p.Position, &p.ShirtNumber, &p.Active,
+		&p.CreatedAt, &p.UpdatedAt,
+	)
+	if err != nil {
+		return model.Player{}, err
+	}
+	return p, nil
+}
+
 type PlayerSql struct {
 	db *sql.DB
 }
@@ -85,7 +105,7 @@ func (d *PlayerSql) ListPlayers(ctx context.Context, f model.PlayerFilter) ([]mo
 	copy(queryArgs, args)
 	queryArgs = append(queryArgs, limit, offset)
 	dataQuery := fmt.Sprintf(
-		"SELECT id, external_id, name, club_name, league_name, league_code, date_of_birth, nationality, position, shirt_number, active, created_at, updated_at FROM players%s ORDER BY name ASC LIMIT $%d OFFSET $%d",
+		"SELECT "+playerColumns+" FROM players%s ORDER BY name ASC LIMIT $%d OFFSET $%d",
 		whereSQL, argIdx, argIdx+1,
 	)
 
@@ -97,22 +117,8 @@ func (d *PlayerSql) ListPlayers(ctx context.Context, f model.PlayerFilter) ([]mo
 
 	players := make([]model.Player, 0, limit)
 	for rows.Next() {
-		var p model.Player
-		if err := rows.Scan(
-			&p.ID,
-			&p.ExternalID,
-			&p.Name,
-			&p.ClubName,
-			&p.LeagueName,
-			&p.LeagueCode,
-			&p.DateOfBirth,
-			&p.Nationality,
-			&p.Position,
-			&p.ShirtNumber,
-			&p.Active,
-			&p.CreatedAt,
-			&p.UpdatedAt,
-		); err != nil {
+		p, err := scanPlayer(rows)
+		if err != nil {
 			return nil, 0, fmt.Errorf("scan player: %w", err)
 		}
 		players = append(players, p)
@@ -130,25 +136,10 @@ func (d *PlayerSql) GetPlayerByID(ctx context.Context, id int64) (model.Player, 
 		return model.Player{}, fmt.Errorf("database connection is nil")
 	}
 
-	query := `SELECT id, external_id, name, club_name, league_name, league_code, date_of_birth, nationality, position, shirt_number, active, created_at, updated_at 
-              FROM players WHERE id = $1`
+	row := d.db.QueryRowContext(ctx,
+		"SELECT "+playerColumns+" FROM players WHERE id = $1", id)
 
-	var p model.Player
-	err := d.db.QueryRowContext(ctx, query, id).Scan(
-		&p.ID,
-		&p.ExternalID,
-		&p.Name,
-		&p.ClubName,
-		&p.LeagueName,
-		&p.LeagueCode,
-		&p.DateOfBirth,
-		&p.Nationality,
-		&p.Position,
-		&p.ShirtNumber,
-		&p.Active,
-		&p.CreatedAt,
-		&p.UpdatedAt,
-	)
+	p, err := scanPlayer(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.Player{}, ErrNotFound
@@ -164,25 +155,10 @@ func (d *PlayerSql) GetPlayerByExternalID(ctx context.Context, externalID int64)
 		return model.Player{}, fmt.Errorf("database connection is nil")
 	}
 
-	query := `SELECT id, external_id, name, club_name, league_name, league_code, date_of_birth, nationality, position, shirt_number, active, created_at, updated_at 
-              FROM players WHERE external_id = $1`
+	row := d.db.QueryRowContext(ctx,
+		"SELECT "+playerColumns+" FROM players WHERE external_id = $1", externalID)
 
-	var p model.Player
-	err := d.db.QueryRowContext(ctx, query, externalID).Scan(
-		&p.ID,
-		&p.ExternalID,
-		&p.Name,
-		&p.ClubName,
-		&p.LeagueName,
-		&p.LeagueCode,
-		&p.DateOfBirth,
-		&p.Nationality,
-		&p.Position,
-		&p.ShirtNumber,
-		&p.Active,
-		&p.CreatedAt,
-		&p.UpdatedAt,
-	)
+	p, err := scanPlayer(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.Player{}, ErrNotFound

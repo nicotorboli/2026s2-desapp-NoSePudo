@@ -45,16 +45,14 @@ func (stubPlayerSyncService) SyncPlayers(ctx context.Context, actor string) (dto
 	return dto.SyncPlayersResponse{}, nil
 }
 
-type stubStatisticsSyncService struct{}
-
-func (stubStatisticsSyncService) SyncStatistics(ctx context.Context) (dto.SyncStatisticsResponse, error) {
-	return dto.SyncStatisticsResponse{}, nil
-}
-
 type stubPlayerStatisticsService struct{}
 
 func (stubPlayerStatisticsService) GetPlayerStatistics(ctx context.Context, playerID int64) ([]dto.PlayerStatisticsResponse, error) {
 	return nil, nil
+}
+
+func (stubPlayerStatisticsService) SyncStatistics(ctx context.Context) (dto.SyncStatisticsResponse, error) {
+	return dto.SyncStatisticsResponse{}, nil
 }
 
 type stubAuthService struct{}
@@ -81,7 +79,6 @@ func routesUnderTest() []route {
 			Player: controller.NewPlayerController(stubPlayerService{}),
 			Sync: controller.NewSyncController(
 				stubPlayerSyncService{},
-				stubStatisticsSyncService{},
 				stubPlayerStatisticsService{},
 			),
 			Auth: controller.NewAuthController(stubAuthService{}),

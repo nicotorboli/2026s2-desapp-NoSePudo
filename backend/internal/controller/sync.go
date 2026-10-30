@@ -15,34 +15,29 @@ type PlayerSyncService interface {
 	SyncPlayers(ctx context.Context, actor string) (dto.SyncPlayersResponse, error)
 }
 
-type PlayerStatisticsSyncService interface {
-	SyncStatistics(ctx context.Context) (dto.SyncStatisticsResponse, error)
-}
-
 type PlayerStatisticsService interface {
 	GetPlayerStatistics(ctx context.Context, playerID int64) ([]dto.PlayerStatisticsResponse, error)
+	SyncStatistics(ctx context.Context) (dto.SyncStatisticsResponse, error)
 }
 
 // RestSyncController reúne la sincronización del catálogo con football-data.org,
 // la sincronización de estadísticas con WhoScored y la lectura de estadísticas
 // de un jugador: son operaciones relacionadas y comparten el mismo borde.
 type RestSyncController struct {
-	svc          PlayerSyncService
-	statsSyncSvc PlayerStatisticsSyncService
-	statsReadSvc PlayerStatisticsService
+	playerSvc PlayerSyncService
+	statsSvc  PlayerStatisticsService
 }
 
-func NewSyncController(svc PlayerSyncService, statsSyncSvc PlayerStatisticsSyncService, statsReadSvc PlayerStatisticsService) *RestSyncController {
+func NewSyncController(playerSvc PlayerSyncService, statsSvc PlayerStatisticsService) *RestSyncController {
 	return &RestSyncController{
-		svc:          svc,
-		statsSyncSvc: statsSyncSvc,
-		statsReadSvc: statsReadSvc,
+		playerSvc: playerSvc,
+		statsSvc:  statsSvc,
 	}
 }
 
 func (c *RestSyncController) SyncPlayers() httphandler.Endpoint {
 	return func(w http.ResponseWriter, req *http.Request) error {
-		resp, err := c.svc.SyncPlayers(req.Context(), "system/sync")
+		resp, err := c.playerSvc.SyncPlayers(req.Context(), "system/sync")
 		if err != nil {
 			if errors.Is(err, service.ErrRateLimitExceeded) {
 				return httphandler.NewError(http.StatusTooManyRequests, "External provider rate limit hit; existing data is intact", err)
@@ -56,7 +51,7 @@ func (c *RestSyncController) SyncPlayers() httphandler.Endpoint {
 
 func (c *RestSyncController) SyncStatistics() httphandler.Endpoint {
 	return func(w http.ResponseWriter, req *http.Request) error {
-		resp, err := c.statsSyncSvc.SyncStatistics(req.Context())
+		resp, err := c.statsSvc.SyncStatistics(req.Context())
 		if err != nil {
 			if errors.Is(err, service.ErrStatisticsRateLimitExceeded) {
 				return httphandler.NewError(http.StatusTooManyRequests, "External provider rate limit hit; existing data is intact", err)
@@ -83,7 +78,7 @@ func (c *RestSyncController) GetPlayerStatistics() httphandler.Endpoint {
 			return httphandler.NewError(http.StatusBadRequest, "invalid player ID format", err)
 		}
 
-		stats, err := c.statsReadSvc.GetPlayerStatistics(req.Context(), id)
+		stats, err := c.statsSvc.GetPlayerStatistics(req.Context(), id)
 		if err != nil {
 			if errors.Is(err, service.ErrNotFound) {
 				return httphandler.NewError(http.StatusNotFound, "player not found", err)
