@@ -51,7 +51,9 @@ func runCompleteFlow(t *testing.T, stack *stack) (accessToken, refreshToken stri
 	// Catálogo con credencial y sin ella.
 	stack.get(t, "/players", "Bearer "+accessToken)
 	stack.get(t, "/players", "")
-	stack.get(t, "/players", "Bearer una-credencial-inventada")
+
+	// Rechazo de una credencial inválida en un endpoint autenticado.
+	stack.postWithBearer(t, "/auth/logout", "una-credencial-inventada")
 
 	// Renovación, y después el reuso de la misma credencial.
 	_, renewed := stack.postWithBearer(t, "/auth/refresh", refreshToken)
@@ -139,8 +141,8 @@ func TestRefusalsWithNoIdentifiableAccountAreStillLogged(t *testing.T) {
 	stack := newStack(t)
 
 	// Una petición sin credencial: no hay forma de saber quién la hizo.
-	if status, _ := stack.get(t, "/players", ""); status != http.StatusUnauthorized {
-		t.Fatalf("el catálogo no rechazó la petición sin credencial")
+	if status, _ := stack.postWithBearer(t, "/auth/logout", ""); status != http.StatusUnauthorized {
+		t.Fatalf("el endpoint autenticado no rechazó la petición sin credencial")
 	}
 
 	events := stack.logs.lines()

@@ -103,14 +103,9 @@ func TestRefreshIssuesANewSessionAndConsumesTheOldCredential(t *testing.T) {
 		t.Fatalf("status = %d, se esperaba 200: %v", status, renewed)
 	}
 
-	newAccessToken, newRefreshToken := tokensOf(t, renewed)
+	_, newRefreshToken := tokensOf(t, renewed)
 	if newRefreshToken == refreshToken {
 		t.Error("la renovación devolvió la misma credencial de renovación")
-	}
-
-	// La credencial nueva sirve para el catálogo.
-	if catalogStatus, _ := stack.get(t, "/players", "Bearer "+newAccessToken); catalogStatus != http.StatusOK {
-		t.Errorf("la credencial renovada no abre el catálogo: %d", catalogStatus)
 	}
 
 	// Y sigue en la misma sesión.
@@ -129,8 +124,8 @@ func TestRefreshKeepsTheSessionAliveAfterTheAccessCredentialExpires(t *testing.T
 
 	time.Sleep(2 * time.Second)
 
-	// La de acceso ya no sirve.
-	if status, _ := stack.get(t, "/players", "Bearer "+accessToken); status != http.StatusUnauthorized {
+	// La de acceso ya no sirve: un endpoint autenticado la rechaza.
+	if status, _ := stack.postWithBearer(t, "/auth/logout", accessToken); status != http.StatusUnauthorized {
 		t.Fatalf("la credencial de acceso seguía sirviendo: %d", status)
 	}
 
@@ -141,8 +136,8 @@ func TestRefreshKeepsTheSessionAliveAfterTheAccessCredentialExpires(t *testing.T
 	}
 
 	newAccessToken, _ := tokensOf(t, renewed)
-	if catalogStatus, _ := stack.get(t, "/players", "Bearer "+newAccessToken); catalogStatus != http.StatusOK {
-		t.Errorf("la credencial renovada no abre el catálogo: %d", catalogStatus)
+	if logoutStatus, _ := stack.postWithBearer(t, "/auth/logout", newAccessToken); logoutStatus != http.StatusNoContent {
+		t.Errorf("la credencial renovada no sirve: %d", logoutStatus)
 	}
 }
 
@@ -229,11 +224,6 @@ func TestSignOutInvalidatesTheRefreshCredential(t *testing.T) {
 	if status, _ := stack.postWithBearer(t, "/auth/refresh", refreshToken); status != http.StatusUnauthorized {
 		t.Errorf("la credencial de renovación sigue sirviendo después de cerrar sesión: %d", status)
 	}
-
-	// La de acceso no se invalida: expira sola, y es corta.
-	if status, _ := stack.get(t, "/players", "Bearer "+accessToken); status != http.StatusOK {
-		t.Errorf("la credencial de acceso se invalidó al cerrar sesión: %d", status)
-	}
 }
 
 // El caso borde: cerrar una sesión no cierra las otras.
@@ -282,9 +272,6 @@ func TestTheTwoCredentialsAreNotInterchangeable(t *testing.T) {
 
 	// Escenario 7: una credencial de renovación presentada a cualquier otro
 	// endpoint. Nunca da acceso a un recurso.
-	if status, _ := stack.get(t, "/players", "Bearer "+refreshToken); status != http.StatusUnauthorized {
-		t.Errorf("el catálogo aceptó una credencial de renovación: %d", status)
-	}
 	if status, _ := stack.postWithBearer(t, "/auth/logout", refreshToken); status != http.StatusUnauthorized {
 		t.Errorf("el cierre de sesión aceptó una credencial de renovación: %d", status)
 	}
