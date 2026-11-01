@@ -18,17 +18,17 @@ import (
 // abajo, sin ninguna pista de que lo que cambió fue un archivo .sql que esa
 // base nunca leyó.
 type SchemaSql struct {
-	Db *sql.DB
+	db *sql.DB
 }
 
 func NewSchemaDao(db *sql.DB) *SchemaSql {
-	return &SchemaSql{Db: db}
+	return &SchemaSql{db: db}
 }
 
 // MissingTables devuelve, de las tablas pedidas, las que no existen en el
 // esquema public, conservando el orden en que se pidieron.
-func (dao *SchemaSql) MissingTables(ctx context.Context, want []string) ([]string, error) {
-	if dao.Db == nil {
+func (d *SchemaSql) MissingTables(ctx context.Context, want []string) ([]string, error) {
+	if d.db == nil {
 		return nil, errNilDatabase
 	}
 	if len(want) == 0 {
@@ -40,7 +40,7 @@ func (dao *SchemaSql) MissingTables(ctx context.Context, want []string) ([]strin
 		FROM information_schema.tables
 		WHERE table_schema = 'public' AND table_name = ANY($1)`
 
-	rows, err := dao.Db.QueryContext(ctx, query, pq.Array(want))
+	rows, err := d.db.QueryContext(ctx, query, pq.Array(want))
 	if err != nil {
 		return nil, fmt.Errorf("consultar el esquema: %w", err)
 	}

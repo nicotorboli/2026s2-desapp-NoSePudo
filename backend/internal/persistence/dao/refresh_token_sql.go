@@ -10,15 +10,15 @@ import (
 )
 
 type RefreshTokenSql struct {
-	Db *sql.DB
+	db *sql.DB
 }
 
 func NewRefreshTokenDao(db *sql.DB) *RefreshTokenSql {
-	return &RefreshTokenSql{Db: db}
+	return &RefreshTokenSql{db: db}
 }
 
-func (dao *RefreshTokenSql) Insert(ctx context.Context, token model.RefreshToken) error {
-	if dao.Db == nil {
+func (d *RefreshTokenSql) Insert(ctx context.Context, token model.RefreshToken) error {
+	if d.db == nil {
 		return errNilDatabase
 	}
 
@@ -26,15 +26,15 @@ func (dao *RefreshTokenSql) Insert(ctx context.Context, token model.RefreshToken
 		INSERT INTO refresh_tokens (id, family_id, user_id, expires_at)
 		VALUES ($1, $2, $3, $4)`
 
-	if _, err := dao.Db.ExecContext(ctx, query, token.ID, token.FamilyID, token.UserID, token.ExpiresAt); err != nil {
+	if _, err := d.db.ExecContext(ctx, query, token.ID, token.FamilyID, token.UserID, token.ExpiresAt); err != nil {
 		return fmt.Errorf("insertar la credencial de renovación: %w", err)
 	}
 
 	return nil
 }
 
-func (dao *RefreshTokenSql) GetByID(ctx context.Context, id string) (model.RefreshToken, error) {
-	if dao.Db == nil {
+func (d *RefreshTokenSql) GetByID(ctx context.Context, id string) (model.RefreshToken, error) {
+	if d.db == nil {
 		return model.RefreshToken{}, errNilDatabase
 	}
 
@@ -44,7 +44,7 @@ func (dao *RefreshTokenSql) GetByID(ctx context.Context, id string) (model.Refre
 		WHERE id = $1`
 
 	var token model.RefreshToken
-	err := dao.Db.QueryRowContext(ctx, query, id).Scan(
+	err := d.db.QueryRowContext(ctx, query, id).Scan(
 		&token.ID,
 		&token.FamilyID,
 		&token.UserID,
@@ -63,12 +63,12 @@ func (dao *RefreshTokenSql) GetByID(ctx context.Context, id string) (model.Refre
 	return token, nil
 }
 
-func (dao *RefreshTokenSql) Rotate(ctx context.Context, presentedID string, replacement model.RefreshToken) error {
-	if dao.Db == nil {
+func (d *RefreshTokenSql) Rotate(ctx context.Context, presentedID string, replacement model.RefreshToken) error {
+	if d.db == nil {
 		return errNilDatabase
 	}
 
-	transaction, err := dao.Db.BeginTx(ctx, nil)
+	transaction, err := d.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("abrir la transacción de rotación: %w", err)
 	}
@@ -110,8 +110,8 @@ func (dao *RefreshTokenSql) Rotate(ctx context.Context, presentedID string, repl
 	return nil
 }
 
-func (dao *RefreshTokenSql) RevokeFamily(ctx context.Context, familyID string, userID int64) error {
-	if dao.Db == nil {
+func (d *RefreshTokenSql) RevokeFamily(ctx context.Context, familyID string, userID int64) error {
+	if d.db == nil {
 		return errNilDatabase
 	}
 
@@ -120,15 +120,15 @@ func (dao *RefreshTokenSql) RevokeFamily(ctx context.Context, familyID string, u
 		SET revoked_at = NOW()
 		WHERE family_id = $1 AND user_id = $2 AND revoked_at IS NULL`
 
-	if _, err := dao.Db.ExecContext(ctx, query, familyID, userID); err != nil {
+	if _, err := d.db.ExecContext(ctx, query, familyID, userID); err != nil {
 		return fmt.Errorf("revocar la familia de sesión: %w", err)
 	}
 
 	return nil
 }
 
-func (dao *RefreshTokenSql) RevokeAllLiveForUser(ctx context.Context, userID int64) error {
-	if dao.Db == nil {
+func (d *RefreshTokenSql) RevokeAllLiveForUser(ctx context.Context, userID int64) error {
+	if d.db == nil {
 		return errNilDatabase
 	}
 
@@ -137,7 +137,7 @@ func (dao *RefreshTokenSql) RevokeAllLiveForUser(ctx context.Context, userID int
 		SET revoked_at = NOW()
 		WHERE user_id = $1 AND revoked_at IS NULL`
 
-	if _, err := dao.Db.ExecContext(ctx, query, userID); err != nil {
+	if _, err := d.db.ExecContext(ctx, query, userID); err != nil {
 		return fmt.Errorf("revocar las credenciales de la cuenta: %w", err)
 	}
 
