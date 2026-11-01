@@ -16,7 +16,7 @@ var ErrNotFound = errors.New("player not found")
 type PlayerDAO interface {
 	ListPlayers(ctx context.Context, f model.PlayerFilter) ([]model.Player, int64, error)
 	GetPlayerByID(ctx context.Context, id int64) (model.Player, error)
-	GetPlayerByExternalID(ctx context.Context, externalID int64) (model.Player, error)
+	GetPlayersByExternalIDs(ctx context.Context, externalIDs []int64) ([]model.Player, error)
 	UpsertPlayer(ctx context.Context, tx *sql.Tx, p model.Player) (int64, error)
 	DeactivateMissingPlayers(ctx context.Context, tx *sql.Tx, activeExternalIDs []int64, leagueCode string) ([]int64, error)
 }
@@ -91,20 +91,23 @@ func (r *PlayerRepositoryImpl) SavePlayers(ctx context.Context, players []model.
 
 	processedCount := len(players)
 	updatedCount := 0
-	activeExternalIDs := make([]int64, 0, len(players))
 
+	activeExternalIDs := make([]int64, 0, len(players))
 	for _, p := range players {
 		activeExternalIDs = append(activeExternalIDs, p.ExternalID)
+	}
 
-		existingPlayer, getErr := r.playerDAO.GetPlayerByExternalID(ctx, p.ExternalID)
-		isNew := false
-		if getErr != nil {
-			if errors.Is(getErr, dao.ErrNotFound) {
-				isNew = true
-			} else {
-				return 0, 0, 0, fmt.Errorf("check existing player %d: %w", p.ExternalID, getErr)
-			}
-		}
+	existing, err := r.playerDAO.GetPlayersByExternalIDs(ctx, activeExternalIDs)
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("load existing players: %w", err)
+	}
+	existingByExternalID := make(map[int64]model.Player, len(existing))
+	for _, p := range existing {
+		existingByExternalID[p.ExternalID] = p
+	}
+
+	for _, p := range players {
+		existingPlayer, exists := existingByExternalID[p.ExternalID]
 
 		p.Active = true
 		playerID, upsertErr := r.playerDAO.UpsertPlayer(ctx, tx, p)
@@ -112,7 +115,7 @@ func (r *PlayerRepositoryImpl) SavePlayers(ctx context.Context, players []model.
 			return 0, 0, 0, fmt.Errorf("upsert player %d: %w", p.ExternalID, upsertErr)
 		}
 
-		if isNew {
+		if !exists {
 			diffNew := map[string]any{
 				"name":        p.Name,
 				"clubName":    p.ClubName,

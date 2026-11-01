@@ -150,23 +150,36 @@ func (d *PlayerSql) GetPlayerByID(ctx context.Context, id int64) (model.Player, 
 	return p, nil
 }
 
-func (d *PlayerSql) GetPlayerByExternalID(ctx context.Context, externalID int64) (model.Player, error) {
+func (d *PlayerSql) GetPlayersByExternalIDs(ctx context.Context, externalIDs []int64) ([]model.Player, error) {
 	if d.db == nil {
-		return model.Player{}, fmt.Errorf("database connection is nil")
+		return nil, fmt.Errorf("database connection is nil")
+	}
+	if len(externalIDs) == 0 {
+		return nil, nil
 	}
 
-	row := d.db.QueryRowContext(ctx,
-		"SELECT "+playerColumns+" FROM players WHERE external_id = $1", externalID)
-
-	p, err := scanPlayer(row)
+	rows, err := d.db.QueryContext(ctx,
+		"SELECT "+playerColumns+" FROM players WHERE external_id = ANY($1)",
+		pq.Array(externalIDs),
+	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return model.Player{}, ErrNotFound
+		return nil, fmt.Errorf("query players by external ids: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	players := make([]model.Player, 0, len(externalIDs))
+	for rows.Next() {
+		p, err := scanPlayer(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan player: %w", err)
 		}
-		return model.Player{}, fmt.Errorf("get player by external id: %w", err)
+		players = append(players, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("players by external ids rows error: %w", err)
 	}
 
-	return p, nil
+	return players, nil
 }
 
 func (d *PlayerSql) UpsertPlayer(ctx context.Context, tx *sql.Tx, p model.Player) (int64, error) {

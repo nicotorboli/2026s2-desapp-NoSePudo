@@ -193,9 +193,10 @@ func buildMatchIndexes(players []model.Player) (map[string]int64, map[string]int
 func mapAdapterError(err error, code string) error {
 	if errors.Is(err, whoscored.ErrRateLimitExceeded) {
 		return ErrStatisticsRateLimitExceeded
-	} else if errors.Is(err, whoscored.ErrBotChallenge) {
-		return ErrStatisticsProviderBlocked
-	} else {
-		return fmt.Errorf("fetch statistics for league %s: %w", code, err)
 	}
+	if errors.Is(err, whoscored.ErrBotChallenge) {
+		return ErrStatisticsProviderBlocked
+	}
+
+	return fmt.Errorf("fetch statistics for league %s: %w", code, err)
 }

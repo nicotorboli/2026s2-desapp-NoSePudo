@@ -22,7 +22,7 @@ func TestPlayerSql_NilDBHandling(t *testing.T) {
 		t.Errorf("expected error with nil db, got nil")
 	}
 
-	_, err = playerDao.GetPlayerByExternalID(ctx, 1)
+	_, err = playerDao.GetPlayersByExternalIDs(ctx, []int64{1})
 	if err == nil {
 		t.Errorf("expected error with nil db, got nil")
 	}

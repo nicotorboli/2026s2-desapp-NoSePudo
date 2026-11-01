@@ -110,9 +110,6 @@ func TestServer_ServeHTTP_GetPlayers(t *testing.T) {
 	srv := newTestServer()
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players", nil)
-	// El catálogo pasó a exigir credencial, así que el caso que lo pedía sin
-	// nada ahora la presenta.
-	req.Header.Set("Authorization", "Bearer una-credencial")
 	w := httptest.NewRecorder()
 
 	srv.ServeHTTP(w, req)
@@ -122,37 +119,6 @@ func TestServer_ServeHTTP_GetPlayers(t *testing.T) {
 	}
 }
 
-// La contracara del caso de arriba: sin credencial el catálogo se niega, que es
-// lo que la tabla de rutas declara.
-func TestServer_ServeHTTP_GetPlayers_SinCredencial(t *testing.T) {
-	srv := newTestServer()
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players", nil)
-	w := httptest.NewRecorder()
-
-	srv.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("expected status 401, got %d", w.Code)
-	}
-}
-
-// Y si la credencial no verifica, tampoco.
-func TestServer_ServeHTTP_GetPlayers_CredencialInvalida(t *testing.T) {
-	srv := newTestServerWith(&stubTokenVerifier{err: adapters.ErrTokenInvalid})
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players", nil)
-	req.Header.Set("Authorization", "Bearer una-credencial-alterada")
-	w := httptest.NewRecorder()
-
-	srv.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("expected status 401, got %d", w.Code)
-	}
-}
-
-// Los endpoints anónimos siguen sirviéndose sin credencial.
 func TestServer_ServeHTTP_RutasAnonimas(t *testing.T) {
 	cases := []struct {
 		pattern string

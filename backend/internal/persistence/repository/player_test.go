@@ -14,7 +14,7 @@ import (
 type mockPlayerDAO struct {
 	listPlayersFn              func(ctx context.Context, f model.PlayerFilter) ([]model.Player, int64, error)
 	getPlayerByIDFn            func(ctx context.Context, id int64) (model.Player, error)
-	getPlayerByExternalIDFn    func(ctx context.Context, externalID int64) (model.Player, error)
+	getPlayersByExternalIDsFn  func(ctx context.Context, externalIDs []int64) ([]model.Player, error)
 	upsertPlayerFn             func(ctx context.Context, tx *sql.Tx, p model.Player) (int64, error)
 	deactivateMissingPlayersFn func(ctx context.Context, tx *sql.Tx, activeExternalIDs []int64, leagueCode string) ([]int64, error)
 }
@@ -33,11 +33,11 @@ func (m *mockPlayerDAO) GetPlayerByID(ctx context.Context, id int64) (model.Play
 	return model.Player{}, nil
 }
 
-func (m *mockPlayerDAO) GetPlayerByExternalID(ctx context.Context, externalID int64) (model.Player, error) {
-	if m.getPlayerByExternalIDFn != nil {
-		return m.getPlayerByExternalIDFn(ctx, externalID)
+func (m *mockPlayerDAO) GetPlayersByExternalIDs(ctx context.Context, externalIDs []int64) ([]model.Player, error) {
+	if m.getPlayersByExternalIDsFn != nil {
+		return m.getPlayersByExternalIDsFn(ctx, externalIDs)
 	}
-	return model.Player{}, nil
+	return nil, nil
 }
 
 func (m *mockPlayerDAO) UpsertPlayer(ctx context.Context, tx *sql.Tx, p model.Player) (int64, error) {
