@@ -8,6 +8,7 @@ import (
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters/footballdata"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 )
 
@@ -16,6 +17,10 @@ var (
 	ErrNotFound          = errors.New("player not found")
 	ErrRateLimitExceeded = errors.New("rate limit exceeded")
 )
+
+type FootballDataClient interface {
+	FetchLeaguePlayers(ctx context.Context, leagueCode string) ([]model.Player, error)
+}
 
 type PlayerServiceImpl struct {
 	adapter FootballDataClient

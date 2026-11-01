@@ -19,6 +19,15 @@ var (
 
 const maxPlayersPerLeague = 10000
 
+type PlayerStatisticsRepository interface {
+	SaveStatistics(ctx context.Context, rows []model.PlayerStatistics) (int, int, error)
+	GetPlayerStatistics(ctx context.Context, playerID int64) ([]model.PlayerStatistics, error)
+}
+
+type WhoscoredClient interface {
+	FetchLeagueStatistics(ctx context.Context, leagueCode string) ([]whoscored.PlayerStatisticsRow, error)
+}
+
 type PlayerStatisticsServiceImpl struct {
 	adapter    WhoscoredClient
 	players    PlayerRepository
