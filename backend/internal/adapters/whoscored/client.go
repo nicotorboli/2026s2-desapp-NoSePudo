@@ -14,7 +14,6 @@ import (
 	tls_client "github.com/bogdanfinn/tls-client"
 	"github.com/bogdanfinn/tls-client/profiles"
 	"github.com/gocolly/colly/v2"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
 var (
@@ -74,7 +73,7 @@ func NewClient(opts ...ClientOption) *WhoscoredClient {
 // FetchLeagueStatistics descarga las estadísticas de la liga indicada desde
 // los feeds públicos de WhoScored. El primer pedido resuelve el handshake de
 // Cloudflare (301 que setea la cookie __cf_bm) y los siguientes van directo.
-func (c *WhoscoredClient) FetchLeagueStatistics(ctx context.Context, leagueCode string) ([]model.PlayerStatisticsRow, error) {
+func (c *WhoscoredClient) FetchLeagueStatistics(ctx context.Context, leagueCode string) ([]PlayerStatisticsRow, error) {
 	tournamentID, ok := leagueTournamentIDs[leagueCode]
 	if !ok {
 		return nil, fmt.Errorf("unsupported league code %s", leagueCode)

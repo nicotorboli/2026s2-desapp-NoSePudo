@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters/whoscored"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
@@ -22,5 +23,5 @@ type FootballDataClient interface {
 }
 
 type WhoscoredClient interface {
-	FetchLeagueStatistics(ctx context.Context, leagueCode string) ([]model.PlayerStatisticsRow, error)
+	FetchLeagueStatistics(ctx context.Context, leagueCode string) ([]whoscored.PlayerStatisticsRow, error)
 }

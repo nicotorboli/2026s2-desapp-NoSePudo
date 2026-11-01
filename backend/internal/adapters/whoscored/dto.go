@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
 type statisticsFeed struct {
@@ -38,6 +36,25 @@ type playerTableStat struct {
 	Rating                 float64 `json:"rating"`
 }
 
+// PlayerStatisticsRow es la fila cruda que devuelve el adaptador de WhoScored
+// antes del matcheo contra los jugadores del catálogo.
+type PlayerStatisticsRow struct {
+	Name          string
+	ClubName      string
+	Rating        float64
+	Goals         int
+	Assists       int
+	Shots         float64
+	KeyPasses     float64
+	Dribbles      float64
+	Tackles       float64
+	Interceptions float64
+	Fouls         float64
+	Clears        float64
+	Blocks        float64
+	WasDribbled   float64
+}
+
 func parseFeedPage(body []byte) ([]playerTableStat, error) {
 	var feed statisticsFeed
 	if err := json.Unmarshal(body, &feed); err != nil {
@@ -49,16 +66,16 @@ func parseFeedPage(body []byte) ([]playerTableStat, error) {
 // mergeFeeds combina el feed ofensivo con el defensivo por playerId: del
 // ofensivo salen el nombre, el club y las métricas de ataque; del defensivo,
 // las entradas, intercepciones, faltas, despejes, bloqueos y gambetas recibidas.
-func mergeFeeds(offensive, defensive []playerTableStat) []model.PlayerStatisticsRow {
+func mergeFeeds(offensive, defensive []playerTableStat) []PlayerStatisticsRow {
 	defensiveByPlayer := make(map[int64]playerTableStat, len(defensive))
 	for _, row := range defensive {
 		defensiveByPlayer[row.PlayerID] = row
 	}
 
-	rows := make([]model.PlayerStatisticsRow, 0, len(offensive))
+	rows := make([]PlayerStatisticsRow, 0, len(offensive))
 	for _, row := range offensive {
 		def := defensiveByPlayer[row.PlayerID]
-		rows = append(rows, model.PlayerStatisticsRow{
+		rows = append(rows, PlayerStatisticsRow{
 			Name:          strings.TrimSpace(row.Name),
 			ClubName:      strings.TrimSpace(row.TeamName),
 			Goals:         int(row.Goal + 0.5),

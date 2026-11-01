@@ -16,7 +16,6 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters/whoscored"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/dao"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
@@ -91,11 +90,11 @@ func seedPlayer(t *testing.T, db *sql.DB, name, club, code string) int64 {
 // fakeWhoscoredClient reemplaza al adaptador externo: es el único mock que
 // admite la capa de servicio, porque la API de WhoScored no se toca en tests.
 type fakeWhoscoredClient struct {
-	rows map[string][]model.PlayerStatisticsRow
+	rows map[string][]whoscored.PlayerStatisticsRow
 	errs map[string]error
 }
 
-func (f *fakeWhoscoredClient) FetchLeagueStatistics(ctx context.Context, code string) ([]model.PlayerStatisticsRow, error) {
+func (f *fakeWhoscoredClient) FetchLeagueStatistics(ctx context.Context, code string) ([]whoscored.PlayerStatisticsRow, error) {
 	if f.errs != nil {
 		if err, ok := f.errs[code]; ok {
 			return nil, err
@@ -122,7 +121,7 @@ func TestSyncStatistics_MatchesAndPersists(t *testing.T) {
 	seedPlayer(t, db, "Erling Haaland", "Manchester City FC", "PL")
 	seedPlayer(t, db, "Dominic Solanke", "AFC Bournemouth", "PL")
 
-	adapter := &fakeWhoscoredClient{rows: map[string][]model.PlayerStatisticsRow{
+	adapter := &fakeWhoscoredClient{rows: map[string][]whoscored.PlayerStatisticsRow{
 		"PL": {
 			{Name: "Bukayo Saka", ClubName: "Arsenal", Goals: 10, Assists: 5, Shots: 2.5, KeyPasses: 1.8, Dribbles: 2.1, Tackles: 1.1, Interceptions: 0.6, Fouls: 0.7, Clears: 0.4, Blocks: 0.2, WasDribbled: 0.9, Rating: 7.8},
 			{Name: "Erling Haaland", ClubName: "Man City", Goals: 20, Rating: 8.5},
@@ -157,7 +156,7 @@ func TestSyncStatistics_UniqueNameFallback(t *testing.T) {
 
 	seedPlayer(t, db, "Lewis Dunk", "Brighton & Hove Albion FC", "PL")
 
-	adapter := &fakeWhoscoredClient{rows: map[string][]model.PlayerStatisticsRow{
+	adapter := &fakeWhoscoredClient{rows: map[string][]whoscored.PlayerStatisticsRow{
 		"PL": {{Name: "Lewis Dunk", ClubName: "Brighton", Goals: 1, Rating: 6.9}},
 	}}
 
@@ -176,7 +175,7 @@ func TestSyncStatistics_DuplicateNameIsNotMatched(t *testing.T) {
 	seedPlayer(t, db, "Gabriel", "Arsenal FC", "PL")
 	seedPlayer(t, db, "Gabriel", "Chelsea FC", "PL")
 
-	adapter := &fakeWhoscoredClient{rows: map[string][]model.PlayerStatisticsRow{
+	adapter := &fakeWhoscoredClient{rows: map[string][]whoscored.PlayerStatisticsRow{
 		"PL": {{Name: "Gabriel", ClubName: "Equipo Desconocido", Goals: 1, Rating: 6.5}},
 	}}
 
@@ -215,7 +214,7 @@ func TestSyncStatistics_PartialSuccessWhenALeagueFails(t *testing.T) {
 	seedPlayer(t, db, "Bukayo Saka", "Arsenal FC", "PL")
 
 	adapter := &fakeWhoscoredClient{
-		rows: map[string][]model.PlayerStatisticsRow{
+		rows: map[string][]whoscored.PlayerStatisticsRow{
 			"PL": {{Name: "Bukayo Saka", ClubName: "Arsenal", Goals: 10, Rating: 7.8}},
 		},
 		errs: map[string]error{"BL1": whoscored.ErrBotChallenge},

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters/whoscored"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
 const offensiveFeed = `{
@@ -59,7 +58,7 @@ func feedServer(t *testing.T, status int) (*httptest.Server, *int, *int) {
 	return server, &offensiveHits, &defensiveHits
 }
 
-func assertRow(t *testing.T, got, want model.PlayerStatisticsRow) {
+func assertRow(t *testing.T, got, want whoscored.PlayerStatisticsRow) {
 	t.Helper()
 	if got != want {
 		t.Errorf("fila mal fusionada:\n got  %+v\n want %+v", got, want)
@@ -86,13 +85,13 @@ func TestFetchLeagueStatistics_MergesOffensiveAndDefensive(t *testing.T) {
 		t.Fatalf("expected 2 merged rows, got %d", len(rows))
 	}
 
-	assertRow(t, rows[0], model.PlayerStatisticsRow{
+	assertRow(t, rows[0], whoscored.PlayerStatisticsRow{
 		Name: "Bukayo Saka", ClubName: "Arsenal",
 		Goals: 10, Assists: 5,
 		Shots: 2.5, KeyPasses: 1.8, Dribbles: 2.1, Tackles: 1.1,
 		Interceptions: 0.6, Fouls: 0.7, Clears: 0.4, Blocks: 0.2, WasDribbled: 0.9, Rating: 7.8,
 	})
-	assertRow(t, rows[1], model.PlayerStatisticsRow{
+	assertRow(t, rows[1], whoscored.PlayerStatisticsRow{
 		Name: "Gabriel Magalhaes", ClubName: "Arsenal",
 		Goals: 2, Assists: 1,
 		Shots: 0.8, KeyPasses: 0.3, Dribbles: 0.1, Tackles: 2.0,

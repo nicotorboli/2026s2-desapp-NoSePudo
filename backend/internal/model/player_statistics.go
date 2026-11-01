@@ -26,22 +26,3 @@ type PlayerStatistics struct {
 	Blocks        float64
 	WasDribbled   float64
 }
-
-// PlayerStatisticsRow es la fila cruda que devuelve el adaptador de WhoScored
-// antes del matcheo contra los jugadores del catálogo.
-type PlayerStatisticsRow struct {
-	Name          string
-	ClubName      string
-	Rating        float64
-	Goals         int
-	Assists       int
-	Shots         float64
-	KeyPasses     float64
-	Dribbles      float64
-	Tackles       float64
-	Interceptions float64
-	Fouls         float64
-	Clears        float64
-	Blocks        float64
-	WasDribbled   float64
-}
