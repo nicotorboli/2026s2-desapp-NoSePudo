@@ -175,6 +175,7 @@ type OrderResponse struct {
 	Trades            []TradeResponse `json:"trades,omitempty"`
 	ID                int64           `json:"id"`
 	PlayerID          int64           `json:"playerId"`
+	UserID            int64           `json:"userId,omitempty"`
 	Quantity          int64           `json:"quantity"`
 	ExecutedQuantity  int64           `json:"executedQuantity"`
 	RemainingQuantity int64           `json:"remainingQuantity"`
@@ -189,6 +190,7 @@ func OrderResponseDesdeModelo(order model.Order, trades []model.Trade) OrderResp
 		Price:             CreditsADecimal(order.Price),
 		ID:                order.ID,
 		PlayerID:          order.PlayerID,
+		UserID:            order.UserID,
 		Quantity:          order.Quantity,
 		ExecutedQuantity:  order.ExecutedQuantity,
 		RemainingQuantity: order.RemainingQuantity(),
@@ -243,15 +245,17 @@ func CancelOrderResponseDesdeModelo(cancelled service.CancelledOrder) CancelOrde
 }
 
 type PortfolioPositionResponse struct {
-	PlayerName       string `json:"playerName"`
-	ClubName         string `json:"clubName"`
-	Position         string `json:"position"`
-	AveragePrice     string `json:"averagePrice"`
-	CurrentPrice     string `json:"currentPrice"`
-	CurrentValuation string `json:"currentValuation"`
-	UnrealizedResult string `json:"unrealizedResult"`
-	PlayerID         int64  `json:"playerId"`
-	Quantity         int64  `json:"quantity"`
+	PlayerName        string `json:"playerName"`
+	ClubName          string `json:"clubName"`
+	Position          string `json:"position"`
+	AveragePrice      string `json:"averagePrice"`
+	CurrentPrice      string `json:"currentPrice"`
+	CurrentValuation  string `json:"currentValuation"`
+	UnrealizedResult  string `json:"unrealizedResult"`
+	PlayerID          int64  `json:"playerId"`
+	Quantity          int64  `json:"quantity"`
+	AvailableQuantity int64  `json:"availableQuantity"`
+	ReservedQuantity  int64  `json:"reservedQuantity"`
 }
 
 type PortfolioResponse struct {
@@ -283,15 +287,17 @@ func PortfolioResponseDesdeModelo(portfolio model.Portfolio) PortfolioResponse {
 
 func portfolioPositionDesdeModelo(position model.PortfolioPosition) PortfolioPositionResponse {
 	return PortfolioPositionResponse{
-		PlayerName:       position.PlayerName,
-		ClubName:         position.ClubName,
-		Position:         position.PlayerPosition,
-		AveragePrice:     CreditsADecimal(position.AveragePrice),
-		CurrentPrice:     CreditsADecimal(position.CurrentPrice),
-		CurrentValuation: CreditsADecimal(position.CurrentValuation),
-		UnrealizedResult: CreditsADecimal(position.UnrealizedResult),
-		PlayerID:         position.PlayerID,
-		Quantity:         position.Quantity,
+		PlayerName:        position.PlayerName,
+		ClubName:          position.ClubName,
+		Position:          position.PlayerPosition,
+		AveragePrice:      CreditsADecimal(position.AveragePrice),
+		CurrentPrice:      CreditsADecimal(position.CurrentPrice),
+		CurrentValuation:  CreditsADecimal(position.CurrentValuation),
+		UnrealizedResult:  CreditsADecimal(position.UnrealizedResult),
+		PlayerID:          position.PlayerID,
+		Quantity:          position.Quantity,
+		AvailableQuantity: position.AvailableQuantity,
+		ReservedQuantity:  position.ReservedQuantity,
 	}
 }
 

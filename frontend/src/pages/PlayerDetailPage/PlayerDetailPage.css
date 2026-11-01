@@ -78,3 +78,19 @@
 .player-detail-page__back-button--error:hover {
   background-color: #2b6cb0;
 }
+
+
+.player-detail-page__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .player-detail-page__grid {
+    grid-template-columns: 1.1fr 1fr;
+    align-items: start;
+  }
+}

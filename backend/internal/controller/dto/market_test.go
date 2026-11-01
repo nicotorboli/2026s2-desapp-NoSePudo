@@ -246,15 +246,17 @@ func TestTransactionPageEspejaElSobreYaPublicado(t *testing.T) {
 func TestPortfolioResponseRindeTodoComoDecimal(t *testing.T) {
 	portfolio := model.Portfolio{
 		Positions: []model.PortfolioPosition{{
-			PlayerName:       "Jugador",
-			ClubName:         "Arsenal FC",
-			PlayerPosition:   "Offence",
-			PlayerID:         7,
-			Quantity:         10,
-			AveragePrice:     model.CreditsFromUnits(1),
-			CurrentPrice:     model.CreditsFromUnits(3),
-			CurrentValuation: model.CreditsFromUnits(30),
-			UnrealizedResult: model.CreditsFromUnits(20),
+			PlayerName:        "Jugador",
+			ClubName:          "Arsenal FC",
+			PlayerPosition:    "Offence",
+			PlayerID:          7,
+			Quantity:          10,
+			AvailableQuantity: 8,
+			ReservedQuantity:  2,
+			AveragePrice:      model.CreditsFromUnits(1),
+			CurrentPrice:      model.CreditsFromUnits(3),
+			CurrentValuation:  model.CreditsFromUnits(30),
+			UnrealizedResult:  model.CreditsFromUnits(20),
 		}},
 		UserID:           5,
 		AvailableCash:    model.CreditsFromUnits(990),
@@ -276,5 +278,11 @@ func TestPortfolioResponseRindeTodoComoDecimal(t *testing.T) {
 	}
 	if response.Positions[0].ClubName != "Arsenal FC" {
 		t.Errorf("clubName es %q", response.Positions[0].ClubName)
+	}
+	if response.Positions[0].AvailableQuantity != 8 {
+		t.Errorf("availableQuantity es %d, se esperaba 8", response.Positions[0].AvailableQuantity)
+	}
+	if response.Positions[0].ReservedQuantity != 2 {
+		t.Errorf("reservedQuantity es %d, se esperaba 2", response.Positions[0].ReservedQuantity)
 	}
 }

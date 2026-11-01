@@ -1,8 +1,8 @@
 .navbar {
   background-color: var(--ink-blue);
   color: var(--golden);
-  padding: 1rem 2rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 0.85rem 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 .navbar__container {
@@ -10,6 +10,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.navbar__left {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
 }
 
 .navbar__brand-button {
@@ -32,4 +39,82 @@
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: 0.5px;
+}
+
+.navbar__nav-links {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.navbar__nav-button {
+  background: none;
+  border: none;
+  color: #cbd5e0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.5rem 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.navbar__nav-button:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.navbar__nav-button--active {
+  color: var(--golden);
+  background-color: rgba(223, 175, 15, 0.15);
+}
+
+.navbar__right {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.navbar__user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #e2e8f0;
+}
+
+.navbar__user-badge {
+  color: var(--golden);
+}
+
+.navbar__auth-button {
+  background-color: var(--radiant-orange);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.navbar__auth-button:hover {
+  background-color: #e06810;
+}
+
+.navbar__logout-button {
+  background: none;
+  border: 1px solid #718096;
+  color: #cbd5e0;
+  border-radius: 6px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.navbar__logout-button:hover {
+  border-color: #e2e8f0;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
 }

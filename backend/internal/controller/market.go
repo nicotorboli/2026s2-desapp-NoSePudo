@@ -17,6 +17,7 @@ type MarketService interface {
 	PlaceOrder(ctx context.Context, command service.PlaceOrderCommand) (service.PlacedOrder, error)
 	CancelOrder(ctx context.Context, command service.CancelOrderCommand) (service.CancelledOrder, error)
 	ListOpenOrders(ctx context.Context, userID int64, playerID *int64) ([]model.Order, error)
+	ListMarketOrders(ctx context.Context, playerID int64) ([]model.Order, error)
 }
 
 type PortfolioService interface {
@@ -87,7 +88,12 @@ func (c *RestMarketController) ListOpenOrders() httphandler.Endpoint {
 			return err
 		}
 
-		orders, err := c.marketService.ListOpenOrders(req.Context(), actor.ID, playerID)
+		var orders []model.Order
+		if req.URL.Query().Get("market") == "true" && playerID != nil {
+			orders, err = c.marketService.ListMarketOrders(req.Context(), *playerID)
+		} else {
+			orders, err = c.marketService.ListOpenOrders(req.Context(), actor.ID, playerID)
+		}
 		if err != nil {
 			return marketStatusFor(err)
 		}

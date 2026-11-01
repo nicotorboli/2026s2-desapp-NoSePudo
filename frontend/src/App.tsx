@@ -1,28 +1,70 @@
 import React, { useState } from 'react';
+import { AuthProvider } from './context/AuthContext';
 import { Navbar } from './components/Navbar/Navbar';
+import { AuthModal } from './components/AuthModal/AuthModal';
 import { PlayerListPage } from './pages/PlayerListPage/PlayerListPage';
 import { PlayerDetailPage } from './pages/PlayerDetailPage/PlayerDetailPage';
+import { PortfolioPage } from './pages/PortfolioPage/PortfolioPage';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const [currentView, setCurrentView] = useState<'catalog' | 'portfolio'>('catalog');
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const handleSelectPlayer = (id: number) => {
     setSelectedPlayerId(id);
+    setCurrentView('catalog');
   };
 
   const handleBackToCatalog = () => {
     setSelectedPlayerId(null);
+    setCurrentView('catalog');
+  };
+
+  const handleNavigateView = (view: 'catalog' | 'portfolio') => {
+    setCurrentView(view);
+    if (view === 'catalog') {
+      setSelectedPlayerId(null);
+    }
   };
 
   return (
     <div className="app-container">
-      <Navbar onNavigateHome={handleBackToCatalog} />
-      {selectedPlayerId === null ? (
+      <Navbar
+        currentView={currentView}
+        onNavigateHome={handleBackToCatalog}
+        onNavigateView={handleNavigateView}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+      />
+
+      {currentView === 'portfolio' ? (
+        <PortfolioPage
+          onSelectPlayer={handleSelectPlayer}
+          onBackToCatalog={handleBackToCatalog}
+        />
+      ) : selectedPlayerId === null ? (
         <PlayerListPage onSelectPlayer={handleSelectPlayer} />
       ) : (
-        <PlayerDetailPage playerId={selectedPlayerId} onBack={handleBackToCatalog} />
+        <PlayerDetailPage
+          playerId={selectedPlayerId}
+          onBack={handleBackToCatalog}
+          onOpenAuth={() => setIsAuthModalOpen(true)}
+        />
       )}
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 

@@ -536,6 +536,10 @@ func (s *MarketService) ListOpenOrders(ctx context.Context, userID int64, player
 	return s.market.LiveOrdersOf(ctx, userID, playerID)
 }
 
+func (s *MarketService) ListMarketOrders(ctx context.Context, playerID int64) ([]model.Order, error) {
+	return s.market.LiveMarketOrders(ctx, playerID)
+}
+
 func translateMarketError(err error) error {
 	switch {
 	case errors.Is(err, repository.ErrNotFound), errors.Is(err, model.ErrOrderNotFound):

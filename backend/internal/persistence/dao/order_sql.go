@@ -109,6 +109,26 @@ func (dao *OrderSql) ListLiveByUser(ctx context.Context, userID int64, playerID 
 	return collectOrders(rows)
 }
 
+func (dao *OrderSql) ListLiveByPlayer(ctx context.Context, playerID int64) ([]model.Order, error) {
+	const query = `
+		SELECT ` + orderColumns + `
+		FROM market_orders
+		WHERE player_id = $1
+		  AND status IN ('PENDING', 'PARTIALLY_FILLED')
+		ORDER BY price ASC, created_at ASC, id ASC`
+
+	if dao.Db == nil {
+		return nil, errNilDatabase
+	}
+
+	rows, err := dao.Db.QueryContext(ctx, query, playerID)
+	if err != nil {
+		return nil, fmt.Errorf("listar las órdenes del libro de mercado: %w", err)
+	}
+
+	return collectOrders(rows)
+}
+
 func (dao *OrderSql) GetLiveMarketMaker(ctx context.Context, tx *sql.Tx, playerID int64, side model.OrderSide) (model.Order, error) {
 	const query = `
 		SELECT ` + orderColumns + `

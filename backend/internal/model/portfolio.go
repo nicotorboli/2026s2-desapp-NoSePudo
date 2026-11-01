@@ -1,15 +1,17 @@
 package model
 
 type PortfolioPosition struct {
-	PlayerName       string
-	ClubName         string
-	PlayerPosition   string
-	PlayerID         int64
-	Quantity         int64
-	AveragePrice     Credits
-	CurrentPrice     Credits
-	CurrentValuation Credits
-	UnrealizedResult Credits
+	PlayerName        string
+	ClubName          string
+	PlayerPosition    string
+	PlayerID          int64
+	Quantity          int64
+	AvailableQuantity int64
+	ReservedQuantity  int64
+	AveragePrice      Credits
+	CurrentPrice      Credits
+	CurrentValuation  Credits
+	UnrealizedResult  Credits
 }
 
 type Portfolio struct {
@@ -58,14 +60,16 @@ func portfolioPositionOf(position Position, currentPrice Credits, player Player)
 	valuation := currentPrice.Times(quantity)
 
 	return PortfolioPosition{
-		PlayerName:       player.Name,
-		ClubName:         player.ClubName,
-		PlayerPosition:   player.Position,
-		PlayerID:         position.PlayerID,
-		Quantity:         quantity,
-		AveragePrice:     position.AveragePrice(),
-		CurrentPrice:     currentPrice,
-		CurrentValuation: valuation,
-		UnrealizedResult: valuation.Minus(position.CostBasis),
+		PlayerName:        player.Name,
+		ClubName:          player.ClubName,
+		PlayerPosition:    player.Position,
+		PlayerID:          position.PlayerID,
+		Quantity:          quantity,
+		AvailableQuantity: position.AvailableQuantity,
+		ReservedQuantity:  position.ReservedQuantity,
+		AveragePrice:      position.AveragePrice(),
+		CurrentPrice:      currentPrice,
+		CurrentValuation:  valuation,
+		UnrealizedResult:  valuation.Minus(position.CostBasis),
 	}
 }

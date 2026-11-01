@@ -122,6 +122,10 @@ func (r *MarketRepository) LiveOrdersOf(ctx context.Context, userID int64, playe
 	return r.orderDao.ListLiveByUser(ctx, userID, playerID)
 }
 
+func (r *MarketRepository) LiveMarketOrders(ctx context.Context, playerID int64) ([]model.Order, error) {
+	return r.orderDao.ListLiveByPlayer(ctx, playerID)
+}
+
 type MarketSession struct {
 	tx          *sql.Tx
 	accountDao  *dao.AccountSql

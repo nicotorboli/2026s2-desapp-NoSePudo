@@ -1,14 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { getPlayerById, PlayerDetailDTO } from '../../api/players';
 import { PlayerCard } from '../../components/PlayerCard/PlayerCard';
+import { PlayerTrade } from '../../components/PlayerTrade/PlayerTrade';
 import './PlayerDetailPage.css';
 
 interface PlayerDetailPageProps {
   playerId: number;
   onBack: () => void;
+  onOpenAuth?: () => void;
 }
 
-export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({ playerId, onBack }) => {
+export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({
+  playerId,
+  onBack,
+  onOpenAuth,
+}) => {
   const [player, setPlayer] = useState<PlayerDetailDTO | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +78,20 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({ playerId, on
           </div>
         )}
 
-        {!isLoading && !error && player && <PlayerCard player={player} />}
+        {!isLoading && !error && player && (
+          <div className="player-detail-page__grid">
+            <div className="player-detail-page__card-col">
+              <PlayerCard player={player} />
+            </div>
+            <div className="player-detail-page__trade-col">
+              <PlayerTrade
+                playerId={player.id}
+                playerName={player.name}
+                onOpenAuth={onOpenAuth}
+              />
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );
