@@ -1,9 +1,16 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { getPlayers, PaginatedPlayersDTO, PlayerFilterParams } from '../../api/players';
+import {
+  getPlayersRanking,
+  PlayerFilterParams,
+  PlayerRankingItemDTO,
+  RankingSort,
+} from '../../api/players';
 import { PlayerFilter } from '../../components/PlayerFilter/PlayerFilter';
 import { PlayerTable } from '../../components/PlayerTable/PlayerTable';
 import { Pagination } from '../../components/Pagination/Pagination';
 import './PlayerListPage.css';
+
+const PAGE_SIZE = 25;
 
 interface PlayerListPageProps {
   onSelectPlayer: (id: number) => void;
@@ -11,7 +18,7 @@ interface PlayerListPageProps {
 
 const defaultFilters: PlayerFilterParams = {
   page: 1,
-  limit: 20,
+  limit: PAGE_SIZE,
   league: '',
   club: '',
   position: '',
@@ -20,27 +27,43 @@ const defaultFilters: PlayerFilterParams = {
 };
 
 export const PlayerListPage: React.FC<PlayerListPageProps> = ({ onSelectPlayer }) => {
-  const [data, setData] = useState<PaginatedPlayersDTO | null>(null);
+  const [items, setItems] = useState<PlayerRankingItemDTO[]>([]);
+  const [total, setTotal] = useState<number>(0);
   const [filters, setFilters] = useState<PlayerFilterParams>(defaultFilters);
+  const [sort, setSort] = useState<RankingSort>('name');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchPlayers = useCallback(async (currentFilters: PlayerFilterParams) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await getPlayers(currentFilters);
-      setData(result);
-    } catch {
-      setError('No se pudieron cargar los jugadores. Por favor, intenta de nuevo más tarde.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const fetchPlayers = useCallback(
+    async (currentFilters: PlayerFilterParams, currentSort: RankingSort) => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const page = currentFilters.page ?? 1;
+        const result = await getPlayersRanking({
+          search: currentFilters.search,
+          league: currentFilters.league,
+          club: currentFilters.club,
+          position: currentFilters.position,
+          includeInactive: currentFilters.includeInactive,
+          sort: currentSort,
+          offset: (page - 1) * PAGE_SIZE,
+          limit: PAGE_SIZE,
+        });
+        setItems(result.items);
+        setTotal(result.total);
+      } catch {
+        setError('No se pudieron cargar los jugadores. Por favor, intenta de nuevo más tarde.');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
-    fetchPlayers(filters);
-  }, [filters, fetchPlayers]);
+    fetchPlayers(filters, sort);
+  }, [filters, sort, fetchPlayers]);
 
   const handleFilterChange = (newFilters: PlayerFilterParams) => {
     setFilters(newFilters);
@@ -48,6 +71,7 @@ export const PlayerListPage: React.FC<PlayerListPageProps> = ({ onSelectPlayer }
 
   const handleResetFilters = () => {
     setFilters(defaultFilters);
+    setSort('name');
   };
 
   const handlePageChange = (newPage: number) => {
@@ -56,6 +80,17 @@ export const PlayerListPage: React.FC<PlayerListPageProps> = ({ onSelectPlayer }
       page: newPage,
     }));
   };
+
+  const handleSortChange = (newSort: RankingSort) => {
+    setSort(newSort);
+    setFilters((prev) => ({
+      ...prev,
+      page: 1,
+    }));
+  };
+
+  const page = filters.page ?? 1;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <main className="player-list-page">
@@ -86,14 +121,14 @@ export const PlayerListPage: React.FC<PlayerListPageProps> = ({ onSelectPlayer }
             <button
               type="button"
               className="player-list-page__retry-button"
-              onClick={() => fetchPlayers(filters)}
+              onClick={() => fetchPlayers(filters, sort)}
             >
               Reintentar
             </button>
           </div>
         )}
 
-        {!isLoading && !error && data && data.items.length === 0 && (
+        {!isLoading && !error && items.length === 0 && (
           <div className="player-list-page__empty">
             <p className="player-list-page__empty-title">No se encontraron jugadores</p>
             <p className="player-list-page__empty-desc">
@@ -109,13 +144,18 @@ export const PlayerListPage: React.FC<PlayerListPageProps> = ({ onSelectPlayer }
           </div>
         )}
 
-        {!isLoading && !error && data && data.items.length > 0 && (
+        {!isLoading && !error && items.length > 0 && (
           <>
-            <PlayerTable players={data.items} onSelectPlayer={onSelectPlayer} />
+            <PlayerTable
+              players={items}
+              sort={sort}
+              onSortChange={handleSortChange}
+              onSelectPlayer={onSelectPlayer}
+            />
             <Pagination
-              page={data.page}
-              totalPages={data.totalPages}
-              total={data.total}
+              page={page}
+              totalPages={totalPages}
+              total={total}
               onPageChange={handlePageChange}
             />
           </>

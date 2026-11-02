@@ -213,6 +213,41 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /players/ranking:
+    get:
+      tags: [players]
+      summary: Rank the players by their current score
+      operationId: getPlayersRanking
+      x-access-level: anonymous
+      security:
+        - accessToken: []
+      parameters:
+        - {name: offset, in: query, schema: {type: integer, minimum: 0, default: 0}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: sort, in: query, schema: {type: string, enum: [name, score_asc, score_desc], default: score_desc}}
+        - {name: league, in: query, description: League code (e.g. PL), schema: {type: string}}
+        - {name: club, in: query, schema: {type: string}}
+        - {name: position, in: query, schema: {type: string}}
+        - {name: search, in: query, description: Substring of the player name, schema: {type: string}}
+        - {name: includeInactive, in: query, schema: {type: boolean, default: false}}
+      responses:
+        '200':
+          description: A page of the ranking, sorted as requested. Players without a score keep a null score and sort last.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerRankingPage'
+        '400':
+          description: A query parameter is malformed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /players/{id}:
     get:
       tags: [players]
@@ -883,3 +918,26 @@ components:
         percentile: {type: number, format: double, minimum: 0, maximum: 1}
         score: {type: number, format: double, minimum: 0, maximum: 1}
         leagueCoefficient: {type: number, format: double}
+
+    PlayerRankingItem:
+      type: object
+      required: [id, name, club, league, position]
+      properties:
+        id: {type: integer, format: int64}
+        name: {type: string}
+        club: {type: string}
+        league: {type: string}
+        position: {type: string}
+        score: {type: [number, "null"], format: double, minimum: 0}
+
+    PlayerRankingPage:
+      type: object
+      required: [items, offset, limit, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerRankingItem'
+        offset: {type: integer}
+        limit: {type: integer}
+        total: {type: integer}

@@ -130,3 +130,28 @@ func TestPlayerScoreRepositoryEmptyHistory(t *testing.T) {
 		t.Fatalf("History devolvió %d scores, se esperaba 0", len(history))
 	}
 }
+
+func TestPlayerScoreRepositoryLatestPercentiles(t *testing.T) {
+	f := newScoreFixture(t)
+	ctx := t.Context()
+
+	if err := f.repo.Save(ctx, []model.PlayerScore{f.aScore()}); err != nil {
+		t.Fatalf("Save devolvió error: %v", err)
+	}
+
+	percentiles, err := f.repo.LatestPercentiles(ctx, []int64{f.playerID})
+	if err != nil {
+		t.Fatalf("LatestPercentiles devolvió error: %v", err)
+	}
+	if got, ok := percentiles[f.playerID]; !ok || got != 0.8 {
+		t.Errorf("percentile = %v (ok=%v), se esperaba 0.8", got, ok)
+	}
+
+	empty, err := f.repo.LatestPercentiles(ctx, nil)
+	if err != nil {
+		t.Fatalf("LatestPercentiles(nil) devolvió error: %v", err)
+	}
+	if len(empty) != 0 {
+		t.Errorf("LatestPercentiles(nil) = %v, se esperaba vacío", empty)
+	}
+}

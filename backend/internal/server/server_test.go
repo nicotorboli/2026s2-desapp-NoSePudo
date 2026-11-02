@@ -97,6 +97,10 @@ func (m *mockScoringService) GetScoreHistory(ctx context.Context, playerID int64
 	return nil, nil
 }
 
+func (m *mockScoringService) ListRanking(ctx context.Context, filter dto.PlayerFilterDTO, sortOrder string, offset int) (dto.PlayerRankingPageResponse, error) {
+	return dto.PlayerRankingPageResponse{}, nil
+}
+
 // stubTokenVerifier acepta o rechaza sin firmar nada. Lo que estos casos
 // prueban es el ruteo y la cadena que se le aplica a cada nivel, no cómo se
 // verifica una credencial.

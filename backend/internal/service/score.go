@@ -16,10 +16,13 @@ var ErrScoreNotFound = errors.New("player score not found")
 
 const scoreMaxPlayersPerLeague = 10000
 
+const rankingMaxPlayers = 50000
+
 type ScoreRepository interface {
 	Save(ctx context.Context, scores []model.PlayerScore) error
 	HasScoreFor(ctx context.Context, playerID int64, strategyID int, statisticsID int64) (bool, error)
 	History(ctx context.Context, playerID int64) ([]model.PlayerScore, error)
+	LatestPercentiles(ctx context.Context, playerIDs []int64) (map[int64]float64, error)
 }
 
 type HistogramRepository interface {
@@ -292,4 +295,138 @@ func (s *ScoreService) recalculate(ctx context.Context, strategyID int, players 
 	s.logger.InfoContext(ctx, "Player scores recalculated", "strategy_id", strategyID, "computed", len(toSave))
 
 	return nil
+}
+
+func (s *ScoreService) ListRanking(ctx context.Context, filter dto.PlayerFilterDTO, sortOrder string, offset int) (dto.PlayerRankingPageResponse, error) {
+	if filter.Limit <= 0 {
+		filter.Limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	switch sortOrder {
+	case "name":
+		return s.listRankingByName(ctx, filter, offset)
+	case "", "score_desc", "score_asc":
+		return s.listRankingByScore(ctx, filter, offset, sortOrder == "score_asc")
+	default:
+		return dto.PlayerRankingPageResponse{}, fmt.Errorf("invalid ranking sort %q", sortOrder)
+	}
+}
+
+func (s *ScoreService) listRankingByName(ctx context.Context, filter dto.PlayerFilterDTO, offset int) (dto.PlayerRankingPageResponse, error) {
+	modelFilter := dto.PlayerFilterAModelo(filter)
+	modelFilter.Page = offset/filter.Limit + 1
+
+	page, err := s.players.ListPlayers(ctx, modelFilter)
+	if err != nil {
+		return dto.PlayerRankingPageResponse{}, fmt.Errorf("list players for ranking: %w", err)
+	}
+
+	items, err := s.rankingItems(ctx, page.Items)
+	if err != nil {
+		return dto.PlayerRankingPageResponse{}, err
+	}
+
+	return dto.PlayerRankingPageResponse{
+		Items:  items,
+		Offset: offset,
+		Limit:  filter.Limit,
+		Total:  int(page.Total),
+	}, nil
+}
+
+func (s *ScoreService) listRankingByScore(ctx context.Context, filter dto.PlayerFilterDTO, offset int, ascending bool) (dto.PlayerRankingPageResponse, error) {
+	modelFilter := dto.PlayerFilterAModelo(filter)
+	modelFilter.Page = 1
+	modelFilter.Limit = rankingMaxPlayers
+
+	page, err := s.players.ListPlayers(ctx, modelFilter)
+	if err != nil {
+		return dto.PlayerRankingPageResponse{}, fmt.Errorf("list players for ranking: %w", err)
+	}
+
+	items, err := s.rankingItems(ctx, page.Items)
+	if err != nil {
+		return dto.PlayerRankingPageResponse{}, err
+	}
+
+	sortRanking(items, ascending)
+
+	total := len(items)
+	start := offset
+	if start > total {
+		start = total
+	}
+	end := start + filter.Limit
+	if end > total {
+		end = total
+	}
+
+	pageItems := []dto.PlayerRankingItemResponse{}
+	if start < total {
+		pageItems = items[start:end]
+	}
+
+	return dto.PlayerRankingPageResponse{
+		Items:  pageItems,
+		Offset: offset,
+		Limit:  filter.Limit,
+		Total:  total,
+	}, nil
+}
+
+func (s *ScoreService) rankingItems(ctx context.Context, players []model.Player) ([]dto.PlayerRankingItemResponse, error) {
+	ids := make([]int64, len(players))
+	for i, p := range players {
+		ids[i] = p.ID
+	}
+
+	percentiles, err := s.scores.LatestPercentiles(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("load latest percentiles: %w", err)
+	}
+
+	coefficientCache := make(map[string]float64)
+	items := make([]dto.PlayerRankingItemResponse, 0, len(players))
+	for _, p := range players {
+		item := dto.PlayerRankingItemResponse{
+			ID:       p.ID,
+			Name:     p.Name,
+			Club:     p.ClubName,
+			League:   p.LeagueName,
+			Position: p.Position,
+		}
+		if percentile, ok := percentiles[p.ID]; ok {
+			coefficient, cached := coefficientCache[p.LeagueCode]
+			if !cached {
+				coefficient = s.leagueCoefficient(ctx, p.LeagueCode)
+				coefficientCache[p.LeagueCode] = coefficient
+			}
+			score := percentile * coefficient * model.PositionDiscount(p.Position)
+			item.Score = &score
+		}
+		items = append(items, item)
+	}
+
+	return items, nil
+}
+
+func sortRanking(items []dto.PlayerRankingItemResponse, ascending bool) {
+	sort.SliceStable(items, func(i, j int) bool {
+		if items[i].Score == nil && items[j].Score == nil {
+			return false
+		}
+		if items[i].Score == nil {
+			return false
+		}
+		if items[j].Score == nil {
+			return true
+		}
+		if ascending {
+			return *items[i].Score < *items[j].Score
+		}
+		return *items[i].Score > *items[j].Score
+	})
 }

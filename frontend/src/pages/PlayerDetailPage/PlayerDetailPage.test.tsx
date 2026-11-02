@@ -6,28 +6,31 @@ import * as playersApi from '../../api/players';
 afterEach(cleanup);
 
 describe('PlayerDetailPage', () => {
+  const mockDetail: playersApi.PlayerDetailDTO = {
+    id: 101,
+    externalId: 7821,
+    name: 'Bukayo Saka',
+    club: 'Arsenal FC',
+    league: 'Premier League',
+    leagueCode: 'PL',
+    position: 'Attacker',
+    dateOfBirth: null,
+    nationality: null,
+    shirtNumber: null,
+    active: true,
+    createdAt: '2026-09-28T12:00:00Z',
+    updatedAt: '2026-09-28T12:30:00Z',
+  };
+
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(playersApi, 'getPlayerStatistics').mockResolvedValue([]);
+    vi.spyOn(playersApi, 'getPlayerScores').mockResolvedValue([]);
   });
 
   it('renders all player attributes and handles fallbacks', async () => {
-    const mockDetail: playersApi.PlayerDetailDTO = {
-      id: 101,
-      externalId: 7821,
-      name: 'Bukayo Saka',
-      club: 'Arsenal FC',
-      league: 'Premier League',
-      leagueCode: 'PL',
-      position: 'Attacker',
-      dateOfBirth: null,
-      nationality: null,
-      shirtNumber: null,
-      active: true,
-      createdAt: '2026-09-28T12:00:00Z',
-      updatedAt: '2026-09-28T12:30:00Z',
-    };
-
     vi.spyOn(playersApi, 'getPlayerById').mockResolvedValueOnce(mockDetail);
+    vi.spyOn(playersApi, 'getPlayerScore').mockRejectedValueOnce(new Error('not found'));
 
     render(<PlayerDetailPage playerId={101} onBack={vi.fn()} />);
 
@@ -40,9 +43,10 @@ describe('PlayerDetailPage', () => {
     expect(screen.getByText('Arsenal FC')).toBeDefined();
     expect(screen.getByText('Activo')).toBeDefined();
     expect(screen.getByText('Delantero')).toBeDefined();
-    expect(screen.getByText('Sin asignar')).toBeDefined(); // Fallback for null shirtNumber
-    expect(screen.getByText('Desconocida')).toBeDefined(); // Fallback for null nationality
-    expect(screen.getByText('—')).toBeDefined(); // Fallback for null dateOfBirth
+    expect(screen.getByText('Sin asignar')).toBeDefined();
+    expect(screen.getByText('Desconocida')).toBeDefined();
+    expect(screen.getByText('—')).toBeDefined();
+    expect(screen.getByText('Sin score calculado (N/R)')).toBeDefined();
   });
 
   it('renders error state on 404/failure', async () => {
@@ -55,23 +59,31 @@ describe('PlayerDetailPage', () => {
     });
   });
 
-  it('calls onBack when back button is clicked', async () => {
-    const mockDetail: playersApi.PlayerDetailDTO = {
-      id: 101,
-      externalId: 7821,
-      name: 'Bukayo Saka',
-      club: 'Arsenal FC',
-      league: 'Premier League',
-      leagueCode: 'PL',
-      position: 'Attacker',
-      dateOfBirth: '2001-09-05',
-      nationality: 'England',
-      shirtNumber: 7,
-      active: true,
-      createdAt: '2026-09-28T12:00:00Z',
-      updatedAt: '2026-09-28T12:30:00Z',
-    };
+  it('renders the player score and breakdown when available', async () => {
+    vi.spyOn(playersApi, 'getPlayerById').mockResolvedValueOnce(mockDetail);
+    vi.spyOn(playersApi, 'getPlayerScore').mockResolvedValueOnce({
+      computedAt: '2026-11-02T10:00:00Z',
+      strategyId: 1,
+      strategyName: 'rateada',
+      rawScore: 0.7,
+      percentile: 0.8,
+      score: 0.4,
+      leagueCoefficient: 0.5,
+      playerId: 101,
+    });
 
+    render(<PlayerDetailPage playerId={101} onBack={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('40.00%')).toBeDefined();
+    });
+
+    expect(screen.getByText('80.00%')).toBeDefined();
+    expect(screen.getByText('0.50')).toBeDefined();
+    expect(screen.getByText('rateada')).toBeDefined();
+  });
+
+  it('calls onBack when back button is clicked', async () => {
     vi.spyOn(playersApi, 'getPlayerById').mockResolvedValueOnce(mockDetail);
     const handleBack = vi.fn();
 

@@ -95,6 +95,10 @@ func (stubScoringService) GetScoreHistory(ctx context.Context, playerID int64) (
 	return nil, nil
 }
 
+func (stubScoringService) ListRanking(ctx context.Context, filter dto.PlayerFilterDTO, sortOrder string, offset int) (dto.PlayerRankingPageResponse, error) {
+	return dto.PlayerRankingPageResponse{}, nil
+}
+
 func routesUnderTest() []route {
 	server := &Server{
 		controllers: &controller.Container{
@@ -138,6 +142,7 @@ func TestDeclaredLevelsMatchTheSpecification(t *testing.T) {
 		"POST /players/statistics/sync":             AccessSuperuser,
 		"GET /players/{id}/score":                   AccessAnonymous,
 		"GET /players/{id}/scores":                  AccessAnonymous,
+		"GET /players/ranking":                      AccessAnonymous,
 		"GET /scoring/strategies":                   AccessAnonymous,
 		"GET /scoring/active-strategy":              AccessAnonymous,
 		"PUT /scoring/active-strategy":              AccessSuperuser,

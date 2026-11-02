@@ -19,6 +19,7 @@ type ScoringService interface {
 	GetLeagueCoefficient(ctx context.Context, leagueCode string) (dto.LeagueCoefficientResponse, bool, error)
 	GetScore(ctx context.Context, playerID int64) (dto.PlayerScoreResponse, error)
 	GetScoreHistory(ctx context.Context, playerID int64) ([]dto.PlayerScoreResponse, error)
+	ListRanking(ctx context.Context, filter dto.PlayerFilterDTO, sortOrder string, offset int) (dto.PlayerRankingPageResponse, error)
 }
 
 type RestScoringController struct {
@@ -163,6 +164,41 @@ func (c *RestScoringController) GetScoreHistory() httphandler.Endpoint {
 		}
 
 		return httphandler.Encode(w, http.StatusOK, scores)
+	}
+}
+
+func (c *RestScoringController) GetPlayersRanking() httphandler.Endpoint {
+	return func(w http.ResponseWriter, req *http.Request) error {
+		filter, err := dto.PlayerFilterDesdeQuery(req)
+		if err != nil {
+			return httphandler.NewError(http.StatusBadRequest, err.Error(), nil)
+		}
+
+		sortOrder := req.URL.Query().Get("sort")
+		if sortOrder == "" {
+			sortOrder = "score_desc"
+		}
+		switch sortOrder {
+		case "name", "score_asc", "score_desc":
+		default:
+			return httphandler.NewError(http.StatusBadRequest, "invalid query parameter 'sort'", nil)
+		}
+
+		offset := 0
+		if offsetStr := req.URL.Query().Get("offset"); offsetStr != "" {
+			parsed, parseErr := strconv.Atoi(offsetStr)
+			if parseErr != nil || parsed < 0 {
+				return httphandler.NewError(http.StatusBadRequest, "invalid query parameter 'offset'", nil)
+			}
+			offset = parsed
+		}
+
+		ranking, err := c.svc.ListRanking(req.Context(), filter, sortOrder, offset)
+		if err != nil {
+			return err
+		}
+
+		return httphandler.Encode(w, http.StatusOK, ranking)
 	}
 }
 

@@ -6,7 +6,7 @@ import App from './App';
 afterEach(cleanup);
 
 describe('App', () => {
-  const mockPlayers: playersApi.PaginatedPlayersDTO = {
+  const mockPlayers: playersApi.PlayerRankingPageDTO = {
     items: [
       {
         id: 101,
@@ -14,12 +14,12 @@ describe('App', () => {
         club: 'Arsenal FC',
         league: 'Premier League',
         position: 'Attacker',
+        score: 0.87,
       },
     ],
-    page: 1,
-    limit: 20,
+    offset: 0,
+    limit: 25,
     total: 1,
-    totalPages: 1,
   };
 
   const mockDetail: playersApi.PlayerDetailDTO = {
@@ -40,10 +40,13 @@ describe('App', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(playersApi, 'getPlayerStatistics').mockResolvedValue([]);
+    vi.spyOn(playersApi, 'getPlayerScores').mockResolvedValue([]);
+    vi.spyOn(playersApi, 'getPlayerScore').mockRejectedValue(new Error('not found'));
   });
 
   it('renders the catalog page by default', async () => {
-    vi.spyOn(playersApi, 'getPlayers').mockResolvedValueOnce(mockPlayers);
+    vi.spyOn(playersApi, 'getPlayersRanking').mockResolvedValueOnce(mockPlayers);
 
     render(<App />);
 
@@ -56,7 +59,7 @@ describe('App', () => {
   });
 
   it('navigates to player detail when a player is selected and returns to catalog on back click', async () => {
-    vi.spyOn(playersApi, 'getPlayers').mockResolvedValue(mockPlayers);
+    vi.spyOn(playersApi, 'getPlayersRanking').mockResolvedValue(mockPlayers);
     vi.spyOn(playersApi, 'getPlayerById').mockResolvedValue(mockDetail);
 
     render(<App />);
@@ -75,6 +78,18 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Catálogo de Jugadores de Fútbol Europeo')).toBeDefined();
+    });
+  });
+
+  it('navigates to the ranking page from the navbar', async () => {
+    vi.spyOn(playersApi, 'getPlayersRanking').mockResolvedValue(mockPlayers);
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /ranking/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Ranking de jugadores')).toBeDefined();
     });
   });
 });

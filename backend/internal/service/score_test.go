@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/dao"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
@@ -199,5 +200,57 @@ func TestScoreServiceGetScoreForPlayerWithoutScore(t *testing.T) {
 
 	if _, err := f.svc.GetScore(t.Context(), playerID); !errors.Is(err, service.ErrScoreNotFound) {
 		t.Fatalf("GetScore devolvió %v, want ErrScoreNotFound", err)
+	}
+}
+
+func TestScoreServiceListRankingOrdersByScore(t *testing.T) {
+	f := newScoreServiceFixture(t)
+	f.seedRatedPlayer(t, "Bajo", 6.0)
+	f.seedRatedPlayer(t, "Alto", 8.0)
+
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
+		t.Fatalf("ActivateStrategy devolvió error: %v", err)
+	}
+
+	ranking, err := f.svc.ListRanking(t.Context(), dto.PlayerFilterDTO{Limit: 25}, "score_desc", 0)
+	if err != nil {
+		t.Fatalf("ListRanking devolvió error: %v", err)
+	}
+	if len(ranking.Items) != 2 {
+		t.Fatalf("items = %d, se esperaban 2", len(ranking.Items))
+	}
+	if ranking.Items[0].Name != "Alto" || ranking.Items[1].Name != "Bajo" {
+		t.Errorf("orden = %q, %q; se esperaba Alto, Bajo", ranking.Items[0].Name, ranking.Items[1].Name)
+	}
+	if ranking.Items[0].Score == nil || ranking.Items[1].Score == nil {
+		t.Fatal("se esperaban scores no nulos")
+	}
+	if *ranking.Items[0].Score <= *ranking.Items[1].Score {
+		t.Errorf("scores desordenados: %v, %v", *ranking.Items[0].Score, *ranking.Items[1].Score)
+	}
+}
+
+func TestScoreServiceListRankingSortsMissingScoresLast(t *testing.T) {
+	f := newScoreServiceFixture(t)
+	f.seedRatedPlayer(t, "ConScore", 8.0)
+
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
+		t.Fatalf("ActivateStrategy devolvió error: %v", err)
+	}
+
+	f.seedRatedPlayer(t, "SinScore", 9.0)
+
+	ranking, err := f.svc.ListRanking(t.Context(), dto.PlayerFilterDTO{Limit: 25}, "score_desc", 0)
+	if err != nil {
+		t.Fatalf("ListRanking devolvió error: %v", err)
+	}
+	if len(ranking.Items) != 2 {
+		t.Fatalf("items = %d, se esperaban 2", len(ranking.Items))
+	}
+	if ranking.Items[0].Name != "ConScore" || ranking.Items[1].Name != "SinScore" {
+		t.Errorf("orden = %q, %q; se esperaba ConScore, SinScore", ranking.Items[0].Name, ranking.Items[1].Name)
+	}
+	if ranking.Items[1].Score != nil {
+		t.Errorf("el jugador sin score debería quedar al final con nil")
 	}
 }

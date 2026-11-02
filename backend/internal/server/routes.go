@@ -98,6 +98,11 @@ func (s *Server) routes() []route {
 			access:   AccessAnonymous,
 			endpoint: s.controllers.Scoring.GetScoreHistory(),
 		},
+		{
+			pattern:  "GET /players/ranking",
+			access:   AccessAnonymous,
+			endpoint: s.controllers.Scoring.GetPlayersRanking(),
+		},
 	}
 }
 

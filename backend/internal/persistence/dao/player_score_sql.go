@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/lib/pq"
+
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
@@ -99,4 +101,40 @@ func (d *PlayerScoreSql) ListByPlayer(ctx context.Context, playerID int64) ([]mo
 	}
 
 	return scores, nil
+}
+
+func (d *PlayerScoreSql) LatestPercentiles(ctx context.Context, playerIDs []int64) (map[int64]float64, error) {
+	if d.db == nil {
+		return nil, errNilDatabase
+	}
+
+	const query = `
+		SELECT DISTINCT ON (player_id) player_id, percentile
+		FROM player_scores
+		WHERE player_id = ANY($1)
+		ORDER BY player_id, computed_at DESC, id DESC`
+
+	rows, err := d.db.QueryContext(ctx, query, pq.Array(playerIDs))
+	if err != nil {
+		return nil, fmt.Errorf("query latest percentiles: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	percentiles := make(map[int64]float64)
+	for rows.Next() {
+		var (
+			playerID   int64
+			percentile float64
+		)
+		if err := rows.Scan(&playerID, &percentile); err != nil {
+			return nil, fmt.Errorf("scan latest percentile: %w", err)
+		}
+		percentiles[playerID] = percentile
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("latest percentiles rows error: %w", err)
+	}
+
+	return percentiles, nil
 }

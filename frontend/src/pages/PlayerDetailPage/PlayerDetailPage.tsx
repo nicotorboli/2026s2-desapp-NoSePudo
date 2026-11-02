@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
   getPlayerById,
+  getPlayerScore,
+  getPlayerScores,
   getPlayerStatistics,
   PlayerDetailDTO,
+  PlayerScoreDTO,
   PlayerStatisticsDTO,
 } from '../../api/players';
 import { PlayerCard } from '../../components/PlayerCard/PlayerCard';
 import { PlayerStatistics } from '../../components/PlayerStatistics/PlayerStatistics';
+import { PlayerScore } from '../../components/PlayerScore/PlayerScore';
 import './PlayerDetailPage.css';
 
 interface PlayerDetailPageProps {
@@ -17,6 +21,8 @@ interface PlayerDetailPageProps {
 export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({ playerId, onBack }) => {
   const [player, setPlayer] = useState<PlayerDetailDTO | null>(null);
   const [stats, setStats] = useState<PlayerStatisticsDTO[] | null>(null);
+  const [score, setScore] = useState<PlayerScoreDTO | null>(null);
+  const [history, setHistory] = useState<PlayerScoreDTO[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +65,30 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({ playerId, on
       .catch(() => {
         if (isMounted) {
           setStats([]);
+        }
+      });
+
+    getPlayerScore(playerId)
+      .then((data) => {
+        if (isMounted) {
+          setScore(data);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setScore(null);
+        }
+      });
+
+    getPlayerScores(playerId)
+      .then((data) => {
+        if (isMounted) {
+          setHistory(data);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setHistory([]);
         }
       });
 
@@ -105,6 +135,7 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({ playerId, on
         {!isLoading && !error && player && (
           <>
             <PlayerCard player={player} />
+            <PlayerScore score={score} history={history} />
             {stats !== null && <PlayerStatistics stats={stats} />}
           </>
         )}

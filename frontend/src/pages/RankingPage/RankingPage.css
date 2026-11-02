@@ -1,0 +1,114 @@
+.ranking-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.ranking-page__header {
+  margin-bottom: 1.5rem;
+}
+
+.ranking-page__title {
+  font-size: 1.75rem;
+  color: var(--ink-blue);
+  margin: 0 0 0.5rem;
+}
+
+.ranking-page__subtitle {
+  color: var(--ink-blue);
+  opacity: 0.8;
+  margin: 0;
+}
+
+.ranking-page__loading,
+.ranking-page__error,
+.ranking-page__empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--ink-blue);
+}
+
+.ranking-page__spinner {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 3px solid rgba(19, 27, 35, 0.2);
+  border-top-color: var(--golden);
+  border-radius: 50%;
+  animation: ranking-page-spin 0.8s linear infinite;
+}
+
+@keyframes ranking-page-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ranking-page__table-container {
+  width: 100%;
+  overflow-x: auto;
+  background-color: color-mix(in srgb, var(--radiant-orange) 15%, transparent);
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.ranking-page__table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.ranking-page__cell {
+  padding: 1rem 1.25rem;
+  font-size: 0.9375rem;
+  color: var(--ink-blue);
+}
+
+.ranking-page__cell--header {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--teal);
+}
+
+.ranking-page__cell--name {
+  font-weight: 600;
+  color: var(--green-forest);
+}
+
+.ranking-page__cell--rank {
+  font-weight: 800;
+  color: var(--golden);
+}
+
+.ranking-page__row {
+  border: 1px solid var(--ink-blue);
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.ranking-page__row:hover {
+  background-color: color-mix(in srgb, var(--orange-green) 20%, transparent);
+}
+
+.ranking-page__sort {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  color: var(--teal);
+  cursor: pointer;
+}
+
+.ranking-page__position {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: #edf2f7;
+  color: #4a5568;
+}
