@@ -16,6 +16,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters/whoscored"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/dao"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
@@ -112,7 +113,7 @@ func newStatisticsSyncService(t *testing.T, db *sql.DB, adapter *fakeWhoscoredCl
 	repos := repository.NewContainer(db, daos)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	scoreService := service.NewScoreService(
-		map[int]service.ScoringStrategy{},
+		map[int]model.ScoringStrategy{},
 		repos.PlayerScore,
 		repos.ScoreHistogram,
 		repos.StrategyActivation,

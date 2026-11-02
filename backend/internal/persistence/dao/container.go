@@ -21,6 +21,7 @@ type Container struct {
 	ScoreHistogram     *ScoreHistogramSql
 	StrategyActivation *StrategyActivationSql
 	LeagueCoefficient  *LeagueCoefficientSql
+	ScoringStrategy    *ScoringStrategySql
 }
 
 func NewContainer(db *sql.DB) *Container {
@@ -35,5 +36,6 @@ func NewContainer(db *sql.DB) *Container {
 		ScoreHistogram:     NewScoreHistogramDao(db),
 		StrategyActivation: NewStrategyActivationDao(db),
 		LeagueCoefficient:  NewLeagueCoefficientDao(db),
+		ScoringStrategy:    NewScoringStrategyDao(db),
 	}
 }

@@ -88,6 +88,20 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_family
     ON refresh_tokens (family_id)
     WHERE revoked_at IS NULL;
 
+-- Scoring: definición de estrategias (fuente de verdad de pesos)
+CREATE TABLE IF NOT EXISTS scoring_strategies (
+    id         INTEGER PRIMARY KEY,
+    name       VARCHAR(100) NOT NULL,
+    alpha      NUMERIC(4,3) NOT NULL,
+    weights    JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO scoring_strategies (id, name, alpha, weights) VALUES
+(1, 'rateada', 0.5, '{"Goalkeeper":{"clears":0.45,"blocks":0.25,"was_dribbled":0.25,"fouls":0.05},"Defender":{"tackles":0.20,"interceptions":0.20,"clears":0.20,"blocks":0.10,"was_dribbled":0.10,"key_passes":0.10,"dribbles":0.05,"fouls":0.05},"Midfielder":{"key_passes":0.25,"dribbles":0.15,"tackles":0.15,"interceptions":0.10,"assists":0.15,"goals":0.10,"shots":0.05,"fouls":0.05},"Attacker":{"goals":0.35,"assists":0.25,"shots":0.15,"dribbles":0.10,"key_passes":0.10,"fouls":0.05}}'::jsonb),
+(2, 'estadistica', 0.2, '{"Goalkeeper":{"clears":0.45,"blocks":0.25,"was_dribbled":0.25,"fouls":0.05},"Defender":{"tackles":0.30,"interceptions":0.20,"clears":0.25,"blocks":0.10,"was_dribbled":0.10,"fouls":0.05},"Midfielder":{"key_passes":0.30,"dribbles":0.20,"tackles":0.15,"interceptions":0.10,"assists":0.10,"goals":0.05,"shots":0.05,"fouls":0.05},"Attacker":{"goals":0.45,"assists":0.30,"shots":0.10,"dribbles":0.05,"key_passes":0.05,"fouls":0.05}}'::jsonb)
+ON CONFLICT (id) DO NOTHING;
+
 -- Scoring: timeline de estrategia activa (append-only)
 CREATE TABLE IF NOT EXISTS scoring_strategy_activations (
     id            BIGSERIAL PRIMARY KEY,

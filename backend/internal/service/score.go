@@ -38,7 +38,7 @@ type LeagueCoefficientRepository interface {
 }
 
 type ScoreService struct {
-	strategies   map[int]ScoringStrategy
+	strategies   map[int]model.ScoringStrategy
 	scores       ScoreRepository
 	histograms   HistogramRepository
 	activations  StrategyActivationRepository
@@ -49,7 +49,7 @@ type ScoreService struct {
 }
 
 func NewScoreService(
-	strategies map[int]ScoringStrategy,
+	strategies map[int]model.ScoringStrategy,
 	scores ScoreRepository,
 	histograms HistogramRepository,
 	activations StrategyActivationRepository,
@@ -73,7 +73,7 @@ func NewScoreService(
 func (s *ScoreService) ListStrategies() []dto.ScoringStrategyResponse {
 	strategies := make([]dto.ScoringStrategyResponse, 0, len(s.strategies))
 	for _, strategy := range s.strategies {
-		strategies = append(strategies, dto.ScoringStrategyResponse{ID: strategy.ID(), Name: strategy.Name()})
+		strategies = append(strategies, dto.ScoringStrategyResponse{ID: strategy.ID, Name: strategy.Name})
 	}
 	sort.Slice(strategies, func(i, j int) bool { return strategies[i].ID < strategies[j].ID })
 	return strategies
@@ -159,7 +159,10 @@ func (s *ScoreService) GetScore(ctx context.Context, playerID int64) (dto.Player
 		return dto.PlayerScoreResponse{}, ErrScoreNotFound
 	}
 
-	return dto.PlayerScoreDesdeModelo(history[0], s.leagueCoefficient(ctx, player.LeagueCode), s.strategyName(history[0].StrategyID)), nil
+	coefficient := s.leagueCoefficient(ctx, player.LeagueCode)
+	resp := dto.PlayerScoreDesdeModelo(history[0], coefficient, s.strategyName(history[0].StrategyID))
+	resp.Score *= model.PositionDiscount(player.Position)
+	return resp, nil
 }
 
 func (s *ScoreService) GetScoreHistory(ctx context.Context, playerID int64) ([]dto.PlayerScoreResponse, error) {
@@ -177,9 +180,12 @@ func (s *ScoreService) GetScoreHistory(ctx context.Context, playerID int64) ([]d
 	}
 
 	coefficient := s.leagueCoefficient(ctx, player.LeagueCode)
+	discount := model.PositionDiscount(player.Position)
 	out := make([]dto.PlayerScoreResponse, len(history))
 	for i, score := range history {
-		out[i] = dto.PlayerScoreDesdeModelo(score, coefficient, s.strategyName(score.StrategyID))
+		resp := dto.PlayerScoreDesdeModelo(score, coefficient, s.strategyName(score.StrategyID))
+		resp.Score *= discount
+		out[i] = resp
 	}
 
 	return out, nil
@@ -199,7 +205,7 @@ func (s *ScoreService) leagueCoefficient(ctx context.Context, leagueCode string)
 
 func (s *ScoreService) strategyName(strategyID int) string {
 	if strategy, ok := s.strategies[strategyID]; ok {
-		return strategy.Name()
+		return strategy.Name
 	}
 	return ""
 }
@@ -241,7 +247,7 @@ func (s *ScoreService) recalculate(ctx context.Context, strategyID int, players 
 		bucketsByScope[scope] = model.BuildHistogram(raws, model.ScoreHistogramBuckets)
 	}
 
-	weights := strategy.Weights()
+	weights := strategy.Weights
 	histIDByScope := make(map[model.ScoreScope]int64)
 	toSave := make([]model.PlayerScore, 0, len(candidates))
 

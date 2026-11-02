@@ -1,10 +1,13 @@
 package service
 
 import (
+	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 )
 
@@ -15,9 +18,19 @@ type Container struct {
 	Auth        *Auth
 }
 
-func NewContainer(repos *repository.Container, adapterContainer *adapters.Container, logger *slog.Logger) *Container {
+func NewContainer(ctx context.Context, repos *repository.Container, adapterContainer *adapters.Container, logger *slog.Logger) (*Container, error) {
+	strategies, err := repos.ScoringStrategy.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("load scoring strategies: %w", err)
+	}
+
+	registry := make(map[int]model.ScoringStrategy, len(strategies))
+	for _, strategy := range strategies {
+		registry[strategy.ID] = strategy
+	}
+
 	scoreService := NewScoreService(
-		map[int]ScoringStrategy{},
+		registry,
 		repos.PlayerScore,
 		repos.ScoreHistogram,
 		repos.StrategyActivation,
@@ -44,5 +57,5 @@ func NewContainer(repos *repository.Container, adapterContainer *adapters.Contai
 			repos.RefreshToken,
 			time.Now,
 		),
-	}
+	}, nil
 }

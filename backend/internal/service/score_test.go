@@ -11,20 +11,10 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/dao"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/testutil"
 )
 
-// testScoringStrategy es un fixture (no una estrategia de producción): score
-// determinista rating/10 para poder predecir percentiles.
-type testScoringStrategy struct{ id int }
-
-func (s testScoringStrategy) ID() int      { return s.id }
-func (s testScoringStrategy) Name() string { return "test" }
-func (s testScoringStrategy) Weights() map[string]map[string]float64 {
-	return map[string]map[string]float64{"Midfielder": {"rating": 1.0}}
-}
-func (s testScoringStrategy) Score(position string, stats model.PlayerStatistics) float64 {
-	return stats.Rating / 10.0
-}
+const testStrategyID = 100
 
 type scoreServiceFixture struct {
 	svc     *service.ScoreService
@@ -49,8 +39,19 @@ func newScoreServiceFixture(t *testing.T) scoreServiceFixture {
 		t.Fatalf("no se pudo crear la cuenta: %v", err)
 	}
 
+	testutil.InsertStrategy(t, db, testutil.RatingStrategy(testStrategyID))
+
+	strategies, err := repos.ScoringStrategy.List(t.Context())
+	if err != nil {
+		t.Fatalf("no se pudieron cargar las estrategias: %v", err)
+	}
+	registry := make(map[int]model.ScoringStrategy, len(strategies))
+	for _, strategy := range strategies {
+		registry[strategy.ID] = strategy
+	}
+
 	svc := service.NewScoreService(
-		map[int]service.ScoringStrategy{1: testScoringStrategy{id: 1}, 2: testScoringStrategy{id: 2}},
+		registry,
 		repos.PlayerScore,
 		repos.ScoreHistogram,
 		repos.StrategyActivation,
@@ -63,17 +64,20 @@ func newScoreServiceFixture(t *testing.T) scoreServiceFixture {
 	return scoreServiceFixture{svc: svc, db: db, actorID: user.ID}
 }
 
-// seedRatedPlayer inserta un jugador (Midfielder, PL) con una estadística de
-// rating dada y devuelve su id.
 func (f scoreServiceFixture) seedRatedPlayer(t *testing.T, name string, rating float64) int64 {
+	t.Helper()
+	return f.seedRatedPlayerAt(t, name, "Midfielder", rating)
+}
+
+func (f scoreServiceFixture) seedRatedPlayerAt(t *testing.T, name, position string, rating float64) int64 {
 	t.Helper()
 	serviceSeedSeq++
 
 	var playerID int64
 	if err := f.db.QueryRowContext(t.Context(),
 		`INSERT INTO players (external_id, name, club_name, league_name, league_code, position)
-		 VALUES ($1, $2, 'Arsenal', 'Premier League', 'PL', 'Midfielder') RETURNING id`,
-		serviceSeedSeq, name).Scan(&playerID); err != nil {
+		 VALUES ($1, $2, 'Arsenal', 'Premier League', 'PL', $3) RETURNING id`,
+		serviceSeedSeq, name, position).Scan(&playerID); err != nil {
 		t.Fatalf("no se pudo sembrar un jugador: %v", err)
 	}
 	if _, err := f.db.ExecContext(t.Context(),
@@ -88,10 +92,10 @@ func (f scoreServiceFixture) seedRatedPlayer(t *testing.T, name string, rating f
 
 func TestScoreServiceRecalculatePersistsPercentile(t *testing.T) {
 	f := newScoreServiceFixture(t)
-	high := f.seedRatedPlayer(t, "Alto", 8.0) // raw 0.8
-	low := f.seedRatedPlayer(t, "Bajo", 6.0)  // raw 0.6
+	high := f.seedRatedPlayer(t, "Alto", 8.0)
+	low := f.seedRatedPlayer(t, "Bajo", 6.0)
 
-	if err := f.svc.ActivateStrategy(t.Context(), 1, f.actorID); err != nil {
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
 		t.Fatalf("ActivateStrategy devolvió error: %v", err)
 	}
 
@@ -116,19 +120,20 @@ func TestScoreServiceRecalculateIsIdempotent(t *testing.T) {
 	f := newScoreServiceFixture(t)
 	f.seedRatedPlayer(t, "Uno", 7.0)
 
-	if err := f.svc.ActivateStrategy(t.Context(), 1, f.actorID); err != nil {
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
 		t.Fatalf("ActivateStrategy devolvió error: %v", err)
 	}
-	if err := f.svc.ActivateStrategy(t.Context(), 1, f.actorID); err != nil {
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
 		t.Fatalf("la segunda ActivateStrategy devolvió error: %v", err)
 	}
 
 	var count int
-	if err := f.db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM player_scores WHERE strategy_id = 1`).Scan(&count); err != nil {
+	if err := f.db.QueryRowContext(t.Context(),
+		`SELECT COUNT(*) FROM player_scores WHERE strategy_id = $1`, testStrategyID).Scan(&count); err != nil {
 		t.Fatalf("no se pudo contar los scores: %v", err)
 	}
 	if count != 1 {
-		t.Errorf("scores de la estrategia 1 = %d, want 1", count)
+		t.Errorf("scores de la estrategia %d = %d, want 1", testStrategyID, count)
 	}
 }
 
@@ -136,7 +141,7 @@ func TestScoreServiceApplyLeagueCoefficientOnRead(t *testing.T) {
 	f := newScoreServiceFixture(t)
 	playerID := f.seedRatedPlayer(t, "Uno", 8.0)
 
-	if err := f.svc.ActivateStrategy(t.Context(), 1, f.actorID); err != nil {
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
 		t.Fatalf("ActivateStrategy devolvió error: %v", err)
 	}
 	if err := f.svc.SetLeagueCoefficient(t.Context(), "PL", 0.5, f.actorID); err != nil {
@@ -152,10 +157,30 @@ func TestScoreServiceApplyLeagueCoefficientOnRead(t *testing.T) {
 	}
 }
 
+func TestScoreServiceAppliesUnknownPositionDiscount(t *testing.T) {
+	f := newScoreServiceFixture(t)
+	playerID := f.seedRatedPlayerAt(t, "Desconocido", "Unknown", 8.0)
+
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
+		t.Fatalf("ActivateStrategy devolvió error: %v", err)
+	}
+
+	score, err := f.svc.GetScore(t.Context(), playerID)
+	if err != nil {
+		t.Fatalf("GetScore devolvió error: %v", err)
+	}
+
+	want := score.Percentile * score.LeagueCoefficient * model.UnknownPositionDiscount
+	if score.Score != want {
+		t.Errorf("score = %v, want %v (percentil %v, coef %v, descuento %v)",
+			score.Score, want, score.Percentile, score.LeagueCoefficient, model.UnknownPositionDiscount)
+	}
+}
+
 func TestScoreServiceActivateUnknownStrategy(t *testing.T) {
 	f := newScoreServiceFixture(t)
 
-	if err := f.svc.ActivateStrategy(t.Context(), 99, f.actorID); err == nil {
+	if err := f.svc.ActivateStrategy(t.Context(), 999, f.actorID); err == nil {
 		t.Fatal("ActivateStrategy con id desconocido no devolvió error")
 	}
 }
@@ -170,7 +195,7 @@ func TestScoreServiceRejectsNonPositiveCoefficient(t *testing.T) {
 
 func TestScoreServiceGetScoreForPlayerWithoutScore(t *testing.T) {
 	f := newScoreServiceFixture(t)
-	playerID := f.seedRatedPlayer(t, "SinScore", 7.0) // tiene stats pero no se activó estrategia
+	playerID := f.seedRatedPlayer(t, "SinScore", 7.0)
 
 	if _, err := f.svc.GetScore(t.Context(), playerID); !errors.Is(err, service.ErrScoreNotFound) {
 		t.Fatalf("GetScore devolvió %v, want ErrScoreNotFound", err)

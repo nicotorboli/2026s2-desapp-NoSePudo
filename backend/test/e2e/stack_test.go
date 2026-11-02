@@ -169,7 +169,10 @@ func newStackWith(t *testing.T, accessTTL, refreshTTL time.Duration) *stack {
 	adapterContainer := adapters.NewContainer(cfg)
 	logs := &capturedLogs{}
 	log := slog.New(slog.NewTextHandler(logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	services := service.NewContainer(repos, adapterContainer, log)
+	services, err := service.NewContainer(t.Context(), repos, adapterContainer, log)
+	if err != nil {
+		t.Fatalf("no se pudo armar el contenedor de servicios: %v", err)
+	}
 	controllers := controller.NewContainer(services)
 	middlewares := middleware.NewContainer(adapterContainer.JWT)
 

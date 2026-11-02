@@ -15,6 +15,7 @@ type Container struct {
 	ScoreHistogram     *ScoreHistogramRepositoryImpl
 	StrategyActivation *StrategyActivationRepositoryImpl
 	LeagueCoefficient  *LeagueCoefficientRepositoryImpl
+	ScoringStrategy    *ScoringStrategyRepositoryImpl
 }
 
 func NewContainer(db *sql.DB, daos *dao.Container) *Container {
@@ -27,5 +28,6 @@ func NewContainer(db *sql.DB, daos *dao.Container) *Container {
 		ScoreHistogram:     NewScoreHistogramRepository(daos.ScoreHistogram),
 		StrategyActivation: NewStrategyActivationRepository(daos.StrategyActivation),
 		LeagueCoefficient:  NewLeagueCoefficientRepository(daos.LeagueCoefficient),
+		ScoringStrategy:    NewScoringStrategyRepository(daos.ScoringStrategy),
 	}
 }
