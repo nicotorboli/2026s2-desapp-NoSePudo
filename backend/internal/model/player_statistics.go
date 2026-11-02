@@ -4,12 +4,6 @@ import (
 	"time"
 )
 
-// PlayerStatistics es la fotografía de las estadísticas de un jugador tomada
-// en una pasada del scraper de WhoScored. Es una tabla de solo anexado: cada
-// sincronización inserta filas nuevas y nunca se actualiza una existente, de
-// modo que el historial queda trazado por created_at. Los valores ofensivos y
-// defensivos son por partido, como los muestra WhoScored; goles y asistencias
-// son totales de la temporada.
 type PlayerStatistics struct {
 	CreatedAt     time.Time
 	Rating        float64
