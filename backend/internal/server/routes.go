@@ -63,6 +63,41 @@ func (s *Server) routes() []route {
 			access:   AccessSuperuser,
 			endpoint: s.controllers.Sync.SyncStatistics(),
 		},
+		{
+			pattern:  "GET /scoring/strategies",
+			access:   AccessAnonymous,
+			endpoint: s.controllers.Scoring.ListStrategies(),
+		},
+		{
+			pattern:  "GET /scoring/active-strategy",
+			access:   AccessAnonymous,
+			endpoint: s.controllers.Scoring.GetActiveStrategy(),
+		},
+		{
+			pattern:  "PUT /scoring/active-strategy",
+			access:   AccessSuperuser,
+			endpoint: s.controllers.Scoring.ActivateStrategy(),
+		},
+		{
+			pattern:  "GET /scoring/league-coefficients/{league}",
+			access:   AccessAnonymous,
+			endpoint: s.controllers.Scoring.GetLeagueCoefficient(),
+		},
+		{
+			pattern:  "PUT /scoring/league-coefficients/{league}",
+			access:   AccessSuperuser,
+			endpoint: s.controllers.Scoring.SetLeagueCoefficient(),
+		},
+		{
+			pattern:  "GET /players/{id}/score",
+			access:   AccessAnonymous,
+			endpoint: s.controllers.Scoring.GetScore(),
+		},
+		{
+			pattern:  "GET /players/{id}/scores",
+			access:   AccessAnonymous,
+			endpoint: s.controllers.Scoring.GetScoreHistory(),
+		},
 	}
 }
 

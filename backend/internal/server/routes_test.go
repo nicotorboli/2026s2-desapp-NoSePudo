@@ -67,6 +67,34 @@ func (stubAuthService) Logout(ctx context.Context, userID int64, sessionID strin
 	return nil
 }
 
+type stubScoringService struct{}
+
+func (stubScoringService) ListStrategies() []dto.ScoringStrategyResponse { return nil }
+
+func (stubScoringService) ActiveStrategy(ctx context.Context) (dto.ActiveStrategyResponse, bool, error) {
+	return dto.ActiveStrategyResponse{}, false, nil
+}
+
+func (stubScoringService) ActivateStrategy(ctx context.Context, strategyID int, actorID int64) error {
+	return nil
+}
+
+func (stubScoringService) SetLeagueCoefficient(ctx context.Context, leagueCode string, coefficient float64, actorID int64) error {
+	return nil
+}
+
+func (stubScoringService) GetLeagueCoefficient(ctx context.Context, leagueCode string) (dto.LeagueCoefficientResponse, bool, error) {
+	return dto.LeagueCoefficientResponse{}, false, nil
+}
+
+func (stubScoringService) GetScore(ctx context.Context, playerID int64) (dto.PlayerScoreResponse, error) {
+	return dto.PlayerScoreResponse{}, nil
+}
+
+func (stubScoringService) GetScoreHistory(ctx context.Context, playerID int64) ([]dto.PlayerScoreResponse, error) {
+	return nil, nil
+}
+
 func routesUnderTest() []route {
 	server := &Server{
 		controllers: &controller.Container{
@@ -75,7 +103,8 @@ func routesUnderTest() []route {
 				stubPlayerSyncService{},
 				stubPlayerStatisticsService{},
 			),
-			Auth: controller.NewAuthController(stubAuthService{}),
+			Scoring: controller.NewScoringController(stubScoringService{}),
+			Auth:    controller.NewAuthController(stubAuthService{}),
 		},
 	}
 
@@ -98,15 +127,22 @@ func TestEveryRouteDeclaresAnAccessLevel(t *testing.T) {
 
 func TestDeclaredLevelsMatchTheSpecification(t *testing.T) {
 	expected := map[string]AccessLevel{
-		"POST /auth/register":           AccessAnonymous,
-		"POST /auth/login":              AccessAnonymous,
-		"POST /auth/refresh":            AccessRenewal,
-		"POST /auth/logout":             AccessAuthenticated,
-		"GET /players":                  AccessAnonymous,
-		"GET /players/{id}":             AccessAnonymous,
-		"GET /players/{id}/statistics":  AccessAnonymous,
-		"POST /players/sync":            AccessSuperuser,
-		"POST /players/statistics/sync": AccessSuperuser,
+		"POST /auth/register":                       AccessAnonymous,
+		"POST /auth/login":                          AccessAnonymous,
+		"POST /auth/refresh":                        AccessRenewal,
+		"POST /auth/logout":                         AccessAuthenticated,
+		"GET /players":                              AccessAnonymous,
+		"GET /players/{id}":                         AccessAnonymous,
+		"GET /players/{id}/statistics":              AccessAnonymous,
+		"POST /players/sync":                        AccessSuperuser,
+		"POST /players/statistics/sync":             AccessSuperuser,
+		"GET /players/{id}/score":                   AccessAnonymous,
+		"GET /players/{id}/scores":                  AccessAnonymous,
+		"GET /scoring/strategies":                   AccessAnonymous,
+		"GET /scoring/active-strategy":              AccessAnonymous,
+		"PUT /scoring/active-strategy":              AccessSuperuser,
+		"GET /scoring/league-coefficients/{league}": AccessAnonymous,
+		"PUT /scoring/league-coefficients/{league}": AccessSuperuser,
 	}
 
 	declared := map[string]AccessLevel{}

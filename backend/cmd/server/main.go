@@ -34,7 +34,7 @@ func main() {
 // expectedTables son las tablas sin las cuales el servicio no puede trabajar.
 // La lista y la decisión de abortar viven acá y no en el DAO: el DAO sólo
 // corre la consulta.
-var expectedTables = []string{"players", "player_statistics", "player_audit_logs", "users", "refresh_tokens"}
+var expectedTables = []string{"players", "player_statistics", "player_audit_logs", "users", "refresh_tokens", "scoring_strategy_activations", "scoring_histograms", "player_scores", "league_coefficients"}
 
 // ensureSchema se niega a arrancar cuando falta alguna tabla, por la misma
 // razón por la que el servicio se niega a arrancar sin secreto de firma: es

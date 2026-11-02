@@ -5,9 +5,10 @@ import (
 )
 
 type Container struct {
-	Player *RestPlayerController
-	Sync   *RestSyncController
-	Auth   *RestAuthController
+	Player  *RestPlayerController
+	Sync    *RestSyncController
+	Scoring *RestScoringController
+	Auth    *RestAuthController
 }
 
 func NewContainer(services *service.Container) *Container {
@@ -17,6 +18,7 @@ func NewContainer(services *service.Container) *Container {
 			services.Player,
 			services.PlayerStats,
 		),
-		Auth: NewAuthController(services.Auth),
+		Scoring: NewScoringController(services.Score),
+		Auth:    NewAuthController(services.Auth),
 	}
 }

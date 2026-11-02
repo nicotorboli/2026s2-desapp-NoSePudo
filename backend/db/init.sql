@@ -87,3 +87,52 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_live
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_family
     ON refresh_tokens (family_id)
     WHERE revoked_at IS NULL;
+
+-- Scoring: timeline de estrategia activa (append-only)
+CREATE TABLE IF NOT EXISTS scoring_strategy_activations (
+    id            BIGSERIAL PRIMARY KEY,
+    strategy_id   INTEGER NOT NULL,
+    activated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    activated_by  BIGINT NOT NULL REFERENCES users(id)
+);
+
+-- Scoring: histograma compacto de la población por (posición, liga)
+CREATE TABLE IF NOT EXISTS scoring_histograms (
+    id          BIGSERIAL PRIMARY KEY,
+    position    VARCHAR(50) NOT NULL,
+    league_code VARCHAR(10) NOT NULL,
+    buckets     BIGINT[] NOT NULL,
+    computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_histograms_scope
+    ON scoring_histograms (position, league_code, computed_at DESC);
+
+-- Scoring: score materializado por jugador (append-only, idempotente)
+CREATE TABLE IF NOT EXISTS player_scores (
+    id            BIGSERIAL PRIMARY KEY,
+    player_id     BIGINT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    statistics_id BIGINT NOT NULL REFERENCES player_statistics(id) ON DELETE CASCADE,
+    strategy_id   INTEGER NOT NULL,
+    weights       JSONB NOT NULL,
+    raw_score     NUMERIC(10,4) NOT NULL,
+    percentile    NUMERIC(8,6) NOT NULL,
+    histogram_id  BIGINT NOT NULL REFERENCES scoring_histograms(id),
+    computed_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (player_id, strategy_id, statistics_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_scores_player
+    ON player_scores (player_id, computed_at DESC);
+
+-- Scoring: coeficiente por liga (append-only, aplicado on-read)
+CREATE TABLE IF NOT EXISTS league_coefficients (
+    id             BIGSERIAL PRIMARY KEY,
+    league_code    VARCHAR(10) NOT NULL,
+    coefficient    NUMERIC(6,4) NOT NULL,
+    effective_from TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    set_by         BIGINT NOT NULL REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_league_coefficients_code
+    ON league_coefficients (league_code, effective_from DESC);

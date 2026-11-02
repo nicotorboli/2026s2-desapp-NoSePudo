@@ -11,21 +11,29 @@ import (
 var errNilDatabase = errors.New("la conexión a la base de datos es nil")
 
 type Container struct {
-	Player           *PlayerSql
-	PlayerStatistics *PlayerStatisticsSql
-	Audit            *AuditSql
-	User             *UserSql
-	RefreshToken     *RefreshTokenSql
-	Schema           *SchemaSql
+	Player             *PlayerSql
+	PlayerStatistics   *PlayerStatisticsSql
+	Audit              *AuditSql
+	User               *UserSql
+	RefreshToken       *RefreshTokenSql
+	Schema             *SchemaSql
+	PlayerScore        *PlayerScoreSql
+	ScoreHistogram     *ScoreHistogramSql
+	StrategyActivation *StrategyActivationSql
+	LeagueCoefficient  *LeagueCoefficientSql
 }
 
 func NewContainer(db *sql.DB) *Container {
 	return &Container{
-		Player:           NewPlayerDao(db),
-		PlayerStatistics: NewPlayerStatisticsDao(db),
-		Audit:            NewAuditDao(db),
-		User:             NewUserDao(db),
-		RefreshToken:     NewRefreshTokenDao(db),
-		Schema:           NewSchemaDao(db),
+		Player:             NewPlayerDao(db),
+		PlayerStatistics:   NewPlayerStatisticsDao(db),
+		Audit:              NewAuditDao(db),
+		User:               NewUserDao(db),
+		RefreshToken:       NewRefreshTokenDao(db),
+		Schema:             NewSchemaDao(db),
+		PlayerScore:        NewPlayerScoreDao(db),
+		ScoreHistogram:     NewScoreHistogramDao(db),
+		StrategyActivation: NewStrategyActivationDao(db),
+		LeagueCoefficient:  NewLeagueCoefficientDao(db),
 	}
 }

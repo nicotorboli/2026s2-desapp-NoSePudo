@@ -14,6 +14,7 @@ type PlayerStatistics struct {
 	CreatedAt     time.Time
 	Rating        float64
 	PlayerID      int64
+	ID            int64
 	Goals         int
 	Assists       int
 	Shots         float64

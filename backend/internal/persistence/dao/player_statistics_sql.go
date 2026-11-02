@@ -21,8 +21,8 @@ func (d *PlayerStatisticsSql) ListByPlayerID(ctx context.Context, playerID int64
 		return nil, fmt.Errorf("database connection is nil")
 	}
 
-	query := `SELECT goals, assists, shots, key_passes, dribbles, tackles, rating, created_at
-              FROM player_statistics WHERE player_id = $1 ORDER BY created_at DESC`
+	query := `SELECT id, goals, assists, shots, key_passes, dribbles, tackles, rating, created_at
+              FROM player_statistics WHERE player_id = $1 ORDER BY created_at DESC, id DESC`
 
 	rows, err := d.db.QueryContext(ctx, query, playerID)
 	if err != nil {
@@ -34,6 +34,7 @@ func (d *PlayerStatisticsSql) ListByPlayerID(ctx context.Context, playerID int64
 	for rows.Next() {
 		var s model.PlayerStatistics
 		if err := rows.Scan(
+			&s.ID,
 			&s.Goals,
 			&s.Assists,
 			&s.Shots,

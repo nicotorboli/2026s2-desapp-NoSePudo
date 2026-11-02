@@ -111,7 +111,17 @@ func newStatisticsSyncService(t *testing.T, db *sql.DB, adapter *fakeWhoscoredCl
 	daos := dao.NewContainer(db)
 	repos := repository.NewContainer(db, daos)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	return service.NewPlayerStatisticsService(adapter, repos.Player, repos.PlayerStatistics, logger)
+	scoreService := service.NewScoreService(
+		map[int]service.ScoringStrategy{},
+		repos.PlayerScore,
+		repos.ScoreHistogram,
+		repos.StrategyActivation,
+		repos.LeagueCoefficient,
+		repos.Player,
+		repos.PlayerStatistics,
+		logger,
+	)
+	return service.NewPlayerStatisticsService(adapter, repos.Player, repos.PlayerStatistics, scoreService, logger)
 }
 
 func TestSyncStatistics_MatchesAndPersists(t *testing.T) {

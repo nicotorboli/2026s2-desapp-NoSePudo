@@ -69,6 +69,34 @@ func (m *mockAuthService) Logout(ctx context.Context, userID int64, sessionID st
 	return nil
 }
 
+type mockScoringService struct{}
+
+func (m *mockScoringService) ListStrategies() []dto.ScoringStrategyResponse { return nil }
+
+func (m *mockScoringService) ActiveStrategy(ctx context.Context) (dto.ActiveStrategyResponse, bool, error) {
+	return dto.ActiveStrategyResponse{}, false, nil
+}
+
+func (m *mockScoringService) ActivateStrategy(ctx context.Context, strategyID int, actorID int64) error {
+	return nil
+}
+
+func (m *mockScoringService) SetLeagueCoefficient(ctx context.Context, leagueCode string, coefficient float64, actorID int64) error {
+	return nil
+}
+
+func (m *mockScoringService) GetLeagueCoefficient(ctx context.Context, leagueCode string) (dto.LeagueCoefficientResponse, bool, error) {
+	return dto.LeagueCoefficientResponse{}, false, nil
+}
+
+func (m *mockScoringService) GetScore(ctx context.Context, playerID int64) (dto.PlayerScoreResponse, error) {
+	return dto.PlayerScoreResponse{}, nil
+}
+
+func (m *mockScoringService) GetScoreHistory(ctx context.Context, playerID int64) ([]dto.PlayerScoreResponse, error) {
+	return nil, nil
+}
+
 // stubTokenVerifier acepta o rechaza sin firmar nada. Lo que estos casos
 // prueban es el ruteo y la cadena que se le aplica a cada nivel, no cómo se
 // verifica una credencial.
@@ -99,7 +127,8 @@ func newTestServerWith(verifier middleware.TokenVerifier) *server.Server {
 				&mockSyncService{},
 				&mockPlayerStatisticsService{},
 			),
-			Auth: controller.NewAuthController(&mockAuthService{}),
+			Scoring: controller.NewScoringController(&mockScoringService{}),
+			Auth:    controller.NewAuthController(&mockAuthService{}),
 		},
 		middleware.NewContainer(verifier),
 		filepath.Join("..", "..", "api", "openapi.yaml"),

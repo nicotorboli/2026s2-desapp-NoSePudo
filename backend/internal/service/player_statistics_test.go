@@ -15,7 +15,7 @@ func newPlayerStatisticsService(t *testing.T, db *sql.DB) *service.PlayerStatist
 	t.Helper()
 	daos := dao.NewContainer(db)
 	repos := repository.NewContainer(db, daos)
-	return service.NewPlayerStatisticsService(nil, repos.Player, repos.PlayerStatistics, nil)
+	return service.NewPlayerStatisticsService(nil, repos.Player, repos.PlayerStatistics, nil, nil)
 }
 
 func TestPlayerStatisticsService_GetPlayerStatistics_NewestFirst(t *testing.T) {

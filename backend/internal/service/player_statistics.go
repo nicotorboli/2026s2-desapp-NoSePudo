@@ -32,14 +32,16 @@ type PlayerStatisticsServiceImpl struct {
 	adapter    WhoscoredClient
 	players    PlayerRepository
 	statistics PlayerStatisticsRepository
+	scores     *ScoreService
 	logger     *slog.Logger
 }
 
-func NewPlayerStatisticsService(adapter WhoscoredClient, players PlayerRepository, statistics PlayerStatisticsRepository, logger *slog.Logger) *PlayerStatisticsServiceImpl {
+func NewPlayerStatisticsService(adapter WhoscoredClient, players PlayerRepository, statistics PlayerStatisticsRepository, scores *ScoreService, logger *slog.Logger) *PlayerStatisticsServiceImpl {
 	return &PlayerStatisticsServiceImpl{
 		adapter:    adapter,
 		players:    players,
 		statistics: statistics,
+		scores:     scores,
 		logger:     logger,
 	}
 }
@@ -104,6 +106,11 @@ func (s *PlayerStatisticsServiceImpl) SyncStatistics(ctx context.Context) (dto.S
 		totalUnmatched += unmatched
 		totalInserted += inserted
 		s.logger.InfoContext(ctx, "Completed statistics sync for league", "league_code", code, "processed", proc, "matched", matched, "unmatched", unmatched, "inserted", inserted)
+
+		if err := s.scores.RecalculateAfterSync(ctx, code); err != nil {
+			s.logger.ErrorContext(ctx, "Failed to recalculate scores after statistics sync", "league_code", code, "error", err.Error())
+			return dto.SyncStatisticsResponse{}, fmt.Errorf("recalculate scores for league %s: %w", code, err)
+		}
 	}
 
 	return dto.SyncStatisticsResponse{

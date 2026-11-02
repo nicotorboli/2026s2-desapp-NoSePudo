@@ -363,6 +363,216 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /scoring/strategies:
+    get:
+      tags: [scoring]
+      summary: List the available scoring strategies
+      operationId: listScoringStrategies
+      x-access-level: anonymous
+      security:
+        - accessToken: []
+      responses:
+        '200':
+          description: The available scoring strategies.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScoringStrategy'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /scoring/active-strategy:
+    get:
+      tags: [scoring]
+      summary: Get the active scoring strategy
+      operationId: getActiveScoringStrategy
+      x-access-level: anonymous
+      security:
+        - accessToken: []
+      responses:
+        '200':
+          description: The active scoring strategy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveScoringStrategy'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: No strategy has been activated yet.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [scoring]
+      summary: Activate a scoring strategy
+      operationId: activateScoringStrategy
+      x-access-level: superuser
+      description: |
+        Records the activation and recalculates the scores that were not yet computed
+        for the chosen strategy with the current statistics.
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivateStrategyRequest'
+      responses:
+        '200':
+          description: The activated strategy.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveScoringStrategy'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /scoring/league-coefficients/{league}:
+    get:
+      tags: [scoring]
+      summary: Get the coefficient of one league
+      operationId: getLeagueCoefficient
+      x-access-level: anonymous
+      security:
+        - accessToken: []
+      parameters:
+        - {name: league, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: The league coefficient.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeagueCoefficient'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: The league has no coefficient set.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [scoring]
+      summary: Set the coefficient of one league
+      operationId: setLeagueCoefficient
+      x-access-level: superuser
+      description: |
+        Stores a new coefficient for the league (append-only). The coefficient is applied
+        on read and does not trigger a score recalculation.
+      security:
+        - accessToken: []
+      parameters:
+        - {name: league, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetLeagueCoefficientRequest'
+      responses:
+        '200':
+          description: The stored league coefficient.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeagueCoefficient'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /players/{id}/score:
+    get:
+      tags: [scoring]
+      summary: Get the current score of one player
+      operationId: getPlayerScore
+      x-access-level: anonymous
+      security:
+        - accessToken: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+      responses:
+        '200':
+          description: The current score with the league coefficient applied on read.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerScore'
+        '400':
+          description: The id is not a positive integer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: The player or their score was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /players/{id}/scores:
+    get:
+      tags: [scoring]
+      summary: Get the score history of one player
+      operationId: getPlayerScoreHistory
+      x-access-level: anonymous
+      security:
+        - accessToken: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+      responses:
+        '200':
+          description: The score snapshots of the player, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlayerScore'
+        '400':
+          description: The id is not a positive integer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: No player has that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
 components:
 
   securitySchemes:
@@ -624,3 +834,52 @@ components:
       properties:
         error:
           type: string
+
+    ScoringStrategy:
+      type: object
+      required: [id, name]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+
+    ActiveScoringStrategy:
+      type: object
+      required: [id, name]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+
+    ActivateStrategyRequest:
+      type: object
+      additionalProperties: false
+      required: [id]
+      properties:
+        id: {type: integer}
+
+    LeagueCoefficient:
+      type: object
+      required: [leagueCode, coefficient, effectiveFrom]
+      properties:
+        leagueCode: {type: string, example: PL}
+        coefficient: {type: number, format: double, example: 1.0}
+        effectiveFrom: {type: string, format: date-time}
+
+    SetLeagueCoefficientRequest:
+      type: object
+      additionalProperties: false
+      required: [coefficient]
+      properties:
+        coefficient: {type: number, format: double, exclusiveMinimum: 0}
+
+    PlayerScore:
+      type: object
+      required: [playerId, computedAt, strategyId, strategyName, rawScore, percentile, score, leagueCoefficient]
+      properties:
+        playerId: {type: integer, format: int64}
+        computedAt: {type: string, format: date-time}
+        strategyId: {type: integer}
+        strategyName: {type: string}
+        rawScore: {type: number, format: double}
+        percentile: {type: number, format: double, minimum: 0, maximum: 1}
+        score: {type: number, format: double, minimum: 0, maximum: 1}
+        leagueCoefficient: {type: number, format: double}
