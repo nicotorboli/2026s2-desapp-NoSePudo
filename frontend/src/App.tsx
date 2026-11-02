@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar/Navbar';
 import { AuthModal } from './components/AuthModal/AuthModal';
 import { PlayerListPage } from './pages/PlayerListPage/PlayerListPage';
@@ -7,6 +7,7 @@ import { PlayerDetailPage } from './pages/PlayerDetailPage/PlayerDetailPage';
 import { PortfolioPage } from './pages/PortfolioPage/PortfolioPage';
 
 const AppContent: React.FC = () => {
+  const { isAuthenticated } = useAuth();
   const [currentView, setCurrentView] = useState<'catalog' | 'portfolio'>('catalog');
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -14,6 +15,9 @@ const AppContent: React.FC = () => {
   const handleSelectPlayer = (id: number) => {
     setSelectedPlayerId(id);
     setCurrentView('catalog');
+    if (!isAuthenticated) {
+      setIsAuthModalOpen(true);
+    }
   };
 
   const handleBackToCatalog = () => {

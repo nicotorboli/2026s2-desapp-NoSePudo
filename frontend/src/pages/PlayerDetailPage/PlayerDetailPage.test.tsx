@@ -2,12 +2,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { PlayerDetailPage } from './PlayerDetailPage';
 import * as playersApi from '../../api/players';
+import * as authContext from '../../context/AuthContext';
 
 afterEach(cleanup);
 
 describe('PlayerDetailPage', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(authContext, 'useAuth').mockReturnValue({
+      user: { id: 1, email: 'test@example.com' },
+      token: 'valid-token',
+      isAuthenticated: true,
+      login: vi.fn(),
+      registerAndLogin: vi.fn(),
+      logout: vi.fn(),
+    });
   });
 
   it('renders all player attributes and handles fallbacks', async () => {
@@ -83,5 +92,23 @@ describe('PlayerDetailPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /volver al catálogo/i }));
     expect(handleBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders unauthenticated prompt when user is not logged in', () => {
+    vi.spyOn(authContext, 'useAuth').mockReturnValue({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      login: vi.fn(),
+      registerAndLogin: vi.fn(),
+      logout: vi.fn(),
+    });
+
+    const handleOpenAuth = vi.fn();
+    render(<PlayerDetailPage playerId={101} onBack={vi.fn()} onOpenAuth={handleOpenAuth} />);
+
+    expect(screen.getByText('Iniciá sesión para ver la ficha')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /iniciar sesión \/ registrarse/i }));
+    expect(handleOpenAuth).toHaveBeenCalledTimes(1);
   });
 });

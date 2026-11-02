@@ -86,7 +86,7 @@ func TestDeclaredLevelsMatchTheSpecification(t *testing.T) {
 		"POST /auth/login":    AccessAnonymous,
 		"POST /auth/refresh":  AccessRenewal,
 		"POST /auth/logout":   AccessAuthenticated,
-		"GET /players":        AccessAuthenticated,
+		"GET /players":        AccessAnonymous,
 		"GET /players/{id}":   AccessAuthenticated,
 		"POST /players/sync":  AccessSuperuser,
 

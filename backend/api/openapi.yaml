@@ -176,14 +176,7 @@ paths:
       tags: [players]
       summary: List the player catalog
       operationId: listPlayers
-      x-access-level: authenticated
-      description: |
-        Requires a valid access token. This endpoint existed before the feature and was
-        anonymous; protecting it is what makes the credential govern the API rather than
-        merely exist (US3). The decision is recorded rather than implicit, so a later
-        delivery can reopen it by changing one declaration.
-      security:
-        - accessToken: []
+      x-access-level: anonymous
       parameters:
         - {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
         - {name: limit, in: query, schema: {type: integer, minimum: 1, default: 20}}
@@ -205,8 +198,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '401':
-          $ref: '#/components/responses/Unauthenticated'
         '500':
           $ref: '#/components/responses/InternalError'
 

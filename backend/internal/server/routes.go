@@ -44,7 +44,7 @@ func (s *Server) routes() []route {
 		},
 		{
 			pattern:  "GET /players",
-			access:   AccessAuthenticated,
+			access:   AccessAnonymous,
 			endpoint: s.controllers.Player.GetPlayers(),
 		},
 		{

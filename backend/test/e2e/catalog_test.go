@@ -53,10 +53,7 @@ func (s *stack) accessTokenFor(t *testing.T, email, password string) string {
 // Escenario: con credencial válida el catálogo se sirve.
 func TestCatalogIsServedWithAValidCredential(t *testing.T) {
 	stack := newStack(t)
-	token := stack.accessTokenFor(t, "nico@nosepudo.ar", "una-contraseña")
 
-	// init.sql ya no siembra jugadores (llegan por el sync), así que el caso
-	// inserta uno propio.
 	if _, err := stack.db.ExecContext(t.Context(),
 		`INSERT INTO players (external_id, name, club_name, league_name, league_code, position)
 		 VALUES (1, 'Ernesto Provitillo', 'Arsenal FC', 'Premier League', 'PL', 'Midfielder')`,
@@ -64,7 +61,7 @@ func TestCatalogIsServedWithAValidCredential(t *testing.T) {
 		t.Fatalf("no se pudo sembrar un jugador: %v", err)
 	}
 
-	status, body := stack.get(t, "/players", "Bearer "+token)
+	status, body := stack.get(t, "/players", "")
 
 	if status != http.StatusOK {
 		t.Fatalf("status = %d, se esperaba 200: %s", status, body)
@@ -81,8 +78,6 @@ func TestCatalogIsServedWithAValidCredential(t *testing.T) {
 	}
 }
 
-// Escenario:escenarios 1, 3 y 4, y el criterio: sin credencial, con una alterada, o con
-// una presentada de forma inesperada, el catálogo se niega.
 func TestCatalogIsRefusedWithoutAUsableCredential(t *testing.T) {
 	stack := newStack(t)
 	token := stack.accessTokenFor(t, "nico@nosepudo.ar", "una-contraseña")
@@ -108,13 +103,12 @@ func TestCatalogIsRefusedWithoutAUsableCredential(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			status, body := stack.get(t, "/players", c.authorization)
+			status, body := stack.get(t, "/players/1", c.authorization)
 
 			if status != http.StatusUnauthorized {
 				t.Errorf("status = %d, se esperaba 401: %s", status, body)
 			}
 
-			// El cuerpo es el error de siempre y no filtra por qué falló.
 			var decoded map[string]string
 			if err := json.Unmarshal([]byte(body), &decoded); err != nil {
 				t.Fatalf("la respuesta no es JSON: %v (%s)", err, body)
@@ -129,27 +123,22 @@ func TestCatalogIsRefusedWithoutAUsableCredential(t *testing.T) {
 	}
 }
 
-// Escenario: una credencial expirada se niega. Se consigue de verdad
-// levantando el stack con un tiempo de vida de un instante.
 func TestCatalogIsRefusedWithAnExpiredCredential(t *testing.T) {
 	stack := newStackWithAccessTTL(t, time.Second)
 	token := stack.accessTokenFor(t, "nico@nosepudo.ar", "una-contraseña")
 
-	// Antes de expirar sirve.
-	if status, body := stack.get(t, "/players", "Bearer "+token); status != http.StatusOK {
+	if status, body := stack.get(t, "/players/1", "Bearer "+token); status != http.StatusOK && status != http.StatusNotFound {
 		t.Fatalf("la credencial recién emitida ya no servía: %d %s", status, body)
 	}
 
 	time.Sleep(2 * time.Second)
 
-	status, body := stack.get(t, "/players", "Bearer "+token)
+	status, body := stack.get(t, "/players/1", "Bearer "+token)
 	if status != http.StatusUnauthorized {
 		t.Errorf("status = %d, se esperaba 401 con la credencial expirada: %s", status, body)
 	}
 }
 
-// el criterio: el estado del sistema es idéntico antes y después de cada intento
-// rechazado, y el requerimiento exige que se rechace antes de tocar la persistencia.
 func TestRefusedRequestsLeaveNoTrace(t *testing.T) {
 	stack := newStack(t)
 	stack.accessTokenFor(t, "nico@nosepudo.ar", "una-contraseña")
@@ -157,7 +146,7 @@ func TestRefusedRequestsLeaveNoTrace(t *testing.T) {
 	before := stack.countUsers(t)
 
 	for range 5 {
-		if status, _ := stack.get(t, "/players", ""); status != http.StatusUnauthorized {
+		if status, _ := stack.get(t, "/players/1", ""); status != http.StatusUnauthorized {
 			t.Fatalf("status = %d, se esperaba 401", status)
 		}
 	}
