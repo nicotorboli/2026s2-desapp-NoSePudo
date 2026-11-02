@@ -94,7 +94,7 @@ func TestPlayerScoreRepositoryHasScoreFor(t *testing.T) {
 		t.Error("HasScoreFor = true sin haber guardado")
 	}
 
-	if err := f.repo.Save(ctx, []model.PlayerScore{f.aScore()}); err != nil {
+	if err = f.repo.Save(ctx, []model.PlayerScore{f.aScore()}); err != nil {
 		t.Fatalf("Save devolvió error: %v", err)
 	}
 

@@ -1,4 +1,4 @@
-package service
+package model
 
 import "testing"
 
@@ -26,7 +26,7 @@ func TestBucketIndex(t *testing.T) {
 }
 
 func TestBuildHistogram(t *testing.T) {
-	got := buildHistogram([]float64{0.0, 0.0, 1.0}, 2)
+	got := BuildHistogram([]float64{0.0, 0.0, 1.0}, 2)
 	want := []int64{2, 1}
 
 	if len(got) != len(want) {
@@ -53,7 +53,7 @@ func TestPercentile(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := percentile(hist, c.raw); got != c.want {
+			if got := Percentile(hist, c.raw); got != c.want {
 				t.Fatalf("percentile(%v) = %v, want %v", c.raw, got, c.want)
 			}
 		})
@@ -61,7 +61,7 @@ func TestPercentile(t *testing.T) {
 }
 
 func TestPercentileEmptyHistogram(t *testing.T) {
-	if got := percentile([]int64{}, 0.5); got != 0 {
+	if got := Percentile([]int64{}, 0.5); got != 0 {
 		t.Fatalf("percentile de histograma vacío = %v, want 0", got)
 	}
 }

@@ -8,13 +8,13 @@ import (
 
 type PlayerScoreResponse struct {
 	ComputedAt        string  `json:"computedAt"`
-	StrategyID        int     `json:"strategyId"`
 	StrategyName      string  `json:"strategyName"`
 	RawScore          float64 `json:"rawScore"`
 	Percentile        float64 `json:"percentile"`
 	Score             float64 `json:"score"`
 	LeagueCoefficient float64 `json:"leagueCoefficient"`
 	PlayerID          int64   `json:"playerId"`
+	StrategyID        int     `json:"strategyId"`
 }
 
 func PlayerScoreDesdeModelo(s model.PlayerScore, coefficient float64, strategyName string) PlayerScoreResponse {

@@ -1,8 +1,8 @@
-package service
+package model
 
-const scoreHistogramBuckets = 1000
+const ScoreHistogramBuckets = 1000
 
-func buildHistogram(scores []float64, buckets int) []int64 {
+func BuildHistogram(scores []float64, buckets int) []int64 {
 	hist := make([]int64, buckets)
 	for _, score := range scores {
 		hist[bucketIndex(score, buckets)]++
@@ -10,7 +10,7 @@ func buildHistogram(scores []float64, buckets int) []int64 {
 	return hist
 }
 
-func percentile(hist []int64, raw float64) float64 {
+func Percentile(hist []int64, raw float64) float64 {
 	buckets := len(hist)
 	if buckets == 0 {
 		return 0

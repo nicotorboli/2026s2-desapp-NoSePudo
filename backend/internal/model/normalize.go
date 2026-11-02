@@ -1,4 +1,4 @@
-package service
+package model
 
 import (
 	"strings"
@@ -19,7 +19,7 @@ var accentFold = map[rune]rune{
 	'ă': 'a', 'ą': 'a', 'ę': 'e', 'ě': 'e', 'ś': 's', 'ź': 'z', 'ż': 'z',
 }
 
-func normalizeName(raw string) string {
+func NormalizeName(raw string) string {
 	lower := strings.ToLower(strings.TrimSpace(raw))
 	var b strings.Builder
 	b.Grow(len(lower))
@@ -55,8 +55,8 @@ var clubAliases = map[string]string{
 // normalizeClub deja el club comparable entre proveedores: minúsculas, sin
 // diacríticos, sin puntuación, sin sufijos institucionales y con los alias
 // conocidos aplicados.
-func normalizeClub(raw string) string {
-	lower := normalizeName(raw)
+func NormalizeClub(raw string) string {
+	lower := NormalizeName(raw)
 	lower = strings.Map(func(r rune) rune {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsSpace(r) {
 			return r

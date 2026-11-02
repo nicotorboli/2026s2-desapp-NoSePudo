@@ -9,8 +9,8 @@ type ScoreScope struct {
 
 type ScoreHistogram struct {
 	ComputedAt time.Time
-	Buckets    []int64
 	Position   string
 	LeagueCode string
+	Buckets    []int64
 	ID         int64
 }

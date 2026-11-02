@@ -238,7 +238,7 @@ func (s *ScoreService) recalculate(ctx context.Context, strategyID int, players 
 
 	bucketsByScope := make(map[model.ScoreScope][]int64, len(rawsByScope))
 	for scope, raws := range rawsByScope {
-		bucketsByScope[scope] = buildHistogram(raws, scoreHistogramBuckets)
+		bucketsByScope[scope] = model.BuildHistogram(raws, model.ScoreHistogramBuckets)
 	}
 
 	weights := strategy.Weights()
@@ -272,7 +272,7 @@ func (s *ScoreService) recalculate(ctx context.Context, strategyID int, players 
 			StrategyID:   strategyID,
 			Weights:      weights,
 			RawScore:     c.raw,
-			Percentile:   percentile(bucketsByScope[scope], c.raw),
+			Percentile:   model.Percentile(bucketsByScope[scope], c.raw),
 			PlayerID:     c.player.ID,
 			StatisticsID: c.stats.ID,
 			HistogramID:  histogramID,

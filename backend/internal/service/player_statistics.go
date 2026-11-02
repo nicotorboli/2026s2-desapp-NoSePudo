@@ -139,9 +139,9 @@ func (s *PlayerStatisticsServiceImpl) syncLeague(ctx context.Context, code strin
 	matched := make([]model.PlayerStatistics, 0, len(rows))
 	unmatched := 0
 	for _, row := range rows {
-		playerID, ok := clubIndex[normalizeName(row.Name)+"|"+normalizeClub(row.ClubName)]
+		playerID, ok := clubIndex[model.NormalizeName(row.Name)+"|"+model.NormalizeClub(row.ClubName)]
 		if !ok {
-			playerID, ok = nameIndex[normalizeName(row.Name)]
+			playerID, ok = nameIndex[model.NormalizeName(row.Name)]
 		}
 		if !ok {
 			unmatched++
@@ -185,10 +185,10 @@ func buildMatchIndexes(players []model.Player) (map[string]int64, map[string]int
 	nameIndex := make(map[string]int64, len(players))
 
 	for _, p := range players {
-		nameKey := normalizeName(p.Name)
+		nameKey := model.NormalizeName(p.Name)
 		nameCount[nameKey]++
 
-		clubKey := nameKey + "|" + normalizeClub(p.ClubName)
+		clubKey := nameKey + "|" + model.NormalizeClub(p.ClubName)
 		if _, exists := clubIndex[clubKey]; !exists {
 			clubIndex[clubKey] = p.ID
 		}

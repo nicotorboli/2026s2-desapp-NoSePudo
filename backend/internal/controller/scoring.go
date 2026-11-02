@@ -60,7 +60,7 @@ func (c *RestScoringController) ActivateStrategy() httphandler.Endpoint {
 			return err
 		}
 
-		if err := c.svc.ActivateStrategy(req.Context(), request.ID, actor.ID); err != nil {
+		if err = c.svc.ActivateStrategy(req.Context(), request.ID, actor.ID); err != nil {
 			return err
 		}
 
@@ -112,7 +112,7 @@ func (c *RestScoringController) SetLeagueCoefficient() httphandler.Endpoint {
 			return err
 		}
 
-		if err := c.svc.SetLeagueCoefficient(req.Context(), leagueCode, request.Coefficient, actor.ID); err != nil {
+		if err = c.svc.SetLeagueCoefficient(req.Context(), leagueCode, request.Coefficient, actor.ID); err != nil {
 			return err
 		}
 
