@@ -38,7 +38,7 @@ func startPostgres(t *testing.T) *sql.DB {
 		),
 	)
 	if err != nil {
-		t.Skipf("no se pudo levantar Postgres con testcontainers (¿Docker está corriendo?): %v", err)
+		t.Fatalf("no se pudo levantar Postgres con testcontainers (¿Docker está corriendo?): %v", err)
 	}
 
 	t.Cleanup(func() {
