@@ -33,20 +33,32 @@ func (stubPlayerService) GetPlayerByID(ctx context.Context, id int64) (dto.Playe
 	return dto.PlayerDetailResponse{}, nil
 }
 
-type stubPlayerSyncService struct{}
+type stubSyncRunService struct{}
 
-func (stubPlayerSyncService) SyncPlayers(ctx context.Context, actor string) (dto.SyncPlayersResponse, error) {
-	return dto.SyncPlayersResponse{}, nil
+func (stubSyncRunService) Trigger(ctx context.Context, typ model.SyncType, actorID *int64) (dto.SyncRunResponse, error) {
+	return dto.SyncRunResponse{}, nil
+}
+
+func (stubSyncRunService) GetRun(ctx context.Context, id int64) (dto.SyncRunResponse, error) {
+	return dto.SyncRunResponse{}, nil
+}
+
+func (stubSyncRunService) ListRuns(ctx context.Context, typ *model.SyncType, offset, limit int) (dto.SyncRunPageResponse, error) {
+	return dto.SyncRunPageResponse{}, nil
+}
+
+func (stubSyncRunService) ListSchedules(ctx context.Context) ([]dto.SyncScheduleResponse, error) {
+	return nil, nil
+}
+
+func (stubSyncRunService) UpdateSchedule(ctx context.Context, typ model.SyncType, enabled bool, intervalMinutes int, actorID int64) (dto.SyncScheduleResponse, error) {
+	return dto.SyncScheduleResponse{}, nil
 }
 
 type stubPlayerStatisticsService struct{}
 
 func (stubPlayerStatisticsService) GetPlayerStatistics(ctx context.Context, playerID int64) ([]dto.PlayerStatisticsResponse, error) {
 	return nil, nil
-}
-
-func (stubPlayerStatisticsService) SyncStatistics(ctx context.Context) (dto.SyncStatisticsResponse, error) {
-	return dto.SyncStatisticsResponse{}, nil
 }
 
 type stubAuthService struct{}
@@ -104,8 +116,8 @@ func routesUnderTest() []route {
 		controllers: &controller.Container{
 			Player: controller.NewPlayerController(stubPlayerService{}),
 			Sync: controller.NewSyncController(
-				stubPlayerSyncService{},
 				stubPlayerStatisticsService{},
+				stubSyncRunService{},
 			),
 			Scoring: controller.NewScoringController(stubScoringService{}),
 			Auth:    controller.NewAuthController(stubAuthService{}),
@@ -138,8 +150,11 @@ func TestDeclaredLevelsMatchTheSpecification(t *testing.T) {
 		"GET /players":                              AccessAnonymous,
 		"GET /players/{id}":                         AccessAnonymous,
 		"GET /players/{id}/statistics":              AccessAnonymous,
-		"POST /players/sync":                        AccessSuperuser,
-		"POST /players/statistics/sync":             AccessSuperuser,
+		"POST /sync/{type}/runs":                    AccessSuperuser,
+		"GET /sync/runs":                            AccessSuperuser,
+		"GET /sync/runs/{id}":                       AccessSuperuser,
+		"GET /sync/schedules":                       AccessSuperuser,
+		"PUT /sync/schedules/{type}":                AccessSuperuser,
 		"GET /players/{id}/score":                   AccessAnonymous,
 		"GET /players/{id}/scores":                  AccessAnonymous,
 		"GET /players/ranking":                      AccessAnonymous,

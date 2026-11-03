@@ -35,20 +35,32 @@ func (m *mockPlayerService) GetPlayerByID(ctx context.Context, id int64) (dto.Pl
 	return dto.PlayerDetailResponse{ID: id, Name: "Test Player"}, nil
 }
 
-type mockSyncService struct{}
+type mockSyncRunService struct{}
 
-func (m *mockSyncService) SyncPlayers(ctx context.Context, actor string) (dto.SyncPlayersResponse, error) {
-	return dto.SyncPlayersResponse{Status: "success"}, nil
+func (m *mockSyncRunService) Trigger(ctx context.Context, typ model.SyncType, actorID *int64) (dto.SyncRunResponse, error) {
+	return dto.SyncRunResponse{Status: "running"}, nil
+}
+
+func (m *mockSyncRunService) GetRun(ctx context.Context, id int64) (dto.SyncRunResponse, error) {
+	return dto.SyncRunResponse{}, nil
+}
+
+func (m *mockSyncRunService) ListRuns(ctx context.Context, typ *model.SyncType, offset, limit int) (dto.SyncRunPageResponse, error) {
+	return dto.SyncRunPageResponse{}, nil
+}
+
+func (m *mockSyncRunService) ListSchedules(ctx context.Context) ([]dto.SyncScheduleResponse, error) {
+	return nil, nil
+}
+
+func (m *mockSyncRunService) UpdateSchedule(ctx context.Context, typ model.SyncType, enabled bool, intervalMinutes int, actorID int64) (dto.SyncScheduleResponse, error) {
+	return dto.SyncScheduleResponse{}, nil
 }
 
 type mockPlayerStatisticsService struct{}
 
 func (m *mockPlayerStatisticsService) GetPlayerStatistics(ctx context.Context, id int64) ([]dto.PlayerStatisticsResponse, error) {
 	return []dto.PlayerStatisticsResponse{{Goals: 5, Rating: 7.8}}, nil
-}
-
-func (m *mockPlayerStatisticsService) SyncStatistics(ctx context.Context) (dto.SyncStatisticsResponse, error) {
-	return dto.SyncStatisticsResponse{Status: "success"}, nil
 }
 
 type mockAuthService struct{}
@@ -128,8 +140,8 @@ func newTestServerWith(verifier middleware.TokenVerifier) *server.Server {
 		&controller.Container{
 			Player: controller.NewPlayerController(&mockPlayerService{}),
 			Sync: controller.NewSyncController(
-				&mockSyncService{},
 				&mockPlayerStatisticsService{},
+				&mockSyncRunService{},
 			),
 			Scoring: controller.NewScoringController(&mockScoringService{}),
 			Auth:    controller.NewAuthController(&mockAuthService{}),

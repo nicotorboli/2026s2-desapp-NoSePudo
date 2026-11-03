@@ -74,13 +74,14 @@ func (s *PlayerServiceImpl) SyncPlayers(ctx context.Context, actor string) (dto.
 	totalUpdated := 0
 	totalDeactivated := 0
 
-	for _, code := range defaultLeagues {
+	for i, code := range defaultLeagues {
 		select {
 		case <-ctx.Done():
 			return dto.SyncPlayersResponse{}, ctx.Err()
 		default:
 		}
 
+		reportProgress(ctx, i+1, len(defaultLeagues), fmt.Sprintf("Synchronizing league %s", code))
 		s.logger.InfoContext(ctx, "Starting sync for league", "league_code", code)
 
 		players, err := s.adapter.FetchLeaguePlayers(ctx, code)

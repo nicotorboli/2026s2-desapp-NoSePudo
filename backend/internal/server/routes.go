@@ -54,14 +54,29 @@ func (s *Server) routes() []route {
 			endpoint: s.controllers.Sync.GetPlayerStatistics(),
 		},
 		{
-			pattern:  "POST /players/sync",
+			pattern:  "POST /sync/{type}/runs",
 			access:   AccessSuperuser,
-			endpoint: s.controllers.Sync.SyncPlayers(),
+			endpoint: s.controllers.Sync.CreateRun(),
 		},
 		{
-			pattern:  "POST /players/statistics/sync",
+			pattern:  "GET /sync/runs",
 			access:   AccessSuperuser,
-			endpoint: s.controllers.Sync.SyncStatistics(),
+			endpoint: s.controllers.Sync.ListRuns(),
+		},
+		{
+			pattern:  "GET /sync/runs/{id}",
+			access:   AccessSuperuser,
+			endpoint: s.controllers.Sync.GetRun(),
+		},
+		{
+			pattern:  "GET /sync/schedules",
+			access:   AccessSuperuser,
+			endpoint: s.controllers.Sync.ListSchedules(),
+		},
+		{
+			pattern:  "PUT /sync/schedules/{type}",
+			access:   AccessSuperuser,
+			endpoint: s.controllers.Sync.UpdateSchedule(),
 		},
 		{
 			pattern:  "GET /scoring/strategies",

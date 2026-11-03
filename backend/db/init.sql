@@ -150,3 +150,42 @@ CREATE TABLE IF NOT EXISTS league_coefficients (
 
 CREATE INDEX IF NOT EXISTS idx_league_coefficients_code
     ON league_coefficients (league_code, effective_from DESC);
+
+-- Sincronizaciones programadas: configuración de frecuencia por tipo.
+CREATE TABLE IF NOT EXISTS sync_schedules (
+    type             VARCHAR(20) PRIMARY KEY,
+    enabled          BOOLEAN NOT NULL DEFAULT FALSE,
+    interval_minutes INTEGER NOT NULL CHECK (interval_minutes >= 15),
+    next_run_at      TIMESTAMPTZ NOT NULL,
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_by       BIGINT REFERENCES users(id)
+);
+
+-- Sincronizaciones programadas: ejecuciones (append-only). Manual y cron caen
+-- acá por igual; el progreso intermedio no se persiste, vive solo en memoria.
+CREATE TABLE IF NOT EXISTS sync_runs (
+    id                BIGSERIAL PRIMARY KEY,
+    type              VARCHAR(20) NOT NULL,
+    trigger           VARCHAR(10) NOT NULL CHECK (trigger IN ('cron', 'manual')),
+    status            VARCHAR(12) NOT NULL
+                      CHECK (status IN ('running', 'succeeded', 'partial', 'failed', 'skipped')),
+    started_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    finished_at       TIMESTAMPTZ,
+    total_processed   INTEGER NOT NULL DEFAULT 0,
+    total_updated     INTEGER NOT NULL DEFAULT 0,
+    total_deactivated INTEGER NOT NULL DEFAULT 0,
+    total_matched     INTEGER NOT NULL DEFAULT 0,
+    total_unmatched   INTEGER NOT NULL DEFAULT 0,
+    total_inserted    INTEGER NOT NULL DEFAULT 0,
+    message           TEXT NOT NULL DEFAULT '',
+    error             TEXT NOT NULL DEFAULT '',
+    triggered_by      BIGINT REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sync_runs_type_started
+    ON sync_runs (type, started_at DESC);
+
+-- Un solo run en curso por tipo. Es la barrera de la DB contra disparos
+-- concurrentes; el service además devuelve skipped cuando corresponde.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_runs_one_running
+    ON sync_runs (type) WHERE status = 'running';

@@ -27,6 +27,8 @@ tags:
     description: Account creation, sign-in, session renewal and sign-out
   - name: players
     description: The player catalog
+  - name: sync
+    description: Scheduled and manual synchronization runs
 
 paths:
 
@@ -326,31 +328,96 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /players/sync:
+  /sync/{type}/runs:
     post:
-      tags: [players]
-      summary: Synchronize the catalog with football-data.org
-      operationId: syncPlayers
+      tags: [sync]
+      summary: Trigger a synchronization run manually
+      operationId: createSyncRun
       x-access-level: superuser
       description: |
-        Fetches the squads of the supported leagues from football-data.org, upserts
-        them and deactivates players that left. Reserved to the superuser: it spends the
-        external provider's rate limit and rewrites the catalog.
+        Creates a run for the given type and starts it in the background. Returns
+        the run as `running`, or as `skipped` when a run of the same type is
+        already in progress. `progress` is ephemeral: present only while the run
+        is running, never persisted.
       security:
         - accessToken: []
+      parameters:
+        - {name: type, in: path, required: true, schema: {type: string, enum: [players, statistics]}}
       responses:
-        '200':
-          description: The synchronization ran, fully or partially.
+        '202':
+          description: The run was accepted and started, or skipped.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SyncResult'
+                $ref: '#/components/schemas/SyncRun'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '429':
-          description: The external provider's rate limit was hit before anything was synchronized; existing data is intact.
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sync/runs:
+    get:
+      tags: [sync]
+      summary: List synchronization runs
+      operationId: listSyncRuns
+      x-access-level: superuser
+      description: |
+        Returns runs newest first, optionally filtered by type.
+      security:
+        - accessToken: []
+      parameters:
+        - {name: type, in: query, schema: {type: string, enum: [players, statistics]}}
+        - {name: offset, in: query, schema: {type: integer, minimum: 0, default: 0}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200':
+          description: A page of runs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncRunPage'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sync/runs/{id}:
+    get:
+      tags: [sync]
+      summary: Get one synchronization run
+      operationId: getSyncRun
+      x-access-level: superuser
+      security:
+        - accessToken: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+      responses:
+        '200':
+          description: The run, with ephemeral progress while it is running.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncRun'
+        '400':
+          description: The id is not a positive integer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: No run has that id.
           content:
             application/json:
               schema:
@@ -358,39 +425,61 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /players/statistics/sync:
-    post:
-      tags: [players]
-      summary: Scrape player statistics from WhoScored
-      operationId: syncPlayerStatistics
+  /sync/schedules:
+    get:
+      tags: [sync]
+      summary: List synchronization schedules
+      operationId: listSyncSchedules
       x-access-level: superuser
-      description: |
-        Scrapes the statistics of the supported leagues from WhoScored and appends
-        one snapshot row per matched player. Reserved to the superuser: it hits an
-        external provider with anti-bot protection and appends to persistence.
-        Statistics are append-only: every run adds new rows and existing rows are
-        never updated, so the history is traced via each row's timestamp.
       security:
         - accessToken: []
       responses:
         '200':
-          description: The synchronization ran, fully or partially.
+          description: The schedules.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SyncStatisticsResult'
+                type: array
+                items:
+                  $ref: '#/components/schemas/SyncSchedule'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '429':
-          description: The external provider's rate limit was hit before anything was scraped; existing data is intact.
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sync/schedules/{type}:
+    put:
+      tags: [sync]
+      summary: Update one synchronization schedule
+      operationId: updateSyncSchedule
+      x-access-level: superuser
+      security:
+        - accessToken: []
+      parameters:
+        - {name: type, in: path, required: true, schema: {type: string, enum: [players, statistics]}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSyncScheduleRequest'
+      responses:
+        '200':
+          description: The updated schedule.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-        '502':
-          description: The external provider blocked the requests with an anti-bot challenge.
+                $ref: '#/components/schemas/SyncSchedule'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: The schedule type does not exist.
           content:
             application/json:
               schema:
@@ -666,7 +755,8 @@ components:
         operation requires. Deliberately distinct from 401: a caller has to be
         able to tell "you are not signed in" from "you are signed in but not allowed".
 
-        Returned by the operations declared `superuser` (today, `POST /players/sync`).
+        Returned by the operations declared `superuser` (for example, the `/sync`
+        endpoints and `PUT /scoring/active-strategy`).
         An absent or unrecognised privilege level lands here too, never on the
         permitted side.
       content:
@@ -820,26 +910,69 @@ components:
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
 
-    SyncResult:
+    SyncRunProgress:
       type: object
-      required: [status, message, totalProcessed, totalUpdated, totalDeactivated]
+      required: [current, total, message]
       properties:
-        status: {type: string, enum: [success, partial_success]}
+        current: {type: integer, description: Current league being processed}
+        total: {type: integer, description: Total leagues to process}
         message: {type: string}
+
+    SyncRun:
+      type: object
+      required: [id, type, trigger, status, startedAt]
+      properties:
+        id: {type: integer, format: int64}
+        type: {type: string, enum: [players, statistics]}
+        trigger: {type: string, enum: [cron, manual]}
+        status: {type: string, enum: [running, succeeded, partial, failed, skipped]}
+        startedAt: {type: string, format: date-time}
+        finishedAt: {type: [string, 'null'], format: date-time}
         totalProcessed: {type: integer}
         totalUpdated: {type: integer}
         totalDeactivated: {type: integer}
-
-    SyncStatisticsResult:
-      type: object
-      required: [status, message, totalProcessed, totalMatched, totalUnmatched, totalInserted]
-      properties:
-        status: {type: string, enum: [success, partial_success]}
-        message: {type: string}
-        totalProcessed: {type: integer}
         totalMatched: {type: integer}
         totalUnmatched: {type: integer}
         totalInserted: {type: integer}
+        message: {type: string}
+        error: {type: string}
+        triggeredBy: {type: [integer, 'null'], format: int64}
+        progress:
+          anyOf:
+            - $ref: '#/components/schemas/SyncRunProgress'
+            - type: 'null'
+          description: Present only while the run is running.
+
+    SyncRunPage:
+      type: object
+      required: [items, offset, limit, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncRun'
+        offset: {type: integer}
+        limit: {type: integer}
+        total: {type: integer}
+
+    SyncSchedule:
+      type: object
+      required: [type, enabled, intervalMinutes, nextRunAt, updatedAt]
+      properties:
+        type: {type: string, enum: [players, statistics]}
+        enabled: {type: boolean}
+        intervalMinutes: {type: integer, minimum: 15}
+        nextRunAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+        updatedBy: {type: [integer, 'null'], format: int64}
+
+    UpdateSyncScheduleRequest:
+      type: object
+      additionalProperties: false
+      required: [enabled, intervalMinutes]
+      properties:
+        enabled: {type: boolean}
+        intervalMinutes: {type: integer, minimum: 15, maximum: 43200}
 
     PlayerStatisticsItem:
       type: object

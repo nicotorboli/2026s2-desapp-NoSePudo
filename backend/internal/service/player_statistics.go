@@ -73,13 +73,14 @@ func (s *PlayerStatisticsServiceImpl) SyncStatistics(ctx context.Context) (dto.S
 	totalUnmatched := 0
 	totalInserted := 0
 
-	for _, code := range defaultLeagues {
+	for i, code := range defaultLeagues {
 		select {
 		case <-ctx.Done():
 			return dto.SyncStatisticsResponse{}, ctx.Err()
 		default:
 		}
 
+		reportProgress(ctx, i+1, len(defaultLeagues), fmt.Sprintf("Synchronizing league %s", code))
 		s.logger.InfoContext(ctx, "Starting statistics sync for league", "league_code", code)
 
 		proc, matched, unmatched, inserted, err := s.syncLeague(ctx, code)

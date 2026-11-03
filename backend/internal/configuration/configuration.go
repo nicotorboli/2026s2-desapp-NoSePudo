@@ -19,21 +19,31 @@ const (
 	defaultAccessTTL  = "15m"
 	defaultRefreshTTL = "168h"
 	defaultBcryptCost = "12"
+
+	defaultSyncRunTimeout = "30m"
+	defaultSyncInterval   = "24h"
+
+	minSyncInterval = 15 * time.Minute
 )
 
 var ErrMissingJWTSecret = errors.New("NSP_JWT_SECRET es obligatorio y debe tener al menos 32 bytes")
 
 type Cfg struct {
-	PostgresDataSource string
-	FootballDataAPIKey string
-	Host               string
-	Port               string
-	JWTSecret          string
-	SuperuserEmail     string
-	SuperuserPassword  string
-	AccessTTL          time.Duration
-	RefreshTTL         time.Duration
-	BcryptCost         int
+	PostgresDataSource     string
+	FootballDataAPIKey     string
+	Host                   string
+	Port                   string
+	JWTSecret              string
+	SuperuserEmail         string
+	SuperuserPassword      string
+	AccessTTL              time.Duration
+	RefreshTTL             time.Duration
+	BcryptCost             int
+	SyncRunTimeout         time.Duration
+	SyncPlayersInterval    time.Duration
+	SyncStatisticsInterval time.Duration
+	SyncPlayersEnabled     bool
+	SyncStatisticsEnabled  bool
 }
 
 func LoadCfg() (*Cfg, error) {
@@ -57,17 +67,37 @@ func LoadCfg() (*Cfg, error) {
 		return nil, err
 	}
 
+	syncRunTimeout, err := durationFromEnv("NSP_SYNC_RUN_TIMEOUT", defaultSyncRunTimeout)
+	if err != nil {
+		return nil, err
+	}
+
+	syncPlayersInterval, err := syncIntervalFromEnv("NSP_SYNC_PLAYERS_INTERVAL")
+	if err != nil {
+		return nil, err
+	}
+
+	syncStatisticsInterval, err := syncIntervalFromEnv("NSP_SYNC_STATISTICS_INTERVAL")
+	if err != nil {
+		return nil, err
+	}
+
 	return &Cfg{
-		PostgresDataSource: os.Getenv("NSP_PSQL_DS"),
-		FootballDataAPIKey: os.Getenv("NSP_FOOTBALLDATA_API_KEY"),
-		Host:               cmp.Or(os.Getenv("NSP_HOST"), defaultHost),
-		Port:               cmp.Or(os.Getenv("NSP_PORT"), defaultPort),
-		JWTSecret:          jwtSecret,
-		SuperuserEmail:     os.Getenv("NSP_SUPERUSER_EMAIL"),
-		SuperuserPassword:  os.Getenv("NSP_SUPERUSER_PASSWORD"),
-		AccessTTL:          accessTTL,
-		RefreshTTL:         refreshTTL,
-		BcryptCost:         bcryptCost,
+		PostgresDataSource:     os.Getenv("NSP_PSQL_DS"),
+		FootballDataAPIKey:     os.Getenv("NSP_FOOTBALLDATA_API_KEY"),
+		Host:                   cmp.Or(os.Getenv("NSP_HOST"), defaultHost),
+		Port:                   cmp.Or(os.Getenv("NSP_PORT"), defaultPort),
+		JWTSecret:              jwtSecret,
+		SuperuserEmail:         os.Getenv("NSP_SUPERUSER_EMAIL"),
+		SuperuserPassword:      os.Getenv("NSP_SUPERUSER_PASSWORD"),
+		AccessTTL:              accessTTL,
+		RefreshTTL:             refreshTTL,
+		BcryptCost:             bcryptCost,
+		SyncRunTimeout:         syncRunTimeout,
+		SyncPlayersInterval:    syncPlayersInterval,
+		SyncStatisticsInterval: syncStatisticsInterval,
+		SyncPlayersEnabled:     boolFromEnv("NSP_SYNC_PLAYERS_ENABLED"),
+		SyncStatisticsEnabled:  boolFromEnv("NSP_SYNC_STATISTICS_ENABLED"),
 	}, nil
 }
 
@@ -106,4 +136,22 @@ func bcryptCostFromEnv() (int, error) {
 	}
 
 	return value, nil
+}
+
+// syncIntervalFromEnv lee un intervalo de sincronización y exige el mínimo.
+func syncIntervalFromEnv(name string) (time.Duration, error) {
+	value, err := durationFromEnv(name, defaultSyncInterval)
+	if err != nil {
+		return 0, err
+	}
+	if value < minSyncInterval {
+		return 0, fmt.Errorf("%s: %q debe ser de al menos %s", name, value, minSyncInterval)
+	}
+	return value, nil
+}
+
+// boolFromEnv lee un flag booleano; todo lo que no sea exactamente "true" es
+// false, así que un valor ausente o mal escrito deshabilita por defecto.
+func boolFromEnv(name string) bool {
+	return os.Getenv(name) == "true"
 }

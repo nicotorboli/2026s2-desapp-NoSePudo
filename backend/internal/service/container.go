@@ -12,13 +12,27 @@ import (
 )
 
 type Container struct {
-	Player      *PlayerServiceImpl
-	PlayerStats *PlayerStatisticsServiceImpl
-	Score       *ScoreService
-	Auth        *Auth
+	Player        *PlayerServiceImpl
+	PlayerStats   *PlayerStatisticsServiceImpl
+	Score         *ScoreService
+	Auth          *Auth
+	SyncRuns      *SyncRunService
+	SyncScheduler *SyncScheduler
 }
 
+// NewContainer arma el contenedor con las sincronizaciones deshabilitadas por
+// defecto. Lo usan los tests; el proceso real usa NewContainerWithSync.
 func NewContainer(ctx context.Context, repos *repository.Container, adapterContainer *adapters.Container, logger *slog.Logger) (*Container, error) {
+	return buildContainer(ctx, context.Background(), repos, adapterContainer, DefaultSyncSettings(), logger)
+}
+
+// NewContainerWithSync es la construcción que usa cmd/server: recibe el
+// contexto de vida del proceso y la configuración de sincronizaciones.
+func NewContainerWithSync(ctx context.Context, runCtx context.Context, repos *repository.Container, adapterContainer *adapters.Container, settings SyncSettings, logger *slog.Logger) (*Container, error) {
+	return buildContainer(ctx, runCtx, repos, adapterContainer, settings, logger)
+}
+
+func buildContainer(ctx context.Context, runCtx context.Context, repos *repository.Container, adapterContainer *adapters.Container, settings SyncSettings, logger *slog.Logger) (*Container, error) {
 	strategies, err := repos.ScoringStrategy.List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("load scoring strategies: %w", err)
@@ -40,16 +54,29 @@ func NewContainer(ctx context.Context, repos *repository.Container, adapterConta
 		logger,
 	)
 
+	player := NewPlayerService(adapterContainer.FootballData, repos.Player, logger)
+	playerStats := NewPlayerStatisticsService(
+		adapterContainer.Whoscored,
+		repos.Player,
+		repos.PlayerStatistics,
+		scoreService,
+		logger,
+	)
+
+	syncRuns := NewSyncRunService(
+		runCtx,
+		settings.RunTimeout,
+		player,
+		playerStats,
+		repos.SyncRun,
+		repos.SyncSchedule,
+		logger,
+	)
+
 	return &Container{
-		Player: NewPlayerService(adapterContainer.FootballData, repos.Player, logger),
-		PlayerStats: NewPlayerStatisticsService(
-			adapterContainer.Whoscored,
-			repos.Player,
-			repos.PlayerStatistics,
-			scoreService,
-			logger,
-		),
-		Score: scoreService,
+		Player:      player,
+		PlayerStats: playerStats,
+		Score:       scoreService,
 		Auth: NewAuthService(
 			repos.User,
 			adapterContainer.Password,
@@ -57,5 +84,7 @@ func NewContainer(ctx context.Context, repos *repository.Container, adapterConta
 			repos.RefreshToken,
 			time.Now,
 		),
+		SyncRuns:      syncRuns,
+		SyncScheduler: NewSyncScheduler(syncRuns, repos.SyncSchedule, settings, logger),
 	}, nil
 }

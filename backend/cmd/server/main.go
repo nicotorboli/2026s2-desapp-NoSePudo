@@ -34,7 +34,7 @@ func main() {
 // expectedTables son las tablas sin las cuales el servicio no puede trabajar.
 // La lista y la decisión de abortar viven acá y no en el DAO: el DAO sólo
 // corre la consulta.
-var expectedTables = []string{"players", "player_statistics", "player_audit_logs", "users", "refresh_tokens", "scoring_strategies", "scoring_strategy_activations", "scoring_histograms", "player_scores", "league_coefficients"}
+var expectedTables = []string{"players", "player_statistics", "player_audit_logs", "users", "refresh_tokens", "scoring_strategies", "scoring_strategy_activations", "scoring_histograms", "player_scores", "league_coefficients", "sync_schedules", "sync_runs"}
 
 // ensureSchema se niega a arrancar cuando falta alguna tabla, por la misma
 // razón por la que el servicio se niega a arrancar sin secreto de firma: es
@@ -102,7 +102,24 @@ func startServer() error {
 
 	repos := repository.NewContainer(db, daos)
 	adapterContainer := adapters.NewContainer(cfg)
-	services, err := service.NewContainer(ctx, repos, adapterContainer, logger)
+
+	runCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	services, err := service.NewContainerWithSync(
+		ctx,
+		runCtx,
+		repos,
+		adapterContainer,
+		service.SyncSettings{
+			RunTimeout:         cfg.SyncRunTimeout,
+			PlayersInterval:    cfg.SyncPlayersInterval,
+			StatisticsInterval: cfg.SyncStatisticsInterval,
+			PlayersEnabled:     cfg.SyncPlayersEnabled,
+			StatisticsEnabled:  cfg.SyncStatisticsEnabled,
+		},
+		logger,
+	)
 	if err != nil {
 		return err
 	}
@@ -120,8 +137,18 @@ func startServer() error {
 
 	srv := server.NewServer(cfg.GetServerAddress(), logger, controllers, middlewares, contractPath)
 
-	runCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	services.SyncScheduler.Start(runCtx)
 
-	return srv.Run(runCtx)
+	err = srv.Run(runCtx)
+
+	stop()
+	services.SyncScheduler.Stop()
+
+	shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelShutdown()
+	if shutdownErr := services.SyncRuns.Shutdown(shutdownCtx); shutdownErr != nil {
+		logger.Warn("sync runs did not finish before shutdown", "error", shutdownErr.Error())
+	}
+
+	return err
 }

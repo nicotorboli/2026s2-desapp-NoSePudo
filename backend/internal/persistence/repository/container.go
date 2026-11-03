@@ -16,6 +16,8 @@ type Container struct {
 	StrategyActivation *StrategyActivationRepositoryImpl
 	LeagueCoefficient  *LeagueCoefficientRepositoryImpl
 	ScoringStrategy    *ScoringStrategyRepositoryImpl
+	SyncSchedule       *SyncScheduleRepositoryImpl
+	SyncRun            *SyncRunRepositoryImpl
 }
 
 func NewContainer(db *sql.DB, daos *dao.Container) *Container {
@@ -29,5 +31,7 @@ func NewContainer(db *sql.DB, daos *dao.Container) *Container {
 		StrategyActivation: NewStrategyActivationRepository(daos.StrategyActivation),
 		LeagueCoefficient:  NewLeagueCoefficientRepository(daos.LeagueCoefficient),
 		ScoringStrategy:    NewScoringStrategyRepository(daos.ScoringStrategy),
+		SyncSchedule:       NewSyncScheduleRepository(daos.SyncSchedule),
+		SyncRun:            NewSyncRunRepository(db, daos.SyncRun),
 	}
 }

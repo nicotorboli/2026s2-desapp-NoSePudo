@@ -22,6 +22,8 @@ type Container struct {
 	StrategyActivation *StrategyActivationSql
 	LeagueCoefficient  *LeagueCoefficientSql
 	ScoringStrategy    *ScoringStrategySql
+	SyncSchedule       *SyncScheduleSql
+	SyncRun            *SyncRunSql
 }
 
 func NewContainer(db *sql.DB) *Container {
@@ -37,5 +39,7 @@ func NewContainer(db *sql.DB) *Container {
 		StrategyActivation: NewStrategyActivationDao(db),
 		LeagueCoefficient:  NewLeagueCoefficientDao(db),
 		ScoringStrategy:    NewScoringStrategyDao(db),
+		SyncSchedule:       NewSyncScheduleDao(db),
+		SyncRun:            NewSyncRunDao(db),
 	}
 }
