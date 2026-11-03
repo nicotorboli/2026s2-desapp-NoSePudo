@@ -336,6 +336,9 @@ ALTER TABLE market_trades
 ALTER TABLE market_trades
     ALTER COLUMN sell_order_id DROP NOT NULL;
 
+ALTER TABLE player_quotes
+    ADD COLUMN IF NOT EXISTS score_id BIGINT NULL REFERENCES player_scores (id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS idx_trades_p2p ON market_trades (p2p_session_id)
     WHERE p2p_session_id IS NOT NULL;
 
