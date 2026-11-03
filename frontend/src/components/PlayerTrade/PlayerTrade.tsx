@@ -114,8 +114,8 @@ export const PlayerTrade: React.FC<PlayerTradeProps> = ({
   const availableCash = parseCredits(portfolio?.availableCash);
   const activeQuote = parseCredits(currentPosition?.currentPrice) || 1.0;
 
-  const parsedQty = parseInt(quantity, 10) || 0;
-  const parsedPrice = orderType === 'LIMIT' ? parseFloat(limitPrice) || 0 : activeQuote;
+  const parsedQty = Number.parseInt(quantity, 10) || 0;
+  const parsedPrice = orderType === 'LIMIT' ? Number.parseFloat(limitPrice) || 0 : activeQuote;
   const estimatedTotal = parsedQty * parsedPrice;
 
   const maxAffordable = Math.min(
@@ -131,7 +131,7 @@ export const PlayerTrade: React.FC<PlayerTradeProps> = ({
     }
     if (!/^\d+$/.test(raw)) return;
 
-    const num = parseInt(raw, 10);
+    const num = Number.parseInt(raw, 10);
     const maxAllowed = side === 'BUY' ? MAX_PLAYER_SUPPLY : availableTokens;
 
     if (num > maxAllowed) {
@@ -374,8 +374,14 @@ export const PlayerTrade: React.FC<PlayerTradeProps> = ({
         </div>
 
         <div className="player-trade__field">
-          <label className="player-trade__label">Tipo de Orden</label>
-          <div className="player-trade__radios">
+          <span id="order-type-label" className="player-trade__label">
+            Tipo de Orden
+          </span>
+          <div
+            className="player-trade__radios"
+            role="radiogroup"
+            aria-labelledby="order-type-label"
+          >
             <label className="player-trade__radio-label">
               <input
                 type="radio"

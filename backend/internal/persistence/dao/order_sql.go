@@ -9,9 +9,6 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
-const orderColumns = `id, user_id, player_id, side, time_in_force, status, price,
-	quantity, executed_quantity, market_maker, created_at, updated_at`
-
 type OrderSql struct {
 	Db *sql.DB
 }
@@ -44,7 +41,11 @@ func (dao *OrderSql) Insert(ctx context.Context, tx *sql.Tx, order model.Order) 
 }
 
 func (dao *OrderSql) GetByID(ctx context.Context, tx *sql.Tx, id int64) (model.Order, error) {
-	const query = `SELECT ` + orderColumns + ` FROM market_orders WHERE id = $1`
+	const query = `
+		SELECT id, user_id, player_id, side, time_in_force, status, price,
+			quantity, executed_quantity, market_maker, created_at, updated_at
+		FROM market_orders
+		WHERE id = $1`
 
 	querier, err := querierFor(tx, dao.Db)
 	if err != nil {
@@ -70,7 +71,8 @@ func (dao *OrderSql) Update(ctx context.Context, tx *sql.Tx, order model.Order) 
 
 func (dao *OrderSql) LockLiveBook(ctx context.Context, tx *sql.Tx, playerID int64, side model.OrderSide) ([]model.Order, error) {
 	const query = `
-		SELECT ` + orderColumns + `
+		SELECT id, user_id, player_id, side, time_in_force, status, price,
+			quantity, executed_quantity, market_maker, created_at, updated_at
 		FROM market_orders
 		WHERE player_id = $1 AND side = $2 AND status IN ('PENDING', 'PARTIALLY_FILLED')
 		ORDER BY price, created_at, id
@@ -90,7 +92,8 @@ func (dao *OrderSql) LockLiveBook(ctx context.Context, tx *sql.Tx, playerID int6
 
 func (dao *OrderSql) ListLiveByUser(ctx context.Context, userID int64, playerID *int64) ([]model.Order, error) {
 	const query = `
-		SELECT ` + orderColumns + `
+		SELECT id, user_id, player_id, side, time_in_force, status, price,
+			quantity, executed_quantity, market_maker, created_at, updated_at
 		FROM market_orders
 		WHERE user_id = $1
 		  AND status IN ('PENDING', 'PARTIALLY_FILLED')
@@ -111,7 +114,8 @@ func (dao *OrderSql) ListLiveByUser(ctx context.Context, userID int64, playerID 
 
 func (dao *OrderSql) ListLiveByPlayer(ctx context.Context, playerID int64) ([]model.Order, error) {
 	const query = `
-		SELECT ` + orderColumns + `
+		SELECT id, user_id, player_id, side, time_in_force, status, price,
+			quantity, executed_quantity, market_maker, created_at, updated_at
 		FROM market_orders
 		WHERE player_id = $1
 		  AND status IN ('PENDING', 'PARTIALLY_FILLED')
@@ -131,7 +135,8 @@ func (dao *OrderSql) ListLiveByPlayer(ctx context.Context, playerID int64) ([]mo
 
 func (dao *OrderSql) GetLiveMarketMaker(ctx context.Context, tx *sql.Tx, playerID int64, side model.OrderSide) (model.Order, error) {
 	const query = `
-		SELECT ` + orderColumns + `
+		SELECT id, user_id, player_id, side, time_in_force, status, price,
+			quantity, executed_quantity, market_maker, created_at, updated_at
 		FROM market_orders
 		WHERE player_id = $1 AND side = $2 AND market_maker
 		  AND status IN ('PENDING', 'PARTIALLY_FILLED')`

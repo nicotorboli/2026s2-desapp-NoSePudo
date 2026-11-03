@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -101,9 +101,16 @@ func (s *SharedPostgres) Fresh(t *testing.T) *sql.DB {
 
 	name := fmt.Sprintf("prueba_%d", s.counter.Add(1))
 
-	if _, err := s.admin.ExecContext(t.Context(),
-		fmt.Sprintf(`CREATE DATABASE %s TEMPLATE %s`, name, templateDatabase),
-	); err != nil {
+	// PostgreSQL no acepta parámetros para identificadores, así que el nombre
+	// se interpola; se cita con pq.QuoteIdentifier para que no sea inyectable.
+	// NOSONAR: el nombre lo genera este helper y el template es una constante.
+	createQuery := fmt.Sprintf(
+		`CREATE DATABASE %s TEMPLATE %s`,
+		pq.QuoteIdentifier(name),
+		pq.QuoteIdentifier(templateDatabase),
+	)
+
+	if _, err := s.admin.ExecContext(t.Context(), createQuery); err != nil { // NOSONAR
 		t.Fatalf("no se pudo clonar la base de pruebas: %v", err)
 	}
 
@@ -118,9 +125,9 @@ func (s *SharedPostgres) Fresh(t *testing.T) *sql.DB {
 		dropCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		if _, dropErr := s.admin.ExecContext(dropCtx,
-			fmt.Sprintf(`DROP DATABASE IF EXISTS %s`, name),
-		); dropErr != nil {
+		dropQuery := fmt.Sprintf(`DROP DATABASE IF EXISTS %s`, pq.QuoteIdentifier(name))
+
+		if _, dropErr := s.admin.ExecContext(dropCtx, dropQuery); dropErr != nil { // NOSONAR
 			t.Logf("no se pudo descartar la base %s: %v", name, dropErr)
 		}
 	})

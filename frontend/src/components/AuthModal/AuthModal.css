@@ -10,8 +10,17 @@
 .auth-modal__overlay {
   position: absolute;
   inset: 0;
+  padding: 0;
+  border: none;
+  appearance: none;
   background-color: rgba(10, 16, 12, 0.8);
   backdrop-filter: blur(3px);
+  cursor: pointer;
+}
+
+.auth-modal__overlay:focus-visible {
+  outline: 2px solid var(--radiant-orange, #ff7f1f);
+  outline-offset: -2px;
 }
 
 .auth-modal__dialog {

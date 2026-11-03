@@ -1,8 +1,8 @@
 export const parseCredits = (val: string | number | undefined | null): number => {
   if (val === undefined || val === null) return 0;
   if (typeof val === 'number') return val;
-  const parsed = parseFloat(val);
-  return isNaN(parsed) ? 0 : parsed;
+  const parsed = Number.parseFloat(val);
+  return Number.isNaN(parsed) ? 0 : parsed;
 };
 
 export const formatCredits = (

@@ -102,7 +102,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   return (
     <div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
-      <div className="auth-modal__overlay" onClick={onClose} />
+      <button
+        type="button"
+        className="auth-modal__overlay"
+        onClick={onClose}
+        aria-label="Cerrar modal desde el fondo"
+      />
       <div className="auth-modal__dialog">
         <button
           type="button"

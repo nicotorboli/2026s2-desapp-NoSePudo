@@ -40,8 +40,18 @@ describe('AuthModal', () => {
     const onCloseMock = vi.fn();
     render(<AuthModal isOpen={true} onClose={onCloseMock} />);
 
-    const closeBtn = screen.getAllByRole('button', { name: /cerrar modal/i })[0];
+    const closeBtn = screen.getByRole('button', { name: 'Cerrar modal' });
     fireEvent.click(closeBtn);
+
+    expect(onCloseMock).toHaveBeenCalledOnce();
+  });
+
+  it('calls onClose when clicking the overlay', () => {
+    const onCloseMock = vi.fn();
+    render(<AuthModal isOpen={true} onClose={onCloseMock} />);
+
+    const overlayBtn = screen.getByRole('button', { name: /cerrar modal desde el fondo/i });
+    fireEvent.click(overlayBtn);
 
     expect(onCloseMock).toHaveBeenCalledOnce();
   });
