@@ -135,7 +135,7 @@ func (d *SyncScheduleSql) EnableLegacyDefaults(ctx context.Context, now time.Tim
 
 	const query = `
 		UPDATE sync_schedules
-		SET enabled = TRUE, next_run_at = $1 + INTERVAL '1440 minutes', updated_at = NOW()
+		SET enabled = TRUE, next_run_at = $1::timestamptz + INTERVAL '1440 minutes', updated_at = NOW()
 		WHERE updated_by IS NULL AND enabled = FALSE AND interval_minutes = 1440`
 
 	result, err := d.db.ExecContext(ctx, query, now)
