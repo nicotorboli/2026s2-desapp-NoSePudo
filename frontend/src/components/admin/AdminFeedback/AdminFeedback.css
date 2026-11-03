@@ -1,26 +1,27 @@
 .admin-status {
   margin: 1rem 0;
   padding: 0.75rem 1rem;
-  border-radius: 8px;
+  border-radius: 6px;
   font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .admin-status--success {
-  background-color: rgba(17, 78, 4, 0.12);
-  border: 1px solid var(--green-forest);
-  color: var(--green-forest);
+  background-color: #c6f6d5;
+  border: 1px solid #38a169;
+  color: #1c4532;
 }
 
 .admin-status--error {
-  background-color: rgba(190, 30, 30, 0.1);
-  border: 1px solid #be1e1e;
-  color: #8c1414;
+  background-color: #fed7d7;
+  border: 1px solid #e53e3e;
+  color: #742a2a;
 }
 
 .admin-status--info {
-  background-color: rgba(126, 189, 194, 0.2);
-  border: 1px solid var(--teal);
-  color: var(--ink-blue);
+  background-color: #bee3f8;
+  border: 1px solid #3182ce;
+  color: #2a4365;
 }
 
 .admin-dialog {
@@ -31,26 +32,32 @@
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background-color: rgba(19, 27, 35, 0.55);
+  background-color: rgba(19, 27, 35, 0.65);
+  backdrop-filter: blur(3px);
 }
 
 .admin-dialog__panel {
   width: min(32rem, 100%);
-  padding: 1.5rem;
-  border-radius: 12px;
-  background-color: #fff;
-  box-shadow: 0 20px 40px rgba(19, 27, 35, 0.25);
+  padding: 1.75rem;
+  border-radius: 6px;
+  background-color: #dfc29d;
+  border: 1px solid rgba(223, 175, 15, 0.35);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
 .admin-dialog__title {
   margin: 0 0 0.5rem;
-  color: var(--ink-blue);
-  font-size: 1.25rem;
+  font-family: "Merriweather", Georgia, serif;
+  color: var(--ink-blue, #131b23);
+  font-size: 1.35rem;
+  font-weight: 800;
 }
 
 .admin-dialog__description {
   margin: 0 0 1.25rem;
-  color: #4a5568;
+  color: #3d2f1f;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
 .admin-dialog__actions {
@@ -60,25 +67,39 @@
 }
 
 .admin-dialog__button {
-  border: none;
-  border-radius: 6px;
-  padding: 0.55rem 0.95rem;
+  border-radius: 4px;
+  padding: 0.55rem 1rem;
   font: inherit;
   font-weight: 700;
+  font-size: 0.875rem;
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: all 0.15s ease-in-out;
 }
 
 .admin-dialog__button--cancel {
-  background-color: #e2e8f0;
-  color: var(--ink-blue);
+  background-color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(19, 27, 35, 0.25);
+  color: var(--ink-blue, #131b23);
+}
+
+.admin-dialog__button--cancel:hover:not(:disabled) {
+  background-color: #ffffff;
+  border-color: var(--ink-blue, #131b23);
 }
 
 .admin-dialog__button--confirm {
-  background-color: var(--radiant-orange);
-  color: #fff;
+  border: 1px solid #c95e09;
+  background: linear-gradient(180deg, #ff9b49 0%, #ff7f1f 45%, #ea690b 100%);
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.admin-dialog__button--confirm:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffa85c 0%, #ff8930 45%, #f27214 100%);
 }
 
 .admin-dialog__button:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }

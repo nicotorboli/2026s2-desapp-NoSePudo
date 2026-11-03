@@ -1,41 +1,52 @@
 .sync-section {
-  padding: 1.5rem;
-  border-radius: 14px;
-  background-color: #fff;
-  box-shadow: 0 8px 24px rgba(19, 27, 35, 0.08);
+  padding: 1.75rem;
+  border-radius: 6px;
+  background-color: #dfc29d;
+  border: 1px solid rgba(223, 175, 15, 0.25);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
 .sync-section__header {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 2px solid rgba(19, 27, 35, 0.15);
+  padding-bottom: 0.75rem;
 }
 
 .sync-section__title {
   margin: 0 0 0.35rem;
-  color: var(--ink-blue);
+  font-family: "Merriweather", Georgia, serif;
+  color: var(--ink-blue, #131b23);
   font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0.3px;
 }
 
 .sync-section__subtitle {
   margin: 0;
-  color: #4a5568;
+  color: #3d2f1f;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
 .sync-section__loading,
 .sync-section__meta {
-  color: #4a5568;
+  color: #4a3b2c;
+  font-size: 0.9rem;
 }
 
 .sync-section__grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: 1rem;
+  gap: 1.25rem;
   margin-top: 1rem;
 }
 
 .sync-section__card {
-  padding: 1rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  padding: 1.25rem;
+  background-color: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(19, 27, 35, 0.2);
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .sync-section__card-header {
@@ -43,111 +54,155 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(19, 27, 35, 0.12);
+  padding-bottom: 0.5rem;
 }
 
 .sync-section__card-title {
   margin: 0;
-  color: var(--ink-blue);
-  font-size: 1.05rem;
+  color: var(--ink-blue, #131b23);
+  font-size: 1.1rem;
+  font-weight: 800;
   text-transform: capitalize;
 }
 
 .sync-section__badge {
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
   font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
 .sync-section__badge--on {
-  background-color: rgba(17, 78, 4, 0.12);
-  color: var(--green-forest);
+  background-color: #c6f6d5;
+  color: #22543d;
+  border: 1px solid #9ae6b4;
 }
 
 .sync-section__badge--off {
   background-color: #edf2f7;
   color: #4a5568;
+  border: 1px solid #cbd5e0;
 }
 
 .sync-section__check {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.75rem;
-  color: var(--ink-blue);
+  margin-bottom: 0.85rem;
+  color: var(--ink-blue, #131b23);
   font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
 }
 
 .sync-section__field {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  margin-bottom: 0.75rem;
-  color: var(--ink-blue);
+  margin-bottom: 0.85rem;
+  color: var(--ink-blue, #131b23);
   font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .sync-section__field input {
   padding: 0.5rem 0.65rem;
-  border: 1px solid #cbd5e0;
-  border-radius: 6px;
+  background-color: #ffffff;
+  border: 1px solid #bba282;
+  border-radius: 4px;
   font: inherit;
+  color: #1a202c;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.sync-section__field input:focus {
+  outline: none;
+  border-color: var(--golden, #dfaf0f);
+  box-shadow: 0 0 0 2px rgba(223, 175, 15, 0.25);
 }
 
 .sync-section__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
+  margin-top: 1rem;
 }
 
 .sync-section__button {
-  border: 1px solid #cbd5e0;
-  border-radius: 6px;
-  padding: 0.5rem 0.85rem;
-  background-color: #fff;
-  color: var(--ink-blue);
+  border: 1px solid rgba(19, 27, 35, 0.25);
+  border-radius: 4px;
+  padding: 0.5rem 0.9rem;
+  background-color: rgba(255, 255, 255, 0.85);
+  color: var(--ink-blue, #131b23);
   font: inherit;
   font-weight: 700;
+  font-size: 0.875rem;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.15s ease-in-out;
+}
+
+.sync-section__button:hover:not(:disabled) {
+  background-color: #ffffff;
+  border-color: var(--ink-blue, #131b23);
 }
 
 .sync-section__button--primary {
-  border-color: var(--radiant-orange);
-  background-color: var(--radiant-orange);
-  color: #fff;
+  border: 1px solid #c95e09;
+  background: linear-gradient(180deg, #ff9b49 0%, #ff7f1f 45%, #ea690b 100%);
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.sync-section__button--primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffa85c 0%, #ff8930 45%, #f27214 100%);
 }
 
 .sync-section__button:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
 .sync-section__run {
-  margin-top: 1.25rem;
-  padding: 1rem;
-  border-radius: 10px;
-  background-color: rgba(126, 189, 194, 0.12);
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(19, 27, 35, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .sync-section__run-title {
   margin: 0 0 0.5rem;
-  color: var(--ink-blue);
+  color: var(--ink-blue, #131b23);
+  font-weight: 800;
+  font-size: 1.1rem;
 }
 
 .sync-section__progress {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  margin-top: 0.5rem;
+  color: var(--ink-blue, #131b23);
+  font-weight: 600;
 }
 
 .sync-section__progress progress {
   width: 100%;
-  height: 0.75rem;
+  height: 0.85rem;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 .sync-section__history {
-  margin-top: 1.5rem;
+  margin-top: 2rem;
+  border-top: 2px solid rgba(19, 27, 35, 0.15);
+  padding-top: 1.25rem;
 }
 
 .sync-section__history-header {
@@ -155,16 +210,23 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .sync-section__history-title {
   margin: 0;
-  color: var(--ink-blue);
+  font-family: "Merriweather", Georgia, serif;
+  color: var(--ink-blue, #131b23);
+  font-size: 1.2rem;
+  font-weight: 800;
 }
 
 .sync-section__table-wrapper {
   overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid var(--ink-blue, #131b23);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  background-color: #dfc29d;
 }
 
 .sync-section__table {
@@ -173,54 +235,75 @@
   font-size: 0.92rem;
 }
 
-.sync-section__table th,
-.sync-section__table td {
-  padding: 0.55rem 0.6rem;
-  border-bottom: 1px solid #e2e8f0;
-  text-align: left;
-  vertical-align: top;
+.sync-section__table thead {
+  background-color: var(--ink-blue, #131b23);
 }
 
 .sync-section__table th {
-  color: var(--ink-blue);
-  font-weight: 800;
+  padding: 0.85rem 1rem;
+  border-bottom: 2px solid var(--ink-blue, #131b23);
+  text-align: left;
+  color: var(--teal, #7ebdc2);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sync-section__table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(19, 27, 35, 0.15);
+  text-align: left;
+  vertical-align: middle;
+  color: var(--ink-blue, #131b23);
+}
+
+.sync-section__table tbody tr:hover {
+  background-color: color-mix(in srgb, var(--orange-green, #a7af1f) 18%, transparent);
 }
 
 .sync-section__status {
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: 10px;
+  font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .sync-section__status--running {
-  background-color: rgba(126, 189, 194, 0.25);
-  color: var(--ink-blue);
+  background-color: #bee3f8;
+  color: #2b6cb0;
+  border: 1px solid #90cdf4;
 }
 
 .sync-section__status--succeeded {
-  background-color: rgba(17, 78, 4, 0.12);
-  color: var(--green-forest);
+  background-color: #c6f6d5;
+  color: #22543d;
+  border: 1px solid #9ae6b4;
 }
 
 .sync-section__status--partial {
-  background-color: rgba(223, 175, 15, 0.2);
-  color: #7a5c00;
+  background-color: #feebc8;
+  color: #c05621;
+  border: 1px solid #fbd38d;
 }
 
 .sync-section__status--failed {
-  background-color: rgba(190, 30, 30, 0.1);
-  color: #8c1414;
+  background-color: #fed7d7;
+  color: #9b2c2c;
+  border: 1px solid #feb2b2;
 }
 
 .sync-section__status--skipped {
   background-color: #edf2f7;
   color: #4a5568;
+  border: 1px solid #cbd5e0;
 }
 
 .sync-section__message {
-  max-width: 18rem;
-  color: #4a5568;
+  max-width: 22rem;
+  color: #4a3b2c;
   overflow-wrap: anywhere;
+  font-size: 0.875rem;
 }
