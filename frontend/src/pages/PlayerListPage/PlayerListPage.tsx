@@ -73,7 +73,7 @@ export const PlayerListPage: React.FC<PlayerListPageProps> = ({ onSelectPlayer }
       />
 
       <section className="player-list-page__content">
-        {isLoading && (
+        {isLoading && !data && (
           <div className="player-list-page__loading" role="status">
             <span className="player-list-page__spinner" />
             <p>Cargando catálogo de jugadores...</p>
@@ -109,8 +109,8 @@ export const PlayerListPage: React.FC<PlayerListPageProps> = ({ onSelectPlayer }
           </div>
         )}
 
-        {!isLoading && !error && data && data.items.length > 0 && (
-          <>
+        {!error && data && data.items.length > 0 && (
+          <div className={`player-list-page__table-wrapper ${isLoading ? 'player-list-page__table-wrapper--loading' : ''}`}>
             <PlayerTable players={data.items} onSelectPlayer={onSelectPlayer} />
             <Pagination
               page={data.page}
@@ -118,7 +118,7 @@ export const PlayerListPage: React.FC<PlayerListPageProps> = ({ onSelectPlayer }
               total={data.total}
               onPageChange={handlePageChange}
             />
-          </>
+          </div>
         )}
       </section>
     </main>

@@ -1,5 +1,5 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "Rubik", Inter, system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   --ink-blue: #131b23;
@@ -11,10 +11,35 @@
   --teal: #7ebdc2;
 }
 
+html {
+  scrollbar-gutter: stable;
+  overflow-y: scroll;
+  box-sizing: border-box;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
 body {
   margin: 0;
-  place-items: center;
   min-width: 320px;
+  min-height: 100vh;
   background-color: color-mix(in srgb, var(--green-forest) 16%, var(--radiant-orange) 16%, transparent);
   font-family: "Rubik", sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }

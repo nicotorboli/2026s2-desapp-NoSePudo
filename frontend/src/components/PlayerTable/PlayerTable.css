@@ -14,7 +14,7 @@
 
 .player-table__head {
   background-color: var(--ink-blue);
-  border-bottom:solid var(--ink-blue) ;
+  border-bottom: solid var(--ink-blue);
 }
 
 .player-table__cell {
@@ -28,7 +28,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color:var(--teal) 
+  color: var(--teal);
 }
 
 .player-table__cell--name {
@@ -46,7 +46,7 @@
 }
 
 .player-table__row--interactive:hover {
-  background-color:color-mix(in srgb, var(--orange-green) 20%, transparent); 
+  background-color: color-mix(in srgb, var(--orange-green) 20%, transparent);
 }
 
 .player-table__position {

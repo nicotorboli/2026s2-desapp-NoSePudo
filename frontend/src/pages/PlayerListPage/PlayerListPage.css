@@ -1,5 +1,23 @@
 .player-list-page {
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 2rem 1.5rem;
+  width: 100%;
+  flex: 1;
+}
+
+.player-list-page__content {
+  position: relative;
+}
+
+.player-list-page__table-wrapper {
+  position: relative;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.player-list-page__table-wrapper--loading {
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .player-list-page__header {
