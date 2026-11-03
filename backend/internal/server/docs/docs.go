@@ -49,6 +49,8 @@ func Mount(contractPath string, next http.Handler) http.Handler {
 		switch {
 		case r.URL.Path == openAPIPath:
 			serveContract(contractPath, w, r)
+		case r.URL.Path == "/docs":
+			http.Redirect(w, r, docsPrefix, http.StatusMovedPermanently)
 		case len(r.URL.Path) >= len(docsPrefix) && r.URL.Path[:len(docsPrefix)] == docsPrefix:
 			http.StripPrefix(docsPrefix, assetServer).ServeHTTP(w, r)
 		default:
