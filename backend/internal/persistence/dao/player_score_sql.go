@@ -103,18 +103,28 @@ func (d *PlayerScoreSql) ListByPlayer(ctx context.Context, playerID int64) ([]mo
 	return scores, nil
 }
 
-func (d *PlayerScoreSql) LatestPercentiles(ctx context.Context, playerIDs []int64) (map[int64]float64, error) {
+func (d *PlayerScoreSql) LatestPercentiles(ctx context.Context, playerIDs []int64, strategyID ...int) (map[int64]float64, error) {
 	if d.db == nil {
 		return nil, errNilDatabase
 	}
 
-	const query = `
+	query := `
 		SELECT DISTINCT ON (player_id) player_id, percentile
 		FROM player_scores
 		WHERE player_id = ANY($1)
 		ORDER BY player_id, computed_at DESC, id DESC`
+	args := []any{pq.Array(playerIDs)}
 
-	rows, err := d.db.QueryContext(ctx, query, pq.Array(playerIDs))
+	if len(strategyID) > 0 && strategyID[0] > 0 {
+		query = `
+			SELECT DISTINCT ON (player_id) player_id, percentile
+			FROM player_scores
+			WHERE player_id = ANY($1) AND strategy_id = $2
+			ORDER BY player_id, computed_at DESC, id DESC`
+		args = append(args, strategyID[0])
+	}
+
+	rows, err := d.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query latest percentiles: %w", err)
 	}

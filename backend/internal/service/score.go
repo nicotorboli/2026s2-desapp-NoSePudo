@@ -26,7 +26,7 @@ type ScoreRepository interface {
 	Save(ctx context.Context, scores []model.PlayerScore) error
 	HasScoreFor(ctx context.Context, playerID int64, strategyID int, statisticsID int64) (bool, error)
 	History(ctx context.Context, playerID int64) ([]model.PlayerScore, error)
-	LatestPercentiles(ctx context.Context, playerIDs []int64) (map[int64]float64, error)
+	LatestPercentiles(ctx context.Context, playerIDs []int64, strategyID ...int) (map[int64]float64, error)
 }
 
 type HistogramRepository interface {
@@ -186,8 +186,18 @@ func (s *ScoreService) GetScore(ctx context.Context, playerID int64) (dto.Player
 		return dto.PlayerScoreResponse{}, ErrScoreNotFound
 	}
 
+	selected := history[0]
+	if activation, found, err := s.activations.Active(ctx); err == nil && found {
+		for _, h := range history {
+			if h.StrategyID == activation.StrategyID {
+				selected = h
+				break
+			}
+		}
+	}
+
 	coefficient := s.leagueCoefficient(ctx, player.LeagueCode)
-	resp := dto.PlayerScoreDesdeModelo(history[0], coefficient, s.strategyName(history[0].StrategyID))
+	resp := dto.PlayerScoreDesdeModelo(selected, coefficient, s.strategyName(selected.StrategyID))
 	resp.Score *= model.PositionDiscount(player.Position)
 	return resp, nil
 }
@@ -407,7 +417,12 @@ func (s *ScoreService) rankingItems(ctx context.Context, players []model.Player)
 		ids[i] = p.ID
 	}
 
-	percentiles, err := s.scores.LatestPercentiles(ctx, ids)
+	activeStrategyID := 0
+	if activation, found, err := s.activations.Active(ctx); err == nil && found {
+		activeStrategyID = activation.StrategyID
+	}
+
+	percentiles, err := s.scores.LatestPercentiles(ctx, ids, activeStrategyID)
 	if err != nil {
 		return nil, fmt.Errorf("load latest percentiles: %w", err)
 	}
