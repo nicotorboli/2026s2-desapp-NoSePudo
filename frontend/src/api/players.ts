@@ -11,6 +11,7 @@ export interface PlayerDetailDTO {
   dateOfBirth: string | null;
   nationality: string | null;
   shirtNumber: number | null;
+  price: string | null;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -62,6 +63,7 @@ export interface PlayerRankingItemDTO {
   league: string;
   position: string;
   score: number | null;
+  price: string | null;
 }
 
 export interface PlayerRankingPageDTO {
@@ -69,6 +71,23 @@ export interface PlayerRankingPageDTO {
   offset: number;
   limit: number;
   total: number;
+}
+
+export interface PlayerQuoteDTO {
+  playerId: number;
+  createdAt: string;
+  strategy: string;
+  strategyVersion: string;
+  price: string;
+}
+
+export interface PlayerPriceDTO {
+  playerId: number;
+  computedAt: string;
+  strategyName: string;
+  price: string;
+  score: number;
+  leagueCoefficient: number;
 }
 
 interface PlayerRankingParams {
@@ -106,4 +125,12 @@ export const getPlayerScores = async (id: number): Promise<PlayerScoreDTO[]> => 
 
 export const getPlayersRanking = async (params?: PlayerRankingParams): Promise<PlayerRankingPageDTO> => {
   return get<PlayerRankingPageDTO>('/players/ranking', params as Record<string, unknown>);
+};
+
+export const getPlayerQuotes = async (id: number): Promise<PlayerQuoteDTO[]> => {
+  return get<PlayerQuoteDTO[]>(`/players/${id}/quotes`);
+};
+
+export const getPlayerPrice = async (id: number, date?: string): Promise<PlayerPriceDTO> => {
+  return get<PlayerPriceDTO>(`/players/${id}/price`, date ? { date } : undefined);
 };

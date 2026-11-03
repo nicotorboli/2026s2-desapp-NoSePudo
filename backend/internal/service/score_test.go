@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
@@ -18,12 +19,24 @@ import (
 const testStrategyID = 100
 
 type scoreServiceFixture struct {
-	svc     *service.ScoreService
-	db      *sql.DB
-	actorID int64
+	svc         *service.ScoreService
+	repos       *repository.Container
+	marketMaker *service.MarketMakerService
+	db          *sql.DB
+	actorID     int64
 }
 
 func newScoreServiceFixture(t *testing.T) scoreServiceFixture {
+	t.Helper()
+	return newScoreServiceFixtureWith(t, false)
+}
+
+func newScoreServiceQuoteFixture(t *testing.T) scoreServiceFixture {
+	t.Helper()
+	return newScoreServiceFixtureWith(t, true)
+}
+
+func newScoreServiceFixtureWith(t *testing.T, withQuotes bool) scoreServiceFixture {
 	t.Helper()
 	db := startStatisticsPostgres(t)
 	daos := dao.NewContainer(db)
@@ -51,6 +64,16 @@ func newScoreServiceFixture(t *testing.T) scoreServiceFixture {
 		registry[strategy.ID] = strategy
 	}
 
+	marketMaker := service.NewMarketMakerService(repos.Market, time.Now)
+
+	options := make([]service.ScoreOption, 0, 2)
+	if withQuotes {
+		options = append(options,
+			service.WithScoreQuoteReader(repos.Market),
+			service.WithScoreQuoteWriter(marketMaker),
+		)
+	}
+
 	svc := service.NewScoreService(
 		registry,
 		repos.PlayerScore,
@@ -60,9 +83,16 @@ func newScoreServiceFixture(t *testing.T) scoreServiceFixture {
 		repos.Player,
 		repos.PlayerStatistics,
 		logger,
+		options...,
 	)
 
-	return scoreServiceFixture{svc: svc, db: db, actorID: user.ID}
+	return scoreServiceFixture{
+		svc:         svc,
+		repos:       repos,
+		marketMaker: marketMaker,
+		db:          db,
+		actorID:     user.ID,
+	}
 }
 
 func (f scoreServiceFixture) seedRatedPlayer(t *testing.T, name string, rating float64) int64 {
@@ -295,5 +325,208 @@ func TestScoreServiceEnsureDefaultActivationIsIdempotentAndRespectsOperatorChoic
 	}
 	if active.ID != testStrategyID {
 		t.Errorf("EnsureDefaultActivation pisó la elección del operador: %d", active.ID)
+	}
+}
+
+func TestScoreServiceRecalculateRegistraUnaCotizacionPorScore(t *testing.T) {
+	f := newScoreServiceQuoteFixture(t)
+	playerID := f.seedRatedPlayer(t, "Cotizado", 8.0)
+
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
+		t.Fatalf("ActivateStrategy devolvió error: %v", err)
+	}
+
+	quotes, err := f.repos.Market.QuoteHistory(t.Context(), playerID)
+	if err != nil {
+		t.Fatalf("QuoteHistory devolvió error: %v", err)
+	}
+	if len(quotes) != 1 {
+		t.Fatalf("se registraron %d cotizaciones, se esperaba 1", len(quotes))
+	}
+	if quotes[0].ScoreID == nil {
+		t.Fatal("la cotización no quedó ligada al score")
+	}
+
+	score, err := f.svc.GetScore(t.Context(), playerID)
+	if err != nil {
+		t.Fatalf("GetScore devolvió error: %v", err)
+	}
+	if expected := model.DefaultPricePolicy().Price(score.Score); quotes[0].Price != expected {
+		t.Errorf("el precio cotizado es %d, se esperaba %d", quotes[0].Price, expected)
+	}
+}
+
+func TestScoreServiceRecalcularNoDuplicaLasCotizaciones(t *testing.T) {
+	f := newScoreServiceQuoteFixture(t)
+	playerID := f.seedRatedPlayer(t, "Uno", 7.0)
+
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
+		t.Fatalf("la primera ActivateStrategy devolvió error: %v", err)
+	}
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
+		t.Fatalf("la segunda ActivateStrategy devolvió error: %v", err)
+	}
+
+	quotes, err := f.repos.Market.QuoteHistory(t.Context(), playerID)
+	if err != nil {
+		t.Fatalf("QuoteHistory devolvió error: %v", err)
+	}
+	if len(quotes) != 1 {
+		t.Errorf("se registraron %d cotizaciones, se esperaba 1: recalcular no duplica", len(quotes))
+	}
+}
+
+func TestScoreServiceGetPriceAtReconstruyeElPrecio(t *testing.T) {
+	f := newScoreServiceQuoteFixture(t)
+	playerID := f.seedRatedPlayer(t, "Precio", 8.0)
+
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
+		t.Fatalf("ActivateStrategy devolvió error: %v", err)
+	}
+
+	price, err := f.svc.GetPriceAt(t.Context(), playerID, time.Now().Add(time.Minute))
+	if err != nil {
+		t.Fatalf("GetPriceAt devolvió error: %v", err)
+	}
+
+	score, err := f.svc.GetScore(t.Context(), playerID)
+	if err != nil {
+		t.Fatalf("GetScore devolvió error: %v", err)
+	}
+	if expected := dto.CreditsADecimal(model.DefaultPricePolicy().Price(score.Score)); price.Price != expected {
+		t.Errorf("price = %q, se esperaba %q", price.Price, expected)
+	}
+	if price.PlayerID != playerID {
+		t.Errorf("playerId = %d, se esperaba %d", price.PlayerID, playerID)
+	}
+}
+
+func TestScoreServiceGetPriceAtAplicaElCoeficienteHistorico(t *testing.T) {
+	f := newScoreServiceQuoteFixture(t)
+	playerID := f.seedRatedPlayer(t, "Coeficiente", 8.0)
+
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
+		t.Fatalf("ActivateStrategy devolvió error: %v", err)
+	}
+	if err := f.svc.SetLeagueCoefficient(t.Context(), "PL", 0.5, f.actorID); err != nil {
+		t.Fatalf("SetLeagueCoefficient devolvió error: %v", err)
+	}
+
+	price, err := f.svc.GetPriceAt(t.Context(), playerID, time.Now().Add(time.Minute))
+	if err != nil {
+		t.Fatalf("GetPriceAt devolvió error: %v", err)
+	}
+	if price.LeagueCoefficient != 0.5 {
+		t.Errorf("leagueCoefficient = %v, se esperaba 0.5", price.LeagueCoefficient)
+	}
+
+	score, err := f.svc.GetScore(t.Context(), playerID)
+	if err != nil {
+		t.Fatalf("GetScore devolvió error: %v", err)
+	}
+	if expected := dto.CreditsADecimal(model.DefaultPricePolicy().Price(score.Score)); price.Price != expected {
+		t.Errorf("price = %q, se esperaba %q", price.Price, expected)
+	}
+}
+
+func TestScoreServiceGetPriceAtSinScore(t *testing.T) {
+	f := newScoreServiceQuoteFixture(t)
+	playerID := f.seedRatedPlayer(t, "SinScore", 7.0)
+
+	if _, err := f.svc.GetPriceAt(t.Context(), playerID, time.Now()); !errors.Is(err, service.ErrScoreNotFound) {
+		t.Fatalf("GetPriceAt devolvió %v, se esperaba ErrScoreNotFound", err)
+	}
+}
+
+func TestScoreServiceGetPriceAtConFechaFuturaUsaElUltimoScore(t *testing.T) {
+	f := newScoreServiceQuoteFixture(t)
+	playerID := f.seedRatedPlayer(t, "Futuro", 8.0)
+
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
+		t.Fatalf("ActivateStrategy devolvió error: %v", err)
+	}
+
+	ahora, err := f.svc.GetPriceAt(t.Context(), playerID, time.Now().Add(time.Minute))
+	if err != nil {
+		t.Fatalf("GetPriceAt(ahora) devolvió error: %v", err)
+	}
+	futuro, err := f.svc.GetPriceAt(t.Context(), playerID, time.Now().Add(24*time.Hour))
+	if err != nil {
+		t.Fatalf("GetPriceAt(futuro) devolvió error: %v", err)
+	}
+	if ahora.Price != futuro.Price {
+		t.Errorf("el precio futuro %q no coincide con el actual %q", futuro.Price, ahora.Price)
+	}
+}
+
+func TestScoreServiceGetQuoteHistoryDevuelveLasCotizaciones(t *testing.T) {
+	f := newScoreServiceQuoteFixture(t)
+	playerID := f.seedRatedPlayer(t, "Historial", 8.0)
+
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
+		t.Fatalf("ActivateStrategy devolvió error: %v", err)
+	}
+
+	quotes, err := f.svc.GetQuoteHistory(t.Context(), playerID)
+	if err != nil {
+		t.Fatalf("GetQuoteHistory devolvió error: %v", err)
+	}
+	if len(quotes) != 1 {
+		t.Fatalf("GetQuoteHistory devolvió %d cotizaciones, se esperaba 1", len(quotes))
+	}
+	if quotes[0].Price == "" || quotes[0].CreatedAt == "" {
+		t.Errorf("la cotización quedó incompleta: %+v", quotes[0])
+	}
+	if quotes[0].Strategy != "test-rating" {
+		t.Errorf("la estrategia es %q, se esperaba test-rating", quotes[0].Strategy)
+	}
+}
+
+func TestScoreServiceGetQuoteHistorySinCotizacionesDevuelveVacio(t *testing.T) {
+	f := newScoreServiceQuoteFixture(t)
+	playerID := f.seedRatedPlayer(t, "SinCotizacion", 7.0)
+
+	quotes, err := f.svc.GetQuoteHistory(t.Context(), playerID)
+	if err != nil {
+		t.Fatalf("GetQuoteHistory devolvió error: %v", err)
+	}
+	if len(quotes) != 0 {
+		t.Errorf("GetQuoteHistory devolvió %d cotizaciones, se esperaba vacío", len(quotes))
+	}
+}
+
+func TestScoreServiceGetQuoteHistoryJugadorInexistente(t *testing.T) {
+	f := newScoreServiceQuoteFixture(t)
+
+	if _, err := f.svc.GetQuoteHistory(t.Context(), 999999); !errors.Is(err, service.ErrNotFound) {
+		t.Fatalf("GetQuoteHistory devolvió %v, se esperaba ErrNotFound", err)
+	}
+}
+
+func TestScoreServiceListRankingIncluyeElPrecio(t *testing.T) {
+	f := newScoreServiceQuoteFixture(t)
+	conPrecio := f.seedRatedPlayer(t, "ConPrecio", 8.0)
+
+	if err := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); err != nil {
+		t.Fatalf("ActivateStrategy devolvió error: %v", err)
+	}
+
+	f.seedRatedPlayer(t, "SinPrecio", 9.0)
+
+	ranking, err := f.svc.ListRanking(t.Context(), dto.PlayerFilterDTO{Limit: 25}, "score_desc", 0)
+	if err != nil {
+		t.Fatalf("ListRanking devolvió error: %v", err)
+	}
+
+	for _, item := range ranking.Items {
+		if item.ID == conPrecio {
+			if item.Price == nil {
+				t.Error("el jugador con score no trae precio")
+			}
+			continue
+		}
+		if item.Price != nil {
+			t.Errorf("el jugador sin cotización trae precio %q", *item.Price)
+		}
 	}
 }

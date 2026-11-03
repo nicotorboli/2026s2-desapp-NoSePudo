@@ -10,6 +10,7 @@ type PlayerDetailResponse struct {
 	DateOfBirth *string `json:"dateOfBirth"`
 	Nationality *string `json:"nationality"`
 	ShirtNumber *int    `json:"shirtNumber"`
+	Price       *string `json:"price"`
 	Name        string  `json:"name"`
 	Club        string  `json:"club"`
 	League      string  `json:"league"`

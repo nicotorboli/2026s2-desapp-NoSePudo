@@ -639,3 +639,71 @@ func assertOrder(t *testing.T, db *sql.DB, expected model.Order) {
 			expected.ID, stored.Status, stored.ExecutedQuantity, expected.Status, expected.ExecutedQuantity)
 	}
 }
+
+func TestMarketRepositoryLatestPricesDevuelveLaUltimaDeCadaJugador(t *testing.T) {
+	db := startPostgres(t)
+	repo := newMarketRepository(db)
+	primero := seedMarketPlayer(t, db)
+	segundo := seedMarketPlayer(t, db)
+	sinCotizar := seedMarketPlayer(t, db)
+
+	seedMarketQuote(t, db, primero, model.CreditsFromUnits(1))
+	seedMarketQuote(t, db, segundo, model.CreditsFromUnits(1))
+	if _, err := dao.NewQuoteDao(db).Insert(t.Context(), nil, model.PlayerQuote{
+		Strategy:        "rendimiento",
+		StrategyVersion: "1",
+		PlayerID:        segundo,
+		Price:           model.CreditsFromUnits(4),
+	}); err != nil {
+		t.Fatalf("Insert devolvió %v", err)
+	}
+
+	prices, err := repo.LatestPrices(t.Context(), []int64{primero, segundo, sinCotizar})
+	if err != nil {
+		t.Fatalf("LatestPrices devolvió %v", err)
+	}
+	if prices[primero] != model.CreditsFromUnits(1) {
+		t.Errorf("el primer jugador cotiza %d, se esperaba 1 crédito", prices[primero])
+	}
+	if prices[segundo] != model.CreditsFromUnits(4) {
+		t.Errorf("el segundo jugador cotiza %d, se esperaban 4 créditos", prices[segundo])
+	}
+	if _, found := prices[sinCotizar]; found {
+		t.Error("se devolvió precio para un jugador sin cotización")
+	}
+}
+
+func TestMarketRepositoryQuoteHistoryDevuelveMasRecientePrimero(t *testing.T) {
+	db := startPostgres(t)
+	repo := newMarketRepository(db)
+	playerID := seedMarketPlayer(t, db)
+
+	seedMarketQuote(t, db, playerID, model.CreditsFromUnits(1))
+	if _, err := dao.NewQuoteDao(db).Insert(t.Context(), nil, model.PlayerQuote{
+		Strategy:        "rendimiento",
+		StrategyVersion: "1",
+		PlayerID:        playerID,
+		Price:           model.CreditsFromUnits(5),
+	}); err != nil {
+		t.Fatalf("Insert devolvió %v", err)
+	}
+
+	history, err := repo.QuoteHistory(t.Context(), playerID)
+	if err != nil {
+		t.Fatalf("QuoteHistory devolvió %v", err)
+	}
+	if len(history) != 2 {
+		t.Fatalf("QuoteHistory devolvió %d cotizaciones, se esperaban 2", len(history))
+	}
+	if history[0].Strategy != "rendimiento" || history[0].Price != model.CreditsFromUnits(5) {
+		t.Errorf("la cotización más reciente es %+v", history[0])
+	}
+
+	empty, err := repo.QuoteHistory(t.Context(), seedMarketPlayer(t, db))
+	if err != nil {
+		t.Fatalf("QuoteHistory devolvió %v", err)
+	}
+	if len(empty) != 0 {
+		t.Errorf("QuoteHistory devolvió %d cotizaciones, se esperaba vacío", len(empty))
+	}
+}

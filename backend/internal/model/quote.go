@@ -17,6 +17,7 @@ const (
 
 type PlayerQuote struct {
 	CreatedAt       time.Time
+	ScoreID         *int64
 	Strategy        string
 	StrategyVersion string
 	ID              int64

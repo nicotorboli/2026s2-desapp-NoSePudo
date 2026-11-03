@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"time"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
@@ -42,6 +43,30 @@ type StrategyActivationRepository interface {
 type LeagueCoefficientRepository interface {
 	Set(ctx context.Context, leagueCode string, coefficient float64, actorID int64) error
 	Current(ctx context.Context, leagueCode string) (model.LeagueCoefficient, bool, error)
+	AtOrBefore(ctx context.Context, leagueCode string, at time.Time) (model.LeagueCoefficient, bool, error)
+}
+
+type QuoteReader interface {
+	LatestPrices(ctx context.Context, playerIDs []int64) (map[int64]model.Credits, error)
+	QuoteHistory(ctx context.Context, playerID int64) ([]model.PlayerQuote, error)
+}
+
+type QuoteWriter interface {
+	RecordScoreQuote(ctx context.Context, playerID int64, score float64, scoreID *int64, strategyName string) error
+}
+
+type ScoreOption func(*ScoreService)
+
+func WithScoreQuoteReader(reader QuoteReader) ScoreOption {
+	return func(s *ScoreService) {
+		s.quotes = reader
+	}
+}
+
+func WithScoreQuoteWriter(writer QuoteWriter) ScoreOption {
+	return func(s *ScoreService) {
+		s.quoteWriter = writer
+	}
 }
 
 type ScoreService struct {
@@ -53,6 +78,8 @@ type ScoreService struct {
 	players      PlayerRepository
 	statistics   PlayerStatisticsRepository
 	logger       *slog.Logger
+	quotes       QuoteReader
+	quoteWriter  QuoteWriter
 }
 
 func NewScoreService(
@@ -64,8 +91,9 @@ func NewScoreService(
 	players PlayerRepository,
 	statistics PlayerStatisticsRepository,
 	logger *slog.Logger,
+	options ...ScoreOption,
 ) *ScoreService {
-	return &ScoreService{
+	service := &ScoreService{
 		strategies:   strategies,
 		scores:       scores,
 		histograms:   histograms,
@@ -75,6 +103,12 @@ func NewScoreService(
 		statistics:   statistics,
 		logger:       logger,
 	}
+
+	for _, option := range options {
+		option(service)
+	}
+
+	return service
 }
 
 func (s *ScoreService) ListStrategies() []dto.ScoringStrategyResponse {
@@ -287,8 +321,11 @@ func (s *ScoreService) recalculate(ctx context.Context, strategyID int, players 
 	weights := strategy.Weights
 	histIDByScope := make(map[model.ScoreScope]int64)
 	toSave := make([]model.PlayerScore, 0, len(candidates))
+	playerByID := make(map[int64]model.Player, len(candidates))
 
 	for _, c := range candidates {
+		playerByID[c.player.ID] = c.player
+
 		exists, err := s.scores.HasScoreFor(ctx, c.player.ID, strategyID, c.stats.ID)
 		if err != nil {
 			return fmt.Errorf("check existing score for player %d: %w", c.player.ID, err)
@@ -326,7 +363,43 @@ func (s *ScoreService) recalculate(ctx context.Context, strategyID int, players 
 		return fmt.Errorf("save player scores: %w", err)
 	}
 
+	if err := s.recordQuotes(ctx, strategyID, playerByID, toSave); err != nil {
+		return err
+	}
+
 	s.logger.InfoContext(ctx, "Player scores recalculated", "strategy_id", strategyID, "computed", len(toSave))
+
+	return nil
+}
+
+func (s *ScoreService) recordQuotes(
+	ctx context.Context,
+	strategyID int,
+	players map[int64]model.Player,
+	scores []model.PlayerScore,
+) error {
+	if s.quoteWriter == nil {
+		return nil
+	}
+
+	coefficients := make(map[string]float64)
+	for i := range scores {
+		player, ok := players[scores[i].PlayerID]
+		if !ok {
+			continue
+		}
+
+		coefficient, cached := coefficients[player.LeagueCode]
+		if !cached {
+			coefficient = s.leagueCoefficient(ctx, player.LeagueCode)
+			coefficients[player.LeagueCode] = coefficient
+		}
+
+		score := scores[i].Percentile * coefficient * model.PositionDiscount(player.Position)
+		if err := s.quoteWriter.RecordScoreQuote(ctx, player.ID, score, &scores[i].ID, s.strategyName(strategyID)); err != nil {
+			return fmt.Errorf("record quote for player %d: %w", player.ID, err)
+		}
+	}
 
 	return nil
 }
@@ -427,6 +500,15 @@ func (s *ScoreService) rankingItems(ctx context.Context, players []model.Player)
 		return nil, fmt.Errorf("load latest percentiles: %w", err)
 	}
 
+	var prices map[int64]model.Credits
+	if s.quotes != nil {
+		loaded, loadErr := s.quotes.LatestPrices(ctx, ids)
+		if loadErr != nil {
+			return nil, fmt.Errorf("load latest prices: %w", loadErr)
+		}
+		prices = loaded
+	}
+
 	coefficientCache := make(map[string]float64)
 	items := make([]dto.PlayerRankingItemResponse, 0, len(players))
 	for _, p := range players {
@@ -445,6 +527,10 @@ func (s *ScoreService) rankingItems(ctx context.Context, players []model.Player)
 			}
 			score := percentile * coefficient * model.PositionDiscount(p.Position)
 			item.Score = &score
+		}
+		if price, ok := prices[p.ID]; ok {
+			rendered := dto.CreditsADecimal(price)
+			item.Price = &rendered
 		}
 		items = append(items, item)
 	}
@@ -468,4 +554,73 @@ func sortRanking(items []dto.PlayerRankingItemResponse, ascending bool) {
 		}
 		return *items[i].Score > *items[j].Score
 	})
+}
+
+func (s *ScoreService) GetPriceAt(ctx context.Context, playerID int64, at time.Time) (dto.PlayerPriceResponse, error) {
+	player, err := s.players.GetPlayerByID(ctx, playerID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return dto.PlayerPriceResponse{}, ErrNotFound
+		}
+		return dto.PlayerPriceResponse{}, err
+	}
+
+	history, err := s.scores.History(ctx, playerID)
+	if err != nil {
+		return dto.PlayerPriceResponse{}, fmt.Errorf("get player score history: %w", err)
+	}
+
+	selected, found := scoreAt(history, at)
+	if !found {
+		return dto.PlayerPriceResponse{}, ErrScoreNotFound
+	}
+
+	coefficient := 1.0
+	stored, storedFound, err := s.coefficients.AtOrBefore(ctx, player.LeagueCode, at)
+	if err != nil {
+		return dto.PlayerPriceResponse{}, fmt.Errorf("get league coefficient at date: %w", err)
+	}
+	if storedFound {
+		coefficient = stored.Coefficient
+	}
+
+	score := selected.Percentile * coefficient * model.PositionDiscount(player.Position)
+	price := model.DefaultPricePolicy().Price(score)
+
+	return dto.PlayerPriceDesdeModelo(selected, coefficient, score, price, s.strategyName(selected.StrategyID)), nil
+}
+
+func (s *ScoreService) GetQuoteHistory(ctx context.Context, playerID int64) ([]dto.PlayerQuoteResponse, error) {
+	if _, err := s.players.GetPlayerByID(ctx, playerID); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	if s.quotes == nil {
+		return []dto.PlayerQuoteResponse{}, nil
+	}
+
+	quotes, err := s.quotes.QuoteHistory(ctx, playerID)
+	if err != nil {
+		return nil, fmt.Errorf("get player quote history: %w", err)
+	}
+
+	out := make([]dto.PlayerQuoteResponse, len(quotes))
+	for i, quote := range quotes {
+		out[i] = dto.PlayerQuoteDesdeModelo(quote)
+	}
+
+	return out, nil
+}
+
+func scoreAt(history []model.PlayerScore, at time.Time) (model.PlayerScore, bool) {
+	for i := range history {
+		if !history[i].ComputedAt.After(at) {
+			return history[i], true
+		}
+	}
+
+	return model.PlayerScore{}, false
 }

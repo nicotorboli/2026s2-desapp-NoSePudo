@@ -15,6 +15,7 @@ describe('PlayerListPage', () => {
         league: 'Premier League',
         position: 'Attacker',
         score: 0.87,
+        price: '51.0000',
       },
       {
         id: 102,
@@ -23,6 +24,7 @@ describe('PlayerListPage', () => {
         league: 'Premier League',
         position: 'Midfielder',
         score: null,
+        price: null,
       },
     ],
     offset: 0,
@@ -49,6 +51,8 @@ describe('PlayerListPage', () => {
     expect(screen.getAllByText('Arsenal FC').length).toBe(2);
     expect(screen.getAllByText('Premier League').length).toBe(2);
     expect(screen.getByText('N/R')).toBeDefined();
+    expect(screen.getByText('Créditos')).toBeDefined();
+    expect(screen.getByText('51 Créditos')).toBeDefined();
   });
 
   it('displays empty state when no players are returned', async () => {

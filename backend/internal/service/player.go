@@ -34,11 +34,18 @@ func WithMarketBootstrap(bootstrapper MarketBootstrapper) PlayerOption {
 	}
 }
 
+func WithQuoteReader(reader QuoteReader) PlayerOption {
+	return func(s *PlayerServiceImpl) {
+		s.quotes = reader
+	}
+}
+
 type PlayerServiceImpl struct {
 	adapter            FootballDataClient
 	repo               PlayerRepository
-	logger             *slog.Logger
 	marketBootstrapper MarketBootstrapper
+	quotes             QuoteReader
+	logger             *slog.Logger
 }
 
 func NewPlayerService(adapter FootballDataClient, repo PlayerRepository, logger *slog.Logger, options ...PlayerOption) *PlayerServiceImpl {
@@ -95,7 +102,19 @@ func (s *PlayerServiceImpl) GetPlayerByID(ctx context.Context, id int64) (dto.Pl
 		return dto.PlayerDetailResponse{}, err
 	}
 
-	return dto.PlayerDetailDesdeModelo(player), nil
+	response := dto.PlayerDetailDesdeModelo(player)
+	if s.quotes != nil {
+		prices, err := s.quotes.LatestPrices(ctx, []int64{id})
+		if err != nil {
+			return dto.PlayerDetailResponse{}, err
+		}
+		if price, ok := prices[id]; ok {
+			rendered := dto.CreditsADecimal(price)
+			response.Price = &rendered
+		}
+	}
+
+	return response, nil
 }
 
 func (s *PlayerServiceImpl) SyncPlayers(ctx context.Context, actor string) (dto.SyncPlayersResponse, error) {

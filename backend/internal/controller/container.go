@@ -19,7 +19,7 @@ func NewContainer(services *service.Container) *Container {
 			services.PlayerStats,
 			services.SyncRuns,
 		),
-		Scoring: NewScoringController(services.Score),
+		Scoring: NewScoringController(services.Score, WithQuoteService(services.Score)),
 		Auth:    NewAuthController(services.Auth),
 		Market:  NewMarketController(services.Market, services.Portfolio),
 	}

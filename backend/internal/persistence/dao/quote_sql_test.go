@@ -1,6 +1,7 @@
 package dao_test
 
 import (
+	"database/sql"
 	"errors"
 	"testing"
 
@@ -161,5 +162,130 @@ func TestQuoteSqlLatestPriceForPlayersSinJugadoresNoConsulta(t *testing.T) {
 	}
 	if len(prices) != 0 {
 		t.Errorf("LatestPriceForPlayers devolvió %v, se esperaba vacío", prices)
+	}
+}
+
+func seedPlayerScore(t *testing.T, db *sql.DB, playerID int64) int64 {
+	t.Helper()
+
+	var statisticsID int64
+	if err := db.QueryRowContext(t.Context(),
+		`INSERT INTO player_statistics (player_id, goals, assists, shots, key_passes, dribbles, tackles, interceptions, fouls, clears, blocks, was_dribbled, rating)
+		 VALUES ($1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7.0) RETURNING id`, playerID).Scan(&statisticsID); err != nil {
+		t.Fatalf("no se pudieron sembrar las estadísticas: %v", err)
+	}
+
+	var histogramID int64
+	if err := db.QueryRowContext(t.Context(),
+		`INSERT INTO scoring_histograms (position, league_code, buckets) VALUES ('Offence', 'PL', '{0,1}') RETURNING id`).Scan(&histogramID); err != nil {
+		t.Fatalf("no se pudo sembrar un histograma: %v", err)
+	}
+
+	var scoreID int64
+	if err := db.QueryRowContext(t.Context(),
+		`INSERT INTO player_scores (player_id, statistics_id, strategy_id, weights, raw_score, percentile, histogram_id)
+		 VALUES ($1, $2, 1, '{}', 0.5, 0.5, $3) RETURNING id`,
+		playerID, statisticsID, histogramID).Scan(&scoreID); err != nil {
+		t.Fatalf("no se pudo sembrar un score: %v", err)
+	}
+
+	return scoreID
+}
+
+func TestQuoteSqlInsertPersisteElScoreID(t *testing.T) {
+	db := startPostgres(t)
+	quoteDao := dao.NewQuoteDao(db)
+	playerID := seedPlayer(t, db)
+	scoreID := seedPlayerScore(t, db, playerID)
+
+	if _, err := quoteDao.Insert(t.Context(), nil, model.PlayerQuote{
+		Strategy:        "rateada",
+		StrategyVersion: "1",
+		PlayerID:        playerID,
+		Price:           model.CreditsFromUnits(51),
+		ScoreID:         &scoreID,
+	}); err != nil {
+		t.Fatalf("Insert devolvió %v", err)
+	}
+
+	quote, err := quoteDao.ListByPlayer(t.Context(), playerID)
+	if err != nil {
+		t.Fatalf("ListByPlayer devolvió %v", err)
+	}
+	if len(quote) != 1 {
+		t.Fatalf("ListByPlayer devolvió %d cotizaciones, se esperaba 1", len(quote))
+	}
+	if quote[0].ScoreID == nil || *quote[0].ScoreID != scoreID {
+		t.Errorf("ScoreID = %v, se esperaba %d", quote[0].ScoreID, scoreID)
+	}
+}
+
+func TestQuoteSqlInsertSinScoreIDLoDejaNulo(t *testing.T) {
+	db := startPostgres(t)
+	quoteDao := dao.NewQuoteDao(db)
+	playerID := seedPlayer(t, db)
+
+	if _, err := quoteDao.Insert(t.Context(), nil, model.PlayerQuote{
+		Strategy:        "rateada",
+		StrategyVersion: "1",
+		PlayerID:        playerID,
+		Price:           model.CreditsFromUnits(51),
+	}); err != nil {
+		t.Fatalf("Insert devolvió %v", err)
+	}
+
+	quotes, err := quoteDao.ListByPlayer(t.Context(), playerID)
+	if err != nil {
+		t.Fatalf("ListByPlayer devolvió %v", err)
+	}
+	if len(quotes) != 1 {
+		t.Fatalf("ListByPlayer devolvió %d cotizaciones, se esperaba 1", len(quotes))
+	}
+	if quotes[0].ScoreID != nil {
+		t.Errorf("ScoreID = %v, se esperaba nulo", *quotes[0].ScoreID)
+	}
+}
+
+func TestQuoteSqlListByPlayerOrdenaLaMasRecientePrimero(t *testing.T) {
+	db := startPostgres(t)
+	quoteDao := dao.NewQuoteDao(db)
+	playerID := seedPlayer(t, db)
+
+	if _, err := quoteDao.InsertInitialIfAbsent(t.Context(), nil, playerID, model.CreditsFromUnits(1)); err != nil {
+		t.Fatalf("InsertInitialIfAbsent devolvió %v", err)
+	}
+	for _, strategy := range []string{"primera", "segunda"} {
+		if _, err := quoteDao.Insert(t.Context(), nil, model.PlayerQuote{
+			Strategy:        strategy,
+			StrategyVersion: "1",
+			PlayerID:        playerID,
+			Price:           model.CreditsFromUnits(2),
+		}); err != nil {
+			t.Fatalf("Insert de %q devolvió %v", strategy, err)
+		}
+	}
+
+	quotes, err := quoteDao.ListByPlayer(t.Context(), playerID)
+	if err != nil {
+		t.Fatalf("ListByPlayer devolvió %v", err)
+	}
+	if len(quotes) != 3 {
+		t.Fatalf("ListByPlayer devolvió %d cotizaciones, se esperaban 3", len(quotes))
+	}
+	if quotes[0].Strategy != "segunda" || quotes[2].Strategy != model.InitialQuoteStrategy {
+		t.Errorf("el orden es %q ... %q, se esperaba segunda ... initial", quotes[0].Strategy, quotes[2].Strategy)
+	}
+}
+
+func TestQuoteSqlListByPlayerSinCotizacionesDevuelveVacio(t *testing.T) {
+	db := startPostgres(t)
+	quoteDao := dao.NewQuoteDao(db)
+
+	quotes, err := quoteDao.ListByPlayer(t.Context(), seedPlayer(t, db))
+	if err != nil {
+		t.Fatalf("ListByPlayer devolvió %v", err)
+	}
+	if len(quotes) != 0 {
+		t.Errorf("ListByPlayer devolvió %d cotizaciones, se esperaba vacío", len(quotes))
 	}
 }

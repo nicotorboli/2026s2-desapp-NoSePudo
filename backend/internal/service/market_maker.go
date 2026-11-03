@@ -16,6 +16,7 @@ const (
 	initialStrategy   = "initial"
 	initialVersion    = "1"
 	marketMakerActor  = "market-maker"
+	scoreQuoteVersion = "1"
 )
 
 type MarketMakerService struct {
@@ -126,23 +127,38 @@ func (s *MarketMakerService) restAtQuote(
 }
 
 func (s *MarketMakerService) RecordQuote(ctx context.Context, playerID int64, price model.Credits, strategy, version string) error {
+	return s.recordQuote(ctx, model.PlayerQuote{
+		CreatedAt:       s.now(),
+		Strategy:        strategy,
+		StrategyVersion: version,
+		PlayerID:        playerID,
+		Price:           price,
+	})
+}
+
+func (s *MarketMakerService) RecordScoreQuote(ctx context.Context, playerID int64, score float64, scoreID *int64, strategyName string) error {
+	return s.recordQuote(ctx, model.PlayerQuote{
+		ScoreID:         scoreID,
+		CreatedAt:       s.now(),
+		Strategy:        strategyName,
+		StrategyVersion: scoreQuoteVersion,
+		PlayerID:        playerID,
+		Price:           model.DefaultPricePolicy().Price(score),
+	})
+}
+
+func (s *MarketMakerService) recordQuote(ctx context.Context, quote model.PlayerQuote) error {
 	superuser, err := s.market.MarketMaker(ctx)
 	if err != nil {
 		return fmt.Errorf("el creador de mercado necesita un superusuario: %w", err)
 	}
 
-	return s.market.WithPlayerLocked(ctx, playerID, func(ctx context.Context, session *repository.MarketSession) error {
-		if _, recordErr := session.RecordQuote(ctx, model.PlayerQuote{
-			CreatedAt:       s.now(),
-			Strategy:        strategy,
-			StrategyVersion: version,
-			PlayerID:        playerID,
-			Price:           price,
-		}); recordErr != nil {
+	return s.market.WithPlayerLocked(ctx, quote.PlayerID, func(ctx context.Context, session *repository.MarketSession) error {
+		if _, recordErr := session.RecordQuote(ctx, quote); recordErr != nil {
 			return recordErr
 		}
 
-		return s.repriceInventory(ctx, session, superuser.ID, playerID, price)
+		return s.repriceInventory(ctx, session, superuser.ID, quote.PlayerID, quote.Price)
 	})
 }
 

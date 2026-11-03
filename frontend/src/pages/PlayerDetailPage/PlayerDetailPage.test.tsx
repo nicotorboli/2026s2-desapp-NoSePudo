@@ -21,6 +21,7 @@ describe('PlayerDetailPage', () => {
     dateOfBirth: null,
     nationality: null,
     shirtNumber: null,
+    price: null,
     active: true,
     createdAt: '2026-09-28T12:00:00Z',
     updatedAt: '2026-09-28T12:30:00Z',
@@ -30,6 +31,7 @@ describe('PlayerDetailPage', () => {
     vi.restoreAllMocks();
     vi.spyOn(playersApi, 'getPlayerStatistics').mockResolvedValue([]);
     vi.spyOn(playersApi, 'getPlayerScores').mockResolvedValue([]);
+    vi.spyOn(playersApi, 'getPlayerQuotes').mockResolvedValue([]);
   });
 
   it('renders all player attributes and handles fallbacks', async () => {

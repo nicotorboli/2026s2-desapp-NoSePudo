@@ -155,3 +155,16 @@ func TestPlayerScoreRepositoryLatestPercentiles(t *testing.T) {
 		t.Errorf("LatestPercentiles(nil) = %v, se esperaba vacío", empty)
 	}
 }
+
+func TestPlayerScoreRepositorySaveCompletaLosIDs(t *testing.T) {
+	f := newScoreFixture(t)
+	scores := []model.PlayerScore{f.aScore()}
+
+	if err := f.repo.Save(t.Context(), scores); err != nil {
+		t.Fatalf("Save devolvió error: %v", err)
+	}
+
+	if scores[0].ID == 0 {
+		t.Error("Save no completó el ID del score insertado")
+	}
+}

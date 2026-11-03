@@ -2,6 +2,7 @@ package dto
 
 type PlayerRankingItemResponse struct {
 	Score    *float64 `json:"score"`
+	Price    *string  `json:"price"`
 	Name     string   `json:"name"`
 	Club     string   `json:"club"`
 	League   string   `json:"league"`
