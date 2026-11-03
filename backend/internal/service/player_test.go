@@ -232,3 +232,60 @@ func TestPlayerSyncService_SyncPlayers_TotalRateLimitFailure(t *testing.T) {
 		t.Fatalf("expected service.ErrRateLimitExceeded, got %v", err)
 	}
 }
+
+type stubQuoteReader struct {
+	prices map[int64]model.Credits
+}
+
+func (s stubQuoteReader) LatestPrices(ctx context.Context, playerIDs []int64) (map[int64]model.Credits, error) {
+	prices := make(map[int64]model.Credits)
+	for _, playerID := range playerIDs {
+		if price, found := s.prices[playerID]; found {
+			prices[playerID] = price
+		}
+	}
+
+	return prices, nil
+}
+
+func (s stubQuoteReader) QuoteHistory(ctx context.Context, playerID int64) ([]model.PlayerQuote, error) {
+	return nil, nil
+}
+
+func TestPlayerService_GetPlayerByID_IncluyeElPrecio(t *testing.T) {
+	mockRepo := &mockPlayerRepository{
+		getPlayerFn: func(ctx context.Context, id int64) (model.Player, error) {
+			return model.Player{ID: id, Name: "ConPrecio"}, nil
+		},
+	}
+
+	svc := service.NewPlayerService(nil, mockRepo, nil, service.WithQuoteReader(stubQuoteReader{
+		prices: map[int64]model.Credits{42: model.CreditsFromUnits(51)},
+	}))
+
+	res, err := svc.GetPlayerByID(t.Context(), 42)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Price == nil || *res.Price != "51.0000" {
+		t.Errorf("price = %v, se esperaba 51.0000", res.Price)
+	}
+}
+
+func TestPlayerService_GetPlayerByID_SinPrecio(t *testing.T) {
+	mockRepo := &mockPlayerRepository{
+		getPlayerFn: func(ctx context.Context, id int64) (model.Player, error) {
+			return model.Player{ID: id, Name: "SinPrecio"}, nil
+		},
+	}
+
+	svc := service.NewPlayerService(nil, mockRepo, nil)
+
+	res, err := svc.GetPlayerByID(t.Context(), 42)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Price != nil {
+		t.Errorf("price = %v, se esperaba nulo", *res.Price)
+	}
+}
