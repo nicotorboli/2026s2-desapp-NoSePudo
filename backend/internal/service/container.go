@@ -47,6 +47,8 @@ func buildContainer(ctx context.Context, runCtx context.Context, repos *reposito
 		registry[strategy.ID] = strategy
 	}
 
+	marketMaker := NewMarketMakerService(repos.Market, time.Now)
+
 	scoreService := NewScoreService(
 		registry,
 		repos.PlayerScore,
@@ -56,15 +58,16 @@ func buildContainer(ctx context.Context, runCtx context.Context, repos *reposito
 		repos.Player,
 		repos.PlayerStatistics,
 		logger,
+		WithScoreQuoteReader(repos.Market),
+		WithScoreQuoteWriter(marketMaker),
 	)
-
-	marketMaker := NewMarketMakerService(repos.Market, time.Now)
 
 	player := NewPlayerService(
 		adapterContainer.FootballData,
 		repos.Player,
 		logger,
 		WithMarketBootstrap(marketMaker),
+		WithQuoteReader(repos.Market),
 	)
 	playerStats := NewPlayerStatisticsService(
 		adapterContainer.Whoscored,

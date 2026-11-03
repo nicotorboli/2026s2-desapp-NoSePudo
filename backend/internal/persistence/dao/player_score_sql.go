@@ -31,7 +31,8 @@ func (d *PlayerScoreSql) Insert(ctx context.Context, tx *sql.Tx, scores []model.
 	}
 
 	const query = `INSERT INTO player_scores (player_id, statistics_id, strategy_id, weights, raw_score, percentile, histogram_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id`
 
 	stmt, err := tx.PrepareContext(ctx, query)
 	if err != nil {
@@ -39,13 +40,22 @@ func (d *PlayerScoreSql) Insert(ctx context.Context, tx *sql.Tx, scores []model.
 	}
 	defer func() { _ = stmt.Close() }()
 
-	for _, s := range scores {
-		weights, err := json.Marshal(s.Weights)
+	for i := range scores {
+		weights, err := json.Marshal(scores[i].Weights)
 		if err != nil {
 			return fmt.Errorf("marshal weights: %w", err)
 		}
-		if _, err := stmt.ExecContext(ctx, s.PlayerID, s.StatisticsID, s.StrategyID, weights, s.RawScore, s.Percentile, s.HistogramID); err != nil {
-			return fmt.Errorf("insert player score for player %d: %w", s.PlayerID, err)
+		if err := stmt.QueryRowContext(
+			ctx,
+			scores[i].PlayerID,
+			scores[i].StatisticsID,
+			scores[i].StrategyID,
+			weights,
+			scores[i].RawScore,
+			scores[i].Percentile,
+			scores[i].HistogramID,
+		).Scan(&scores[i].ID); err != nil {
+			return fmt.Errorf("insert player score for player %d: %w", scores[i].PlayerID, err)
 		}
 	}
 

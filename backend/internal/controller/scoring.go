@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
@@ -22,12 +23,31 @@ type ScoringService interface {
 	ListRanking(ctx context.Context, filter dto.PlayerFilterDTO, sortOrder string, offset int) (dto.PlayerRankingPageResponse, error)
 }
 
-type RestScoringController struct {
-	svc ScoringService
+type QuoteService interface {
+	GetQuoteHistory(ctx context.Context, playerID int64) ([]dto.PlayerQuoteResponse, error)
+	GetPriceAt(ctx context.Context, playerID int64, at time.Time) (dto.PlayerPriceResponse, error)
 }
 
-func NewScoringController(svc ScoringService) *RestScoringController {
-	return &RestScoringController{svc: svc}
+type ScoringOption func(*RestScoringController)
+
+func WithQuoteService(quotes QuoteService) ScoringOption {
+	return func(c *RestScoringController) {
+		c.quotes = quotes
+	}
+}
+
+type RestScoringController struct {
+	svc    ScoringService
+	quotes QuoteService
+}
+
+func NewScoringController(svc ScoringService, options ...ScoringOption) *RestScoringController {
+	controller := &RestScoringController{svc: svc}
+	for _, option := range options {
+		option(controller)
+	}
+
+	return controller
 }
 
 func (c *RestScoringController) ListStrategies() httphandler.Endpoint {
@@ -203,6 +223,72 @@ func (c *RestScoringController) GetPlayersRanking() httphandler.Endpoint {
 
 		return httphandler.Encode(w, http.StatusOK, ranking)
 	}
+}
+
+func (c *RestScoringController) GetQuoteHistory() httphandler.Endpoint {
+	return func(w http.ResponseWriter, req *http.Request) error {
+		playerID, err := scoringPlayerID(req)
+		if err != nil {
+			return err
+		}
+		if c.quotes == nil {
+			return httphandler.NewError(http.StatusInternalServerError, "quote service not configured", nil)
+		}
+
+		quotes, err := c.quotes.GetQuoteHistory(req.Context(), playerID)
+		if err != nil {
+			if errors.Is(err, service.ErrNotFound) {
+				return httphandler.NewError(http.StatusNotFound, "player not found", err)
+			}
+			return err
+		}
+
+		return httphandler.Encode(w, http.StatusOK, quotes)
+	}
+}
+
+func (c *RestScoringController) GetPriceAt() httphandler.Endpoint {
+	return func(w http.ResponseWriter, req *http.Request) error {
+		playerID, err := scoringPlayerID(req)
+		if err != nil {
+			return err
+		}
+		if c.quotes == nil {
+			return httphandler.NewError(http.StatusInternalServerError, "quote service not configured", nil)
+		}
+
+		at, err := priceDate(req)
+		if err != nil {
+			return err
+		}
+
+		price, err := c.quotes.GetPriceAt(req.Context(), playerID, at)
+		if err != nil {
+			if errors.Is(err, service.ErrNotFound) || errors.Is(err, service.ErrScoreNotFound) {
+				return httphandler.NewError(http.StatusNotFound, "player price not found", err)
+			}
+			return err
+		}
+
+		return httphandler.Encode(w, http.StatusOK, price)
+	}
+}
+
+func priceDate(req *http.Request) (time.Time, error) {
+	raw := req.URL.Query().Get("date")
+	if raw == "" {
+		return time.Now(), nil
+	}
+
+	if parsed, err := time.Parse(time.RFC3339, raw); err == nil {
+		return parsed, nil
+	}
+
+	if parsed, err := time.Parse(time.DateOnly, raw); err == nil {
+		return parsed, nil
+	}
+
+	return time.Time{}, httphandler.NewError(http.StatusBadRequest, "invalid query parameter 'date'", nil)
 }
 
 func scoringPlayerID(req *http.Request) (int64, error) {
