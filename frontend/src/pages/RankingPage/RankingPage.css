@@ -1,41 +1,60 @@
 .ranking-page {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 2rem 1.5rem;
+  width: 100%;
+  flex: 1;
 }
 
 .ranking-page__header {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .ranking-page__title {
-  font-size: 1.75rem;
-  color: var(--ink-blue);
-  margin: 0 0 0.5rem;
+  font-family: "Merriweather", Georgia, serif;
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 14px rgba(0, 0, 0, 0.5);
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.3px;
 }
 
 .ranking-page__subtitle {
-  color: var(--ink-blue);
-  opacity: 0.8;
+  font-size: 1.05rem;
+  color: #d2ddd4;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   margin: 0;
 }
 
 .ranking-page__loading,
-.ranking-page__error,
+.ranking-page__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  color: #d2ddd4;
+}
+
 .ranking-page__empty {
+  border-radius: 8px;
+  padding: 4rem 2rem;
   text-align: center;
-  padding: 2rem;
-  color: var(--ink-blue);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background-color: #dfc29d;
+  color: #2d3748;
 }
 
 .ranking-page__spinner {
   display: inline-block;
-  width: 1.5rem;
-  height: 1.5rem;
-  border: 3px solid rgba(19, 27, 35, 0.2);
-  border-top-color: var(--golden);
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--golden, #dfaf0f);
   border-radius: 50%;
   animation: ranking-page-spin 0.8s linear infinite;
+  margin-bottom: 1rem;
 }
 
 @keyframes ranking-page-spin {
@@ -47,9 +66,10 @@
 .ranking-page__table-container {
   width: 100%;
   overflow-x: auto;
-  background-color: color-mix(in srgb, var(--radiant-orange) 15%, transparent);
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background-color: #dfc29d;
+  border: 1px solid rgba(223, 175, 15, 0.25);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
 .ranking-page__table {
@@ -58,10 +78,15 @@
   text-align: left;
 }
 
+.ranking-page__table thead {
+  background-color: var(--ink-blue, #131b23);
+  border-bottom: 2px solid var(--ink-blue, #131b23);
+}
+
 .ranking-page__cell {
   padding: 1rem 1.25rem;
   font-size: 0.9375rem;
-  color: var(--ink-blue);
+  color: var(--ink-blue, #131b23);
 }
 
 .ranking-page__cell--header {
@@ -69,27 +94,28 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--teal);
+  color: var(--teal, #7ebdc2);
+  background-color: var(--ink-blue, #131b23);
 }
 
 .ranking-page__cell--name {
   font-weight: 600;
-  color: var(--green-forest);
+  color: var(--green-forest, #114e04);
 }
 
 .ranking-page__cell--rank {
   font-weight: 800;
-  color: var(--golden);
+  color: #8c5d14;
 }
 
 .ranking-page__row {
-  border: 1px solid var(--ink-blue);
+  border: 1px solid var(--ink-blue, #131b23);
   cursor: pointer;
   transition: background-color 0.15s ease-in-out;
 }
 
 .ranking-page__row:hover {
-  background-color: color-mix(in srgb, var(--orange-green) 20%, transparent);
+  background-color: color-mix(in srgb, var(--orange-green, #a7af1f) 20%, transparent);
 }
 
 .ranking-page__sort {
@@ -99,7 +125,7 @@
   font: inherit;
   text-transform: inherit;
   letter-spacing: inherit;
-  color: var(--teal);
+  color: var(--teal, #7ebdc2);
   cursor: pointer;
 }
 
@@ -111,4 +137,34 @@
   font-weight: 600;
   background-color: #edf2f7;
   color: #4a5568;
+}
+
+.ranking-page__position--attacker {
+  background-color: #feebc8;
+  color: #c05621;
+}
+
+.ranking-page__position--midfielder {
+  background-color: #c6f6d5;
+  color: #22543d;
+}
+
+.ranking-page__position--defender {
+  background-color: #bee3f8;
+  color: #2b6cb0;
+}
+
+.ranking-page__position--goalkeeper {
+  background-color: #fed7d7;
+  color: #9b2c2c;
+}
+
+.ranking-page .pagination {
+  border-top: 1px solid rgba(223, 175, 15, 0.35);
+}
+
+.ranking-page .pagination__info {
+  color: #d2ddd4;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  font-weight: 600;
 }
