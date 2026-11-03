@@ -44,6 +44,7 @@ export const PlayerTrade: React.FC<PlayerTradeProps> = ({
       const data = await getUserPortfolio(user.id);
       setPortfolio(data);
     } catch {
+      setPortfolio(null);
     }
   }, [user]);
 
@@ -53,6 +54,7 @@ export const PlayerTrade: React.FC<PlayerTradeProps> = ({
       const data = await getOpenOrders(playerId, true);
       setOrderBook(data);
     } catch {
+      setOrderBook([]);
     } finally {
       setIsLoadingBook(false);
     }
