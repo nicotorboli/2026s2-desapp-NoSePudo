@@ -3,6 +3,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    port: 5180,
+  },
   test: {
     // Los tests de componentes necesitan DOM; los de api/ no, pero jsdom no molesta.
     environment: 'jsdom',

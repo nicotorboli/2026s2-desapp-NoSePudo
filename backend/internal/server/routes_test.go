@@ -40,12 +40,20 @@ func (s stubController) Login() httphandler.Endpoint         { return s.endpoint
 func (s stubController) Refresh() httphandler.Endpoint       { return s.endpoint() }
 func (s stubController) Logout() httphandler.Endpoint        { return s.endpoint() }
 
+func (s stubController) PlaceBuyOrder() httphandler.Endpoint  { return s.endpoint() }
+func (s stubController) PlaceSellOrder() httphandler.Endpoint { return s.endpoint() }
+func (s stubController) ListOpenOrders() httphandler.Endpoint { return s.endpoint() }
+func (s stubController) CancelOrder() httphandler.Endpoint    { return s.endpoint() }
+func (s stubController) Portfolio() httphandler.Endpoint      { return s.endpoint() }
+func (s stubController) Transactions() httphandler.Endpoint   { return s.endpoint() }
+
 func routesUnderTest() []route {
 	server := &Server{
 		controllers: &controller.Container{
 			Player: stubController{},
 			Sync:   stubController{},
 			Auth:   stubController{},
+			Market: stubController{},
 		},
 	}
 
@@ -78,9 +86,16 @@ func TestDeclaredLevelsMatchTheSpecification(t *testing.T) {
 		"POST /auth/login":    AccessAnonymous,
 		"POST /auth/refresh":  AccessRenewal,
 		"POST /auth/logout":   AccessAuthenticated,
-		"GET /players":        AccessAuthenticated,
+		"GET /players":        AccessAnonymous,
 		"GET /players/{id}":   AccessAuthenticated,
 		"POST /players/sync":  AccessSuperuser,
+
+		"POST /orders/buy":             AccessAuthenticated,
+		"POST /orders/sell":            AccessAuthenticated,
+		"GET /orders":                  AccessAuthenticated,
+		"DELETE /orders/{id}":          AccessAuthenticated,
+		"GET /users/{id}/portfolio":    AccessAuthenticated,
+		"GET /users/{id}/transactions": AccessAuthenticated,
 	}
 
 	declared := map[string]AccessLevel{}

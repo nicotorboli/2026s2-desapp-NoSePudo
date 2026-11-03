@@ -130,7 +130,7 @@ func TestRefreshKeepsTheSessionAliveAfterTheAccessCredentialExpires(t *testing.T
 	time.Sleep(2 * time.Second)
 
 	// La de acceso ya no sirve.
-	if status, _ := stack.get(t, "/players", "Bearer "+accessToken); status != http.StatusUnauthorized {
+	if status, _ := stack.get(t, "/players/1", "Bearer "+accessToken); status != http.StatusUnauthorized {
 		t.Fatalf("la credencial de acceso seguía sirviendo: %d", status)
 	}
 
@@ -282,8 +282,8 @@ func TestTheTwoCredentialsAreNotInterchangeable(t *testing.T) {
 
 	// Escenario 7: una credencial de renovación presentada a cualquier otro
 	// endpoint. Nunca da acceso a un recurso.
-	if status, _ := stack.get(t, "/players", "Bearer "+refreshToken); status != http.StatusUnauthorized {
-		t.Errorf("el catálogo aceptó una credencial de renovación: %d", status)
+	if status, _ := stack.get(t, "/players/1", "Bearer "+refreshToken); status != http.StatusUnauthorized {
+		t.Errorf("el detalle aceptó una credencial de renovación: %d", status)
 	}
 	if status, _ := stack.postWithBearer(t, "/auth/logout", refreshToken); status != http.StatusUnauthorized {
 		t.Errorf("el cierre de sesión aceptó una credencial de renovación: %d", status)

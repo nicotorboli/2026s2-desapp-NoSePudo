@@ -96,6 +96,7 @@ func newTestServerWith(verifier middleware.TokenVerifier) *server.Server {
 			Player: controller.NewPlayerController(&mockPlayerService{}),
 			Sync:   controller.NewSyncController(&mockSyncService{}),
 			Auth:   &mockAuthController{},
+			Market: controller.NewMarketController(nil, nil),
 		},
 		middleware.NewContainer(verifier),
 		filepath.Join("..", "..", "api", "openapi.yaml"),
@@ -106,9 +107,6 @@ func TestServer_ServeHTTP_GetPlayers(t *testing.T) {
 	srv := newTestServer()
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players", nil)
-	// El catálogo pasó a exigir credencial, así que el caso que lo pedía sin
-	// nada ahora la presenta.
-	req.Header.Set("Authorization", "Bearer una-credencial")
 	w := httptest.NewRecorder()
 
 	srv.ServeHTTP(w, req)
@@ -118,12 +116,10 @@ func TestServer_ServeHTTP_GetPlayers(t *testing.T) {
 	}
 }
 
-// La contracara del caso de arriba: sin credencial el catálogo se niega, que es
-// lo que la tabla de rutas declara.
-func TestServer_ServeHTTP_GetPlayers_SinCredencial(t *testing.T) {
+func TestServer_ServeHTTP_GetPlayerByID_SinCredencial(t *testing.T) {
 	srv := newTestServer()
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players/1", nil)
 	w := httptest.NewRecorder()
 
 	srv.ServeHTTP(w, req)
@@ -133,11 +129,10 @@ func TestServer_ServeHTTP_GetPlayers_SinCredencial(t *testing.T) {
 	}
 }
 
-// Y si la credencial no verifica, tampoco.
-func TestServer_ServeHTTP_GetPlayers_CredencialInvalida(t *testing.T) {
+func TestServer_ServeHTTP_GetPlayerByID_CredencialInvalida(t *testing.T) {
 	srv := newTestServerWith(&stubTokenVerifier{err: adapters.ErrTokenInvalid})
 
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players/1", nil)
 	req.Header.Set("Authorization", "Bearer una-credencial-alterada")
 	w := httptest.NewRecorder()
 
@@ -148,21 +143,22 @@ func TestServer_ServeHTTP_GetPlayers_CredencialInvalida(t *testing.T) {
 	}
 }
 
-// Los endpoints anónimos siguen sirviéndose sin credencial.
 func TestServer_ServeHTTP_RutasAnonimas(t *testing.T) {
 	cases := []struct {
+		method  string
 		pattern string
 		want    int
 	}{
-		{"/auth/register", http.StatusCreated},
-		{"/auth/login", http.StatusOK},
+		{http.MethodPost, "/auth/register", http.StatusCreated},
+		{http.MethodPost, "/auth/login", http.StatusOK},
+		{http.MethodGet, "/players", http.StatusOK},
 	}
 
 	for _, c := range cases {
 		t.Run(c.pattern, func(t *testing.T) {
 			srv := newTestServer()
 
-			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, c.pattern, nil)
+			req := httptest.NewRequestWithContext(t.Context(), c.method, c.pattern, nil)
 			w := httptest.NewRecorder()
 
 			srv.ServeHTTP(w, req)

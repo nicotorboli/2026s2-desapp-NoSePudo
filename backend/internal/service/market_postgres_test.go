@@ -1,0 +1,367 @@
+package service_test
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	_ "github.com/lib/pq"
+
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/dao"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/testsupport"
+)
+
+const marketFakeHash = "$2a$04$" + "abcdefghijklmnopqrstuv" + "wxyz0123456789ABCDEFGHIJKLMNOPQ"
+
+var marketSeedCounter int64
+
+type marketFixture struct {
+	db          *sql.DB
+	daos        *dao.Container
+	market      *service.MarketService
+	marketMaker *service.MarketMakerService
+	portfolio   *service.PortfolioService
+	clock       time.Time
+	players     *dao.PlayerSql
+}
+
+func newMarketFixture(t *testing.T) *marketFixture {
+	t.Helper()
+
+	db := startMarketPostgres(t)
+	daos := dao.NewContainer(db)
+	repos := repository.NewContainer(db, daos)
+
+	fixture := &marketFixture{
+		db:      db,
+		daos:    daos,
+		clock:   time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC),
+		players: daos.Player,
+	}
+	fixture.market = service.NewMarketService(repos.Market, func() time.Time { return fixture.clock })
+	fixture.marketMaker = service.NewMarketMakerService(repos.Market, func() time.Time { return fixture.clock })
+	fixture.portfolio = service.NewPortfolioService(repos.Portfolio)
+
+	return fixture
+}
+
+func (f *marketFixture) registrationRepository(initialBalance model.Credits) *repository.RegistrationRepository {
+	return repository.NewRegistrationRepository(f.db, f.daos.User, f.daos.Account, f.daos.Ledger, initialBalance)
+}
+
+func (f *marketFixture) seedSuperuser(t *testing.T) int64 {
+	t.Helper()
+
+	marketSeedCounter++
+
+	var id int64
+	err := f.db.QueryRowContext(t.Context(),
+		`INSERT INTO users (email, password_hash, privilege, active) VALUES ($1, $2, $3, TRUE) RETURNING id`,
+		fmt.Sprintf("superusuario-%d@test.local", marketSeedCounter),
+		marketFakeHash,
+		int16(model.PrivilegeSuperuser),
+	).Scan(&id)
+	if err != nil {
+		t.Fatalf("no se pudo sembrar el superusuario: %v", err)
+	}
+
+	if _, err = f.db.ExecContext(t.Context(),
+		`INSERT INTO user_accounts (user_id, available_balance, reserved_balance) VALUES ($1, 0, 0)`, id,
+	); err != nil {
+		t.Fatalf("no se pudo sembrar la cuenta del superusuario: %v", err)
+	}
+
+	return id
+}
+
+func (f *marketFixture) liveMarketMakerOrder(t *testing.T, playerID int64) (model.Order, bool) {
+	t.Helper()
+
+	var (
+		order  model.Order
+		price  int64
+		side   string
+		status string
+	)
+
+	err := f.db.QueryRowContext(t.Context(),
+		`SELECT id, user_id, player_id, side, status, price, quantity, executed_quantity
+		 FROM market_orders
+		 WHERE player_id = $1 AND market_maker AND status IN ('PENDING', 'PARTIALLY_FILLED')`,
+		playerID,
+	).Scan(&order.ID, &order.UserID, &order.PlayerID, &side, &status, &price, &order.Quantity, &order.ExecutedQuantity)
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.Order{}, false
+	}
+	if err != nil {
+		t.Fatalf("no se pudo leer la orden del creador de mercado: %v", err)
+	}
+
+	order.Side = model.OrderSide(side)
+	order.Status = model.OrderStatus(status)
+	order.Price = model.Credits(price)
+
+	return order, true
+}
+
+func (f *marketFixture) countQuotes(t *testing.T, playerID int64) int {
+	t.Helper()
+
+	var total int
+	if err := f.db.QueryRowContext(t.Context(),
+		`SELECT COUNT(*) FROM player_quotes WHERE player_id = $1`, playerID,
+	).Scan(&total); err != nil {
+		t.Fatalf("no se pudieron contar las cotizaciones del jugador %d: %v", playerID, err)
+	}
+
+	return total
+}
+
+var sharedPostgres *testsupport.SharedPostgres
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+
+	shared, err := testsupport.StartSharedPostgres(ctx, filepath.Join("..", "..", "db", "init.sql"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "no se pudo preparar Postgres para los tests de servicio: %v\n", err)
+		os.Exit(1)
+	}
+	sharedPostgres = shared
+
+	code := m.Run()
+
+	shared.Close(ctx)
+	os.Exit(code)
+}
+
+func startMarketPostgres(t *testing.T) *sql.DB {
+	t.Helper()
+
+	return sharedPostgres.Fresh(t)
+}
+
+func (f *marketFixture) seedUser(t *testing.T, balance model.Credits) int64 {
+	t.Helper()
+
+	marketSeedCounter++
+
+	var id int64
+	err := f.db.QueryRowContext(t.Context(),
+		`INSERT INTO users (email, password_hash, privilege, active) VALUES ($1, $2, $3, TRUE) RETURNING id`,
+		fmt.Sprintf("mercado-%d@test.local", marketSeedCounter),
+		marketFakeHash,
+		int16(model.PrivilegeUser),
+	).Scan(&id)
+	if err != nil {
+		t.Fatalf("no se pudo sembrar un usuario: %v", err)
+	}
+
+	if _, err = f.db.ExecContext(t.Context(),
+		`INSERT INTO user_accounts (user_id, available_balance, reserved_balance) VALUES ($1, $2, 0)`,
+		id, int64(balance),
+	); err != nil {
+		t.Fatalf("no se pudo sembrar la cuenta del usuario %d: %v", id, err)
+	}
+
+	return id
+}
+
+func (f *marketFixture) seedPlayer(t *testing.T) int64 {
+	t.Helper()
+
+	marketSeedCounter++
+
+	var id int64
+	err := f.db.QueryRowContext(t.Context(),
+		`INSERT INTO players (external_id, name, club_name, league_name, league_code, position)
+		 VALUES ($1, $2, 'Arsenal FC', 'Premier League', 'PL', 'Offence') RETURNING id`,
+		marketSeedCounter,
+		fmt.Sprintf("Jugador %d", marketSeedCounter),
+	).Scan(&id)
+	if err != nil {
+		t.Fatalf("no se pudo sembrar un jugador: %v", err)
+	}
+
+	return id
+}
+
+func (f *marketFixture) deactivatePlayer(t *testing.T, playerID int64) {
+	t.Helper()
+
+	if _, err := f.db.ExecContext(t.Context(),
+		`UPDATE players SET active = FALSE WHERE id = $1`, playerID,
+	); err != nil {
+		t.Fatalf("no se pudo desactivar el jugador %d: %v", playerID, err)
+	}
+}
+
+func (f *marketFixture) seedQuote(t *testing.T, playerID int64, price model.Credits) {
+	t.Helper()
+
+	if _, err := f.db.ExecContext(t.Context(),
+		`INSERT INTO player_quotes (player_id, price, strategy, strategy_version)
+		 VALUES ($1, $2, 'initial', '1')`,
+		playerID, int64(price),
+	); err != nil {
+		t.Fatalf("no se pudo sembrar la cotización del jugador %d: %v", playerID, err)
+	}
+}
+
+func (f *marketFixture) seedRestingSell(t *testing.T, sellerID, playerID int64, price model.Credits, quantity int64) int64 {
+	t.Helper()
+
+	if _, err := f.db.ExecContext(t.Context(),
+		`INSERT INTO user_positions (user_id, player_id, available_quantity, reserved_quantity, cost_basis)
+		 VALUES ($1, $2, 0, $3, 0)
+		 ON CONFLICT (user_id, player_id)
+		 DO UPDATE SET reserved_quantity = user_positions.reserved_quantity + $3`,
+		sellerID, playerID, quantity,
+	); err != nil {
+		t.Fatalf("no se pudo sembrar la posición del vendedor %d: %v", sellerID, err)
+	}
+
+	var orderID int64
+	err := f.db.QueryRowContext(t.Context(),
+		`INSERT INTO market_orders (user_id, player_id, side, time_in_force, status, price, quantity, created_at)
+		 VALUES ($1, $2, 'SELL', 'GTC', 'PENDING', $3, $4, $5) RETURNING id`,
+		sellerID, playerID, int64(price), quantity, f.clock,
+	).Scan(&orderID)
+	if err != nil {
+		t.Fatalf("no se pudo sembrar la orden de venta: %v", err)
+	}
+
+	return orderID
+}
+
+func (f *marketFixture) seedPosition(t *testing.T, userID, playerID, available int64, costBasis model.Credits) {
+	t.Helper()
+
+	if _, err := f.db.ExecContext(t.Context(),
+		`INSERT INTO user_positions (user_id, player_id, available_quantity, reserved_quantity, cost_basis)
+		 VALUES ($1, $2, $3, 0, $4)
+		 ON CONFLICT (user_id, player_id)
+		 DO UPDATE SET available_quantity = $3, cost_basis = $4`,
+		userID, playerID, available, int64(costBasis),
+	); err != nil {
+		t.Fatalf("no se pudo sembrar la posición del usuario %d: %v", userID, err)
+	}
+}
+
+func (f *marketFixture) seedRestingBuy(t *testing.T, buyerID, playerID int64, price model.Credits, quantity int64) int64 {
+	t.Helper()
+
+	reserved := int64(price.Times(quantity))
+	if _, err := f.db.ExecContext(t.Context(),
+		`UPDATE user_accounts
+		 SET available_balance = available_balance - $2, reserved_balance = reserved_balance + $2
+		 WHERE user_id = $1`,
+		buyerID, reserved,
+	); err != nil {
+		t.Fatalf("no se pudieron reservar los créditos del comprador %d: %v", buyerID, err)
+	}
+
+	var orderID int64
+	err := f.db.QueryRowContext(t.Context(),
+		`INSERT INTO market_orders (user_id, player_id, side, time_in_force, status, price, quantity, created_at)
+		 VALUES ($1, $2, 'BUY', 'GTC', 'PENDING', $3, $4, $5) RETURNING id`,
+		buyerID, playerID, int64(price), quantity, f.clock,
+	).Scan(&orderID)
+	if err != nil {
+		t.Fatalf("no se pudo sembrar la orden de compra: %v", err)
+	}
+
+	return orderID
+}
+
+func (f *marketFixture) orderStatus(t *testing.T, orderID int64) model.OrderStatus {
+	t.Helper()
+
+	var status string
+	if err := f.db.QueryRowContext(t.Context(),
+		`SELECT status FROM market_orders WHERE id = $1`, orderID,
+	).Scan(&status); err != nil {
+		t.Fatalf("no se pudo leer el estado de la orden %d: %v", orderID, err)
+	}
+
+	return model.OrderStatus(status)
+}
+
+func (f *marketFixture) countOrders(t *testing.T, userID int64) int {
+	t.Helper()
+
+	var total int
+	if err := f.db.QueryRowContext(t.Context(),
+		`SELECT COUNT(*) FROM market_orders WHERE user_id = $1`, userID,
+	).Scan(&total); err != nil {
+		t.Fatalf("no se pudieron contar las órdenes del usuario %d: %v", userID, err)
+	}
+
+	return total
+}
+
+func (f *marketFixture) countTrades(t *testing.T, playerID int64) int {
+	t.Helper()
+
+	var total int
+	if err := f.db.QueryRowContext(t.Context(),
+		`SELECT COUNT(*) FROM market_trades WHERE player_id = $1`, playerID,
+	).Scan(&total); err != nil {
+		t.Fatalf("no se pudieron contar las operaciones del jugador %d: %v", playerID, err)
+	}
+
+	return total
+}
+
+func (f *marketFixture) account(t *testing.T, userID int64) model.Account {
+	t.Helper()
+
+	account, err := f.daos.Account.GetByUser(t.Context(), userID)
+	if err != nil {
+		t.Fatalf("no se pudo leer la cuenta del usuario %d: %v", userID, err)
+	}
+
+	return account
+}
+
+func (f *marketFixture) position(t *testing.T, userID, playerID int64) model.Position {
+	t.Helper()
+
+	positions, err := f.daos.Position.ListByUser(t.Context(), userID)
+	if err != nil {
+		t.Fatalf("no se pudieron leer las posiciones del usuario %d: %v", userID, err)
+	}
+
+	for _, position := range positions {
+		if position.PlayerID == playerID {
+			return position
+		}
+	}
+
+	return model.Position{UserID: userID, PlayerID: playerID}
+}
+
+func (f *marketFixture) ledgerIsBalanced(t *testing.T) bool {
+	t.Helper()
+
+	var unbalanced int
+	err := f.db.QueryRowContext(t.Context(),
+		`SELECT COUNT(*) FROM (
+		     SELECT settlement_group FROM ledger_entries
+		     GROUP BY settlement_group HAVING SUM(amount) <> 0
+		 ) AS roto`,
+	).Scan(&unbalanced)
+	if err != nil {
+		t.Fatalf("no se pudo verificar el balance del libro mayor: %v", err)
+	}
+
+	return unbalanced == 0
+}

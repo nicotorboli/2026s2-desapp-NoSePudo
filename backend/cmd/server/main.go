@@ -18,6 +18,7 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/logger"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/middleware"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/dao"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/server"
@@ -100,7 +101,9 @@ func startServer() error {
 	}
 	logger.Info("Database schema verified")
 
-	repos := repository.NewContainer(db, daos)
+	repos := repository.NewContainer(db, daos,
+		repository.WithInitialUserBalance(model.CreditsFromUnits(cfg.InitialUserBalance)),
+	)
 	adapterContainer := adapters.NewContainer(cfg)
 	services := service.NewContainer(repos, adapterContainer, logger)
 	if cfg.HasSuperuserCredentials() {
@@ -108,6 +111,11 @@ func startServer() error {
 			return fmt.Errorf("aprovisionar el superusuario: %w", err)
 		}
 		logger.Info("Superuser account ensured")
+
+		if err = services.MarketMaker.Bootstrap(ctx); err != nil {
+			return fmt.Errorf("preparar el mercado: %w", err)
+		}
+		logger.Info("Market bootstrapped")
 	}
 
 	controllers := controller.NewContainer(services)

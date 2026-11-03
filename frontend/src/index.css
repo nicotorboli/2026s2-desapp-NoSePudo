@@ -1,5 +1,5 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "Rubik", Inter, system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   --ink-blue: #131b23;
@@ -11,10 +11,38 @@
   --teal: #7ebdc2;
 }
 
+html {
+  scrollbar-gutter: stable;
+  overflow-y: scroll;
+  box-sizing: border-box;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
 body {
   margin: 0;
-  place-items: center;
   min-width: 320px;
-  background-color: color-mix(in srgb, var(--green-forest) 16%, var(--radiant-orange) 16%, transparent);
+  min-height: 100vh;
+  background-color: #16241b;
+  background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0px, rgba(255, 255, 255, 0.018) 70px, transparent 70px, transparent 140px);
+  background-attachment: fixed;
   font-family: "Rubik", sans-serif;
+  color: #232742;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }

@@ -9,21 +9,30 @@ import (
 )
 
 type Container struct {
-	Player PlayerService
-	Sync   PlayerSyncService
-	Auth   *Auth
+	Player      PlayerService
+	Sync        PlayerSyncService
+	Auth        *Auth
+	Market      *MarketService
+	MarketMaker *MarketMakerService
+	Portfolio   *PortfolioService
 }
 
 func NewContainer(repos *repository.Container, adapterContainer *adapters.Container, logger *slog.Logger) *Container {
+	marketMaker := NewMarketMakerService(repos.Market, time.Now)
+
 	return &Container{
 		Player: NewPlayerService(repos.Player),
-		Sync:   NewPlayerSyncService(adapterContainer.FootballData, repos.Player, logger),
+		Sync:   NewPlayerSyncService(adapterContainer.FootballData, repos.Player, logger, WithMarketBootstrap(marketMaker)),
 		Auth: NewAuthService(
 			repos.User,
 			adapterContainer.Password,
 			adapterContainer.JWT,
 			repos.RefreshToken,
 			time.Now,
+			WithMarketAccounts(repos.Registration),
 		),
+		Market:      NewMarketService(repos.Market, time.Now),
+		MarketMaker: marketMaker,
+		Portfolio:   NewPortfolioService(repos.Portfolio),
 	}
 }

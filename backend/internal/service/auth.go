@@ -40,8 +40,21 @@ type RefreshTokenRepository interface {
 
 type Clock func() time.Time
 
+type RegistrationRepository interface {
+	InsertUserWithAccount(ctx context.Context, user model.User) (model.User, error)
+}
+
+type AuthOption func(*Auth)
+
+func WithMarketAccounts(registrationRepository RegistrationRepository) AuthOption {
+	return func(a *Auth) {
+		a.registrationRepository = registrationRepository
+	}
+}
+
 type Auth struct {
 	userRepository         UserRepository
+	registrationRepository RegistrationRepository
 	passwordHasher         PasswordHasher
 	tokenIssuer            TokenIssuer
 	refreshTokenRepository RefreshTokenRepository
@@ -54,14 +67,29 @@ func NewAuthService(
 	tokenIssuer TokenIssuer,
 	refreshTokenRepository RefreshTokenRepository,
 	now Clock,
+	options ...AuthOption,
 ) *Auth {
-	return &Auth{
+	auth := &Auth{
 		userRepository:         userRepository,
 		passwordHasher:         passwordHasher,
 		tokenIssuer:            tokenIssuer,
 		refreshTokenRepository: refreshTokenRepository,
 		now:                    now,
 	}
+
+	for _, option := range options {
+		option(auth)
+	}
+
+	return auth
+}
+
+func (a *Auth) insertUser(ctx context.Context, user model.User) (model.User, error) {
+	if a.registrationRepository != nil {
+		return a.registrationRepository.InsertUserWithAccount(ctx, user)
+	}
+
+	return a.userRepository.Insert(ctx, user)
 }
 
 func (a *Auth) Login(ctx context.Context, email, password string) (model.Session, error) {
@@ -136,7 +164,7 @@ func (a *Auth) Register(ctx context.Context, email, password string) (model.User
 		return model.User{}, fmt.Errorf("hashear la contraseña: %w", err)
 	}
 
-	user, err := a.userRepository.Insert(ctx, model.User{
+	user, err := a.insertUser(ctx, model.User{
 		Email:        normalizedEmail,
 		PasswordHash: passwordHash,
 		Privilege:    model.PrivilegeUser,
@@ -178,7 +206,7 @@ func (a *Auth) EnsureSuperuser(ctx context.Context, email, password string) erro
 		return fmt.Errorf("hashear la contraseña del superusuario: %w", err)
 	}
 
-	_, err = a.userRepository.Insert(ctx, model.User{
+	_, err = a.insertUser(ctx, model.User{
 		Email:        normalizedEmail,
 		PasswordHash: passwordHash,
 		Privilege:    model.PrivilegeSuperuser,
