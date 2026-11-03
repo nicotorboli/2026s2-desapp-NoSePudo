@@ -71,6 +71,7 @@ type Container struct {
 	Trade              *TradeSql
 	Ledger             *LedgerSql
 	Quote              *QuoteSql
+	P2PSession         *P2PSessionSql
 }
 
 func NewContainer(db *sql.DB) *Container {
@@ -94,5 +95,6 @@ func NewContainer(db *sql.DB) *Container {
 		Trade:              NewTradeDao(db),
 		Ledger:             NewLedgerDao(db),
 		Quote:              NewQuoteDao(db),
+		P2PSession:         NewP2PSessionDao(db),
 	}
 }

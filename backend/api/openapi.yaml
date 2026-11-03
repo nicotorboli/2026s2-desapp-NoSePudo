@@ -1,4 +1,4 @@
-﻿openapi: 3.1.0
+openapi: 3.1.0
 
 info:
   title: NoSePudo API
@@ -29,6 +29,8 @@ tags:
     description: The player catalog
   - name: sync
     description: Scheduled and manual synchronization runs
+  - name: p2p
+    description: Peer-to-peer token sessions
 
 paths:
 
@@ -982,6 +984,167 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /p2p/sessions:
+    post:
+      tags: [p2p]
+      summary: Crear oferta P2P
+      operationId: createP2PSession
+      x-access-level: authenticated
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateP2PSessionRequest'
+      responses:
+        '201':
+          description: Sesión creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/P2PSessionResponse'
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Jugador no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Saldo insuficiente de tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /p2p/sessions/{token}:
+    get:
+      tags: [p2p]
+      summary: Obtener oferta P2P
+      operationId: getP2PSession
+      x-access-level: authenticated
+      security:
+        - accessToken: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalles de la sesión
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/P2PSessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Sesión no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /p2p/sessions/{token}/accept:
+    post:
+      tags: [p2p]
+      summary: Aceptar oferta P2P
+      operationId: acceptP2PSession
+      x-access-level: authenticated
+      security:
+        - accessToken: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Transacción completada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/P2PTradeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Sesión no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflicto (auto-trade, cancelada o ya tomada por otro usuario)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: Oferta vencida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Créditos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /p2p/sessions/{token}/cancel:
+    post:
+      tags: [p2p]
+      summary: Cancelar oferta P2P
+      operationId: cancelP2PSession
+      x-access-level: authenticated
+      security:
+        - accessToken: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Sesión cancelada exitosamente
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Sesión no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: La sesión ya está en estado terminal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
 components:
 
   securitySchemes:
@@ -1576,3 +1739,110 @@ components:
         offset: {type: integer}
         limit: {type: integer}
         total: {type: integer}
+
+    CreateP2PSessionRequest:
+      type: object
+      required: [playerId, quantity, pricePerToken]
+      additionalProperties: false
+      properties:
+        playerId:
+          type: integer
+          format: int64
+          minimum: 1
+        quantity:
+          type: integer
+          format: int64
+          minimum: 1
+        pricePerToken:
+          type: integer
+          format: int64
+          minimum: 1
+
+    P2PUserSummary:
+      type: object
+      required: [id, email]
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+
+    P2PSessionResponse:
+      type: object
+      required: [id, token, sessionUrl, seller, player, quantity, pricePerToken, totalAmount, status, createdAt, expiresAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        token:
+          type: string
+          format: uuid
+        sessionUrl:
+          type: string
+        seller:
+          $ref: '#/components/schemas/P2PUserSummary'
+        buyer:
+          $ref: '#/components/schemas/P2PUserSummary'
+          nullable: true
+        player:
+          type: object
+          properties:
+            id: {type: integer, format: int64}
+            name: {type: string}
+            clubName: {type: string}
+        quantity:
+          type: integer
+          format: int64
+        pricePerToken:
+          type: integer
+          format: int64
+        totalAmount:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, CANCELLED, EXPIRED]
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    P2PTradeResponse:
+      type: object
+      required: [tradeId, sessionToken, buyerId, sellerId, playerId, quantity, pricePerToken, totalAmount, executedAt]
+      properties:
+        tradeId:
+          type: integer
+          format: int64
+        sessionToken:
+          type: string
+          format: uuid
+        buyerId:
+          type: integer
+          format: int64
+        sellerId:
+          type: integer
+          format: int64
+        playerId:
+          type: integer
+          format: int64
+        quantity:
+          type: integer
+          format: int64
+        pricePerToken:
+          type: integer
+          format: int64
+        totalAmount:
+          type: integer
+          format: int64
+        executedAt:
+          type: string
+          format: date-time
+

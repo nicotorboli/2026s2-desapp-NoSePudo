@@ -35,7 +35,7 @@ func main() {
 // expectedTables son las tablas sin las cuales el servicio no puede trabajar.
 // La lista y la decisión de abortar viven acá y no en el DAO: el DAO sólo
 // corre la consulta.
-var expectedTables = []string{"players", "player_statistics", "player_audit_logs", "users", "refresh_tokens", "scoring_strategies", "scoring_strategy_activations", "scoring_histograms", "player_scores", "league_coefficients", "sync_schedules", "sync_runs", "user_accounts", "user_positions", "market_orders", "market_trades", "ledger_entries", "player_quotes"}
+var expectedTables = []string{"players", "player_statistics", "player_audit_logs", "users", "refresh_tokens", "scoring_strategies", "scoring_strategy_activations", "scoring_histograms", "player_scores", "league_coefficients", "sync_schedules", "sync_runs", "user_accounts", "user_positions", "market_orders", "market_trades", "ledger_entries", "player_quotes", "p2p_sessions"}
 
 // ensureSchema se niega a arrancar cuando falta alguna tabla, por la misma
 // razón por la que el servicio se niega a arrancar sin secreto de firma: es
@@ -156,10 +156,12 @@ func startServer() error {
 	srv := server.NewServer(cfg.GetServerAddress(), logger, controllers, middlewares, contractPath)
 
 	services.SyncScheduler.Start(runCtx)
+	services.P2PExpiration.Start(runCtx)
 
 	err = srv.Run(runCtx)
 
 	stop()
+	services.P2PExpiration.Stop()
 	services.SyncScheduler.Stop()
 
 	shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
