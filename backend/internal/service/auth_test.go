@@ -679,6 +679,31 @@ func TestEnsureSuperuserLeavesAnExistingPasswordAlone(t *testing.T) {
 	}
 }
 
+// Superuser devuelve la cuenta ya aprovisionada y normaliza el email de entrada.
+func TestSuperuserReturnsTheProvisionedAccount(t *testing.T) {
+	auth, _, _, _ := newAuthServiceWithIssuer()
+
+	if err := auth.EnsureSuperuser(t.Context(), " Admin@NoSePudo.AR ", "una-contraseña"); err != nil {
+		t.Fatalf("EnsureSuperuser devolvió error: %v", err)
+	}
+
+	user, err := auth.Superuser(t.Context(), " ADMIN@nosepudo.ar ")
+	if err != nil {
+		t.Fatalf("Superuser devolvió error: %v", err)
+	}
+	if user.Email != "admin@nosepudo.ar" || user.Privilege != model.PrivilegeSuperuser {
+		t.Errorf("cuenta inesperada: %+v", user)
+	}
+}
+
+func TestSuperuserReportsAMissingAccount(t *testing.T) {
+	auth, _, _, _ := newAuthServiceWithIssuer()
+
+	if _, err := auth.Superuser(t.Context(), "nadie@nosepudo.ar"); !errors.Is(err, model.ErrUserNotFound) {
+		t.Errorf("esperaba ErrUserNotFound, obtuve %v", err)
+	}
+}
+
 // el requerimiento: la cuenta de superusuario no es obtenible a través del alta.
 func TestRegisterCannotProduceASuperuser(t *testing.T) {
 	auth, userRepository, _, _ := newAuthServiceWithIssuer()

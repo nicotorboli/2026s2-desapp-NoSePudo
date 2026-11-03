@@ -14,15 +14,15 @@ import (
 const uniqueViolation = "23505"
 
 type UserSql struct {
-	Db *sql.DB
+	db *sql.DB
 }
 
 func NewUserDao(db *sql.DB) *UserSql {
-	return &UserSql{Db: db}
+	return &UserSql{db: db}
 }
 
-func (dao *UserSql) Insert(ctx context.Context, user model.User) (model.User, error) {
-	if dao.Db == nil {
+func (d *UserSql) Insert(ctx context.Context, user model.User) (model.User, error) {
+	if d.db == nil {
 		return model.User{}, errNilDatabase
 	}
 
@@ -31,7 +31,7 @@ func (dao *UserSql) Insert(ctx context.Context, user model.User) (model.User, er
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at`
 
-	err := dao.Db.QueryRowContext(ctx, query, user.Email, user.PasswordHash, int16(user.Privilege), user.Active).
+	err := d.db.QueryRowContext(ctx, query, user.Email, user.PasswordHash, int16(user.Privilege), user.Active).
 		Scan(&user.ID, &user.CreatedAt)
 	if err != nil {
 		if pqErr, ok := errors.AsType[*pq.Error](err); ok && pqErr.Code == uniqueViolation {
@@ -43,13 +43,13 @@ func (dao *UserSql) Insert(ctx context.Context, user model.User) (model.User, er
 	return user, nil
 }
 
-func (dao *UserSql) InsertTx(ctx context.Context, tx *sql.Tx, user model.User) (model.User, error) {
+func (d *UserSql) InsertTx(ctx context.Context, tx *sql.Tx, user model.User) (model.User, error) {
 	const query = `
 		INSERT INTO users (email, password_hash, privilege, active)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at`
 
-	querier, err := querierFor(tx, dao.Db)
+	querier, err := querierFor(tx, d.db)
 	if err != nil {
 		return model.User{}, err
 	}
@@ -66,7 +66,7 @@ func (dao *UserSql) InsertTx(ctx context.Context, tx *sql.Tx, user model.User) (
 	return user, nil
 }
 
-func (dao *UserSql) GetSuperuser(ctx context.Context) (model.User, error) {
+func (d *UserSql) GetSuperuser(ctx context.Context) (model.User, error) {
 	const query = `
 		SELECT id, email, password_hash, privilege, active, created_at
 		FROM users
@@ -74,29 +74,29 @@ func (dao *UserSql) GetSuperuser(ctx context.Context) (model.User, error) {
 		ORDER BY id
 		LIMIT 1`
 
-	return dao.queryOne(ctx, query, int16(model.PrivilegeSuperuser))
+	return d.queryOne(ctx, query, int16(model.PrivilegeSuperuser))
 }
 
-func (dao *UserSql) GetByEmail(ctx context.Context, email string) (model.User, error) {
+func (d *UserSql) GetByEmail(ctx context.Context, email string) (model.User, error) {
 	const query = `
 		SELECT id, email, password_hash, privilege, active, created_at
 		FROM users
 		WHERE email = $1`
 
-	return dao.queryOne(ctx, query, email)
+	return d.queryOne(ctx, query, email)
 }
 
-func (dao *UserSql) GetByID(ctx context.Context, id int64) (model.User, error) {
+func (d *UserSql) GetByID(ctx context.Context, id int64) (model.User, error) {
 	const query = `
 		SELECT id, email, password_hash, privilege, active, created_at
 		FROM users
 		WHERE id = $1`
 
-	return dao.queryOne(ctx, query, id)
+	return d.queryOne(ctx, query, id)
 }
 
-func (dao *UserSql) queryOne(ctx context.Context, query string, arg any) (model.User, error) {
-	if dao.Db == nil {
+func (d *UserSql) queryOne(ctx context.Context, query string, arg any) (model.User, error) {
+	if d.db == nil {
 		return model.User{}, errNilDatabase
 	}
 
@@ -105,7 +105,7 @@ func (dao *UserSql) queryOne(ctx context.Context, query string, arg any) (model.
 		privilege int16
 	)
 
-	err := dao.Db.QueryRowContext(ctx, query, arg).Scan(
+	err := d.db.QueryRowContext(ctx, query, arg).Scan(
 		&user.ID,
 		&user.Email,
 		&user.PasswordHash,

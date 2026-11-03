@@ -10,15 +10,11 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
-// route es la declaración de un endpoint: su patrón, el nivel de acceso que
-// exige y el endpoint en sí.
 type route struct {
 	endpoint httphandler.Endpoint
 	pattern  string
 	access   AccessLevel
 }
-
-// routes describe las rutas y no registra ninguna.
 
 func (s *Server) routes() []route {
 	return []route{
@@ -49,15 +45,78 @@ func (s *Server) routes() []route {
 		},
 		{
 			pattern:  "GET /players/{id}",
-			access:   AccessAuthenticated,
+			access:   AccessAnonymous,
 			endpoint: s.controllers.Player.GetPlayerByID(),
 		},
 		{
-			// Sólo el superusuario: dispara pedidos contra una API externa con
-			// rate limit y reescribe el catálogo.
-			pattern:  "POST /players/sync",
+			pattern:  "GET /players/{id}/statistics",
+			access:   AccessAnonymous,
+			endpoint: s.controllers.Sync.GetPlayerStatistics(),
+		},
+		{
+			pattern:  "POST /sync/{type}/runs",
 			access:   AccessSuperuser,
-			endpoint: s.controllers.Sync.SyncPlayers(),
+			endpoint: s.controllers.Sync.CreateRun(),
+		},
+		{
+			pattern:  "GET /sync/runs",
+			access:   AccessSuperuser,
+			endpoint: s.controllers.Sync.ListRuns(),
+		},
+		{
+			pattern:  "GET /sync/runs/{id}",
+			access:   AccessSuperuser,
+			endpoint: s.controllers.Sync.GetRun(),
+		},
+		{
+			pattern:  "GET /sync/schedules",
+			access:   AccessSuperuser,
+			endpoint: s.controllers.Sync.ListSchedules(),
+		},
+		{
+			pattern:  "PUT /sync/schedules/{type}",
+			access:   AccessSuperuser,
+			endpoint: s.controllers.Sync.UpdateSchedule(),
+		},
+		{
+			pattern:  "GET /scoring/strategies",
+			access:   AccessAnonymous,
+			endpoint: s.controllers.Scoring.ListStrategies(),
+		},
+		{
+			pattern:  "GET /scoring/active-strategy",
+			access:   AccessAnonymous,
+			endpoint: s.controllers.Scoring.GetActiveStrategy(),
+		},
+		{
+			pattern:  "PUT /scoring/active-strategy",
+			access:   AccessSuperuser,
+			endpoint: s.controllers.Scoring.ActivateStrategy(),
+		},
+		{
+			pattern:  "GET /scoring/league-coefficients/{league}",
+			access:   AccessAnonymous,
+			endpoint: s.controllers.Scoring.GetLeagueCoefficient(),
+		},
+		{
+			pattern:  "PUT /scoring/league-coefficients/{league}",
+			access:   AccessSuperuser,
+			endpoint: s.controllers.Scoring.SetLeagueCoefficient(),
+		},
+		{
+			pattern:  "GET /players/{id}/score",
+			access:   AccessAnonymous,
+			endpoint: s.controllers.Scoring.GetScore(),
+		},
+		{
+			pattern:  "GET /players/{id}/scores",
+			access:   AccessAnonymous,
+			endpoint: s.controllers.Scoring.GetScoreHistory(),
+		},
+		{
+			pattern:  "GET /players/ranking",
+			access:   AccessAnonymous,
+			endpoint: s.controllers.Scoring.GetPlayersRanking(),
 		},
 		{
 			pattern:  "POST /orders/buy",
@@ -92,9 +151,6 @@ func (s *Server) routes() []route {
 	}
 }
 
-// buildMux es el único lugar del programa que llama a Handle sobre un
-// ServeMux. Recibe la descripción y la convierte en un router, aplicando a
-// cada ruta la cadena que su nivel implica.
 func buildMux(routes []route, logger *slog.Logger, middlewares *middleware.Container) *http.ServeMux {
 	mux := http.NewServeMux()
 
@@ -105,7 +161,6 @@ func buildMux(routes []route, logger *slog.Logger, middlewares *middleware.Conta
 	return mux
 }
 
-// chainFor devuelve el endpoint ya decorado según el nivel declarado.
 func chainFor(r route, middlewares *middleware.Container) httphandler.Endpoint {
 	switch r.access {
 	case AccessAnonymous:
@@ -121,9 +176,6 @@ func chainFor(r route, middlewares *middleware.Container) httphandler.Endpoint {
 	case AccessUndeclared:
 		panic(fmt.Sprintf("la ruta %q no declara su nivel de acceso", r.pattern))
 	default:
-		// Un nivel que exige credencial pero cuyo middleware todavía no se
-		// construyó tiene que reventar acá. Servir la ruta sin la cadena sería
-		// dejarla abierta mientras la tabla dice que está protegida.
 		panic(fmt.Sprintf(
 			"la ruta %q declara el nivel %s, pero su middleware todavía no existe",
 			r.pattern, r.access,

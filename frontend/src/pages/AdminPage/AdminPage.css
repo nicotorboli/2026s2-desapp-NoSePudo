@@ -1,0 +1,158 @@
+.admin-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  width: 100%;
+  flex: 1;
+}
+
+.admin-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.admin-page__title {
+  margin: 0 0 0.5rem;
+  font-family: "Merriweather", Georgia, serif;
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 14px rgba(0, 0, 0, 0.5);
+  letter-spacing: 0.3px;
+}
+
+.admin-page__subtitle {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #d2ddd4;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.admin-page__session {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(18, 28, 20, 0.88);
+  border: 1px solid rgba(223, 175, 15, 0.35);
+  padding: 0.45rem 0.85rem;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+}
+
+.admin-page__email {
+  color: #f7d070;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.admin-page__logout {
+  background-color: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  padding: 0.35rem 0.75rem;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  transition: all 0.15s ease-in-out;
+}
+
+.admin-page__logout:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.admin-page__nav {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 2rem;
+  padding: 0.75rem 1rem;
+  background: rgba(18, 28, 20, 0.92);
+  border: 1px solid rgba(223, 175, 15, 0.35);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+}
+
+.admin-page__nav-link {
+  padding: 0.45rem 1rem;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(223, 175, 15, 0.3);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-decoration: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  transition: all 0.15s ease-in-out;
+}
+
+.admin-page__nav-link:hover {
+  background-color: var(--golden, #dfaf0f);
+  border-color: var(--golden, #dfaf0f);
+  color: var(--ink-blue, #131b23);
+  text-shadow: none;
+}
+
+.admin-page__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.admin-page__sections > section {
+  scroll-margin-top: 5rem;
+}
+
+.admin-page--denied {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-top: 3rem;
+}
+
+.admin-page__denied-card {
+  width: min(32rem, 100%);
+  padding: 2.5rem 2rem;
+  border-radius: 6px;
+  background-color: #dfc29d;
+  border: 1px solid rgba(223, 175, 15, 0.35);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+
+.admin-page__denied-card .admin-page__title {
+  font-family: "Merriweather", Georgia, serif;
+  font-size: 1.75rem;
+  color: var(--ink-blue, #131b23);
+  text-shadow: none;
+  margin-bottom: 0.75rem;
+}
+
+.admin-page__denied-card .admin-page__subtitle {
+  color: #3d2f1f;
+  text-shadow: none;
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-page__denied-card .admin-page__logout {
+  background: linear-gradient(180deg, #ff9b49 0%, #ff7f1f 45%, #ea690b 100%);
+  border: 1px solid #c95e09;
+  color: #ffffff;
+  font-size: 0.95rem;
+  padding: 0.6rem 1.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}

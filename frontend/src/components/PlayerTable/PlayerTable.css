@@ -31,6 +31,17 @@
   color: var(--teal);
 }
 
+.player-table__sort {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  color: var(--teal);
+  cursor: pointer;
+}
+
 .player-table__cell--name {
   font-weight: 600;
   color: var(--green-forest);

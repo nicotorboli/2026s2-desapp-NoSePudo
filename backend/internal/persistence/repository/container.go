@@ -8,12 +8,20 @@ import (
 )
 
 type Container struct {
-	Player       PlayerRepository
-	User         *UserRepository
-	RefreshToken *RefreshTokenRepository
-	Market       *MarketRepository
-	Portfolio    *PortfolioRepository
-	Registration *RegistrationRepository
+	Player             *PlayerRepositoryImpl
+	PlayerStatistics   *PlayerStatisticsRepositoryImpl
+	User               *UserRepository
+	RefreshToken       *RefreshTokenRepository
+	PlayerScore        *PlayerScoreRepositoryImpl
+	ScoreHistogram     *ScoreHistogramRepositoryImpl
+	StrategyActivation *StrategyActivationRepositoryImpl
+	LeagueCoefficient  *LeagueCoefficientRepositoryImpl
+	ScoringStrategy    *ScoringStrategyRepositoryImpl
+	SyncSchedule       *SyncScheduleRepositoryImpl
+	SyncRun            *SyncRunRepositoryImpl
+	Market             *MarketRepository
+	Portfolio          *PortfolioRepository
+	Registration       *RegistrationRepository
 }
 
 type containerSettings struct {
@@ -35,9 +43,17 @@ func NewContainer(db *sql.DB, daos *dao.Container, options ...ContainerOption) *
 	}
 
 	return &Container{
-		Player:       NewPlayerRepository(db, daos.Player, daos.Audit),
-		User:         NewUserRepository(daos.User),
-		RefreshToken: NewRefreshTokenRepository(daos.RefreshToken),
+		Player:             NewPlayerRepository(db, daos.Player, daos.Audit),
+		PlayerStatistics:   NewPlayerStatisticsRepository(db, daos.PlayerStatistics),
+		User:               NewUserRepository(daos.User),
+		RefreshToken:       NewRefreshTokenRepository(daos.RefreshToken),
+		PlayerScore:        NewPlayerScoreRepository(db, daos.PlayerScore),
+		ScoreHistogram:     NewScoreHistogramRepository(daos.ScoreHistogram),
+		StrategyActivation: NewStrategyActivationRepository(daos.StrategyActivation),
+		LeagueCoefficient:  NewLeagueCoefficientRepository(daos.LeagueCoefficient),
+		ScoringStrategy:    NewScoringStrategyRepository(daos.ScoringStrategy),
+		SyncSchedule:       NewSyncScheduleRepository(daos.SyncSchedule),
+		SyncRun:            NewSyncRunRepository(db, daos.SyncRun),
 		Market: NewMarketRepository(
 			db,
 			daos.Player,

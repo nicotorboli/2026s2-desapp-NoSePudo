@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
-	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/logger"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/middleware"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
@@ -35,37 +35,82 @@ func (m *mockPlayerService) GetPlayerByID(ctx context.Context, id int64) (dto.Pl
 	return dto.PlayerDetailResponse{ID: id, Name: "Test Player"}, nil
 }
 
-type mockSyncService struct{}
+type mockSyncRunService struct{}
 
-func (m *mockSyncService) SyncPlayers(ctx context.Context, actor string) (dto.SyncPlayersResponse, error) {
-	return dto.SyncPlayersResponse{Status: "success"}, nil
+func (m *mockSyncRunService) Trigger(ctx context.Context, typ model.SyncType, actorID *int64) (dto.SyncRunResponse, error) {
+	return dto.SyncRunResponse{Status: "running"}, nil
 }
 
-type mockAuthController struct{}
-
-func (m *mockAuthController) Register() httphandler.Endpoint {
-	return func(w http.ResponseWriter, req *http.Request) error {
-		return httphandler.Encode(w, http.StatusCreated, map[string]string{"status": "created"})
-	}
+func (m *mockSyncRunService) GetRun(ctx context.Context, id int64) (dto.SyncRunResponse, error) {
+	return dto.SyncRunResponse{}, nil
 }
 
-func (m *mockAuthController) Login() httphandler.Endpoint {
-	return func(w http.ResponseWriter, req *http.Request) error {
-		return httphandler.Encode(w, http.StatusOK, map[string]string{"status": "signed in"})
-	}
+func (m *mockSyncRunService) ListRuns(ctx context.Context, typ *model.SyncType, offset, limit int) (dto.SyncRunPageResponse, error) {
+	return dto.SyncRunPageResponse{}, nil
 }
 
-func (m *mockAuthController) Refresh() httphandler.Endpoint {
-	return func(w http.ResponseWriter, req *http.Request) error {
-		return httphandler.Encode(w, http.StatusOK, map[string]string{"status": "renewed"})
-	}
+func (m *mockSyncRunService) ListSchedules(ctx context.Context) ([]dto.SyncScheduleResponse, error) {
+	return nil, nil
 }
 
-func (m *mockAuthController) Logout() httphandler.Endpoint {
-	return func(w http.ResponseWriter, req *http.Request) error {
-		w.WriteHeader(http.StatusNoContent)
-		return nil
-	}
+func (m *mockSyncRunService) UpdateSchedule(ctx context.Context, typ model.SyncType, enabled bool, intervalMinutes int, actorID int64) (dto.SyncScheduleResponse, error) {
+	return dto.SyncScheduleResponse{}, nil
+}
+
+type mockPlayerStatisticsService struct{}
+
+func (m *mockPlayerStatisticsService) GetPlayerStatistics(ctx context.Context, id int64) ([]dto.PlayerStatisticsResponse, error) {
+	return []dto.PlayerStatisticsResponse{{Goals: 5, Rating: 7.8}}, nil
+}
+
+type mockAuthService struct{}
+
+func (m *mockAuthService) Register(ctx context.Context, email, password string) (model.User, error) {
+	return model.User{}, nil
+}
+
+func (m *mockAuthService) Login(ctx context.Context, email, password string) (model.Session, error) {
+	return model.Session{}, nil
+}
+
+func (m *mockAuthService) Refresh(ctx context.Context, presentedID string, userID int64, sessionID string) (model.Session, error) {
+	return model.Session{}, nil
+}
+
+func (m *mockAuthService) Logout(ctx context.Context, userID int64, sessionID string) error {
+	return nil
+}
+
+type mockScoringService struct{}
+
+func (m *mockScoringService) ListStrategies() []dto.ScoringStrategyResponse { return nil }
+
+func (m *mockScoringService) ActiveStrategy(ctx context.Context) (dto.ActiveStrategyResponse, bool, error) {
+	return dto.ActiveStrategyResponse{}, false, nil
+}
+
+func (m *mockScoringService) ActivateStrategy(ctx context.Context, strategyID int, actorID int64) error {
+	return nil
+}
+
+func (m *mockScoringService) SetLeagueCoefficient(ctx context.Context, leagueCode string, coefficient float64, actorID int64) error {
+	return nil
+}
+
+func (m *mockScoringService) GetLeagueCoefficient(ctx context.Context, leagueCode string) (dto.LeagueCoefficientResponse, bool, error) {
+	return dto.LeagueCoefficientResponse{}, false, nil
+}
+
+func (m *mockScoringService) GetScore(ctx context.Context, playerID int64) (dto.PlayerScoreResponse, error) {
+	return dto.PlayerScoreResponse{}, nil
+}
+
+func (m *mockScoringService) GetScoreHistory(ctx context.Context, playerID int64) ([]dto.PlayerScoreResponse, error) {
+	return nil, nil
+}
+
+func (m *mockScoringService) ListRanking(ctx context.Context, filter dto.PlayerFilterDTO, sortOrder string, offset int) (dto.PlayerRankingPageResponse, error) {
+	return dto.PlayerRankingPageResponse{}, nil
 }
 
 // stubTokenVerifier acepta o rechaza sin firmar nada. Lo que estos casos
@@ -94,9 +139,13 @@ func newTestServerWith(verifier middleware.TokenVerifier) *server.Server {
 		logger.NewLog(),
 		&controller.Container{
 			Player: controller.NewPlayerController(&mockPlayerService{}),
-			Sync:   controller.NewSyncController(&mockSyncService{}),
-			Auth:   &mockAuthController{},
-			Market: controller.NewMarketController(nil, nil),
+			Sync: controller.NewSyncController(
+				&mockPlayerStatisticsService{},
+				&mockSyncRunService{},
+			),
+			Scoring: controller.NewScoringController(&mockScoringService{}),
+			Auth:    controller.NewAuthController(&mockAuthService{}),
+			Market:  controller.NewMarketController(nil, nil),
 		},
 		middleware.NewContainer(verifier),
 		filepath.Join("..", "..", "api", "openapi.yaml"),
@@ -116,49 +165,23 @@ func TestServer_ServeHTTP_GetPlayers(t *testing.T) {
 	}
 }
 
-func TestServer_ServeHTTP_GetPlayerByID_SinCredencial(t *testing.T) {
-	srv := newTestServer()
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players/1", nil)
-	w := httptest.NewRecorder()
-
-	srv.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("expected status 401, got %d", w.Code)
-	}
-}
-
-func TestServer_ServeHTTP_GetPlayerByID_CredencialInvalida(t *testing.T) {
-	srv := newTestServerWith(&stubTokenVerifier{err: adapters.ErrTokenInvalid})
-
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/players/1", nil)
-	req.Header.Set("Authorization", "Bearer una-credencial-alterada")
-	w := httptest.NewRecorder()
-
-	srv.ServeHTTP(w, req)
-
-	if w.Code != http.StatusUnauthorized {
-		t.Fatalf("expected status 401, got %d", w.Code)
-	}
-}
-
 func TestServer_ServeHTTP_RutasAnonimas(t *testing.T) {
 	cases := []struct {
 		method  string
 		pattern string
+		body    string
 		want    int
 	}{
-		{http.MethodPost, "/auth/register", http.StatusCreated},
-		{http.MethodPost, "/auth/login", http.StatusOK},
-		{http.MethodGet, "/players", http.StatusOK},
+		{http.MethodPost, "/auth/register", `{"email":"a@b.com","password":"password123"}`, http.StatusCreated},
+		{http.MethodPost, "/auth/login", `{"email":"a@b.com","password":"password123"}`, http.StatusOK},
+		{http.MethodGet, "/players", "", http.StatusOK},
 	}
 
 	for _, c := range cases {
 		t.Run(c.pattern, func(t *testing.T) {
 			srv := newTestServer()
 
-			req := httptest.NewRequestWithContext(t.Context(), c.method, c.pattern, nil)
+			req := httptest.NewRequestWithContext(t.Context(), c.method, c.pattern, strings.NewReader(c.body))
 			w := httptest.NewRecorder()
 
 			srv.ServeHTTP(w, req)

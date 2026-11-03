@@ -123,33 +123,65 @@ func logRefusedSignIn(ctx context.Context, reason string, attributes ...any) {
 	)
 }
 
-func (a *Auth) openSession(ctx context.Context, user model.User, sessionID string) (model.Session, error) {
+type tokenPair struct {
+	accessToken   string
+	refreshToken  string
+	accessClaims  adapters.Claims
+	refreshClaims adapters.Claims
+}
+
+func (a *Auth) issuePair(user model.User, sessionID string) (tokenPair, error) {
 	accessToken, accessClaims, err := a.tokenIssuer.IssueAccess(user.ID, user.Privilege, sessionID)
 	if err != nil {
-		return model.Session{}, fmt.Errorf("emitir la credencial de acceso: %w", err)
+		return tokenPair{}, fmt.Errorf("emitir la credencial de acceso: %w", err)
 	}
 
 	refreshToken, refreshClaims, err := a.tokenIssuer.IssueRefresh(user.ID, sessionID)
 	if err != nil {
-		return model.Session{}, fmt.Errorf("emitir la credencial de renovación: %w", err)
+		return tokenPair{}, fmt.Errorf("emitir la credencial de renovación: %w", err)
 	}
 
-	err = a.refreshTokenRepository.Insert(ctx, model.RefreshToken{
-		ExpiresAt: refreshClaims.ExpiresAt,
-		ID:        refreshClaims.ID,
+	return tokenPair{
+		accessClaims:  accessClaims,
+		refreshClaims: refreshClaims,
+		accessToken:   accessToken,
+		refreshToken:  refreshToken,
+	}, nil
+}
+
+// refreshTokenRecord arma la fila persistida de la credencial de renovación a
+// partir de los claims recién emitidos.
+func refreshTokenRecord(user model.User, sessionID string, claims adapters.Claims) model.RefreshToken {
+	return model.RefreshToken{
+		ExpiresAt: claims.ExpiresAt,
+		ID:        claims.ID,
 		FamilyID:  sessionID,
 		UserID:    user.ID,
-	})
+	}
+}
+
+// sessionFromPair arma el par de credenciales que se entrega a quien se
+// autentica o renueva.
+func sessionFromPair(pair tokenPair) model.Session {
+	return model.Session{
+		AccessExpiresAt:  pair.accessClaims.ExpiresAt,
+		RefreshExpiresAt: pair.refreshClaims.ExpiresAt,
+		AccessToken:      pair.accessToken,
+		RefreshToken:     pair.refreshToken,
+	}
+}
+
+func (a *Auth) openSession(ctx context.Context, user model.User, sessionID string) (model.Session, error) {
+	pair, err := a.issuePair(user, sessionID)
 	if err != nil {
+		return model.Session{}, err
+	}
+
+	if err := a.refreshTokenRepository.Insert(ctx, refreshTokenRecord(user, sessionID, pair.refreshClaims)); err != nil {
 		return model.Session{}, fmt.Errorf("persistir la credencial de renovación: %w", err)
 	}
 
-	return model.Session{
-		AccessExpiresAt:  accessClaims.ExpiresAt,
-		RefreshExpiresAt: refreshClaims.ExpiresAt,
-		AccessToken:      accessToken,
-		RefreshToken:     refreshToken,
-	}, nil
+	return sessionFromPair(pair), nil
 }
 
 func (a *Auth) Register(ctx context.Context, email, password string) (model.User, error) {
@@ -223,6 +255,17 @@ func (a *Auth) EnsureSuperuser(ctx context.Context, email, password string) erro
 	return nil
 }
 
+// Superuser devuelve la cuenta de superusuario ya aprovisionada. Lo usan las
+// tareas de arranque que necesitan un actor concreto, como la activación de la
+// estrategia por defecto.
+func (a *Auth) Superuser(ctx context.Context, email string) (model.User, error) {
+	user, err := a.userRepository.GetByEmail(ctx, model.NormalizeEmail(email))
+	if err != nil {
+		return model.User{}, fmt.Errorf("buscar la cuenta de superusuario: %w", err)
+	}
+	return user, nil
+}
+
 func (a *Auth) Refresh(
 	ctx context.Context,
 	presentedID string,
@@ -255,25 +298,15 @@ func (a *Auth) Refresh(
 		return model.Session{}, fmt.Errorf("buscar la cuenta a renovar: %w", err)
 	}
 
-	accessToken, accessClaims, err := a.tokenIssuer.IssueAccess(user.ID, user.Privilege, sessionID)
+	pair, err := a.issuePair(user, sessionID)
 	if err != nil {
-		return model.Session{}, fmt.Errorf("emitir la credencial de acceso: %w", err)
-	}
-
-	refreshToken, refreshClaims, err := a.tokenIssuer.IssueRefresh(user.ID, sessionID)
-	if err != nil {
-		return model.Session{}, fmt.Errorf("emitir la credencial de renovación: %w", err)
+		return model.Session{}, err
 	}
 
 	// La rotación es la que decide de verdad: su UPDATE lleva las condiciones
 	// de "está viva" en el WHERE, así que si dos peticiones llegan con la misma
 	// credencial sólo una gana.
-	replacement := model.RefreshToken{
-		ExpiresAt: refreshClaims.ExpiresAt,
-		ID:        refreshClaims.ID,
-		FamilyID:  sessionID,
-		UserID:    user.ID,
-	}
+	replacement := refreshTokenRecord(user, sessionID, pair.refreshClaims)
 
 	if err := a.refreshTokenRepository.Rotate(ctx, presentedID, replacement); err != nil {
 		if errors.Is(err, model.ErrRefreshTokenReused) {
@@ -282,12 +315,7 @@ func (a *Auth) Refresh(
 		return model.Session{}, fmt.Errorf("rotar la credencial de renovación: %w", err)
 	}
 
-	return model.Session{
-		AccessExpiresAt:  accessClaims.ExpiresAt,
-		RefreshExpiresAt: refreshClaims.ExpiresAt,
-		AccessToken:      accessToken,
-		RefreshToken:     refreshToken,
-	}, nil
+	return sessionFromPair(pair), nil
 }
 
 func (a *Auth) respondToTheft(ctx context.Context, userID int64) error {

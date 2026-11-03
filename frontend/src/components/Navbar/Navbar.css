@@ -151,3 +151,25 @@
   box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.6);
   transform: translateY(1px);
 }
+
+.navbar__nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.navbar__link {
+  background: none;
+  border: none;
+  color: var(--teal);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: color 0.15s ease-in-out;
+}
+
+.navbar__link:hover {
+  color: var(--golden);
+}

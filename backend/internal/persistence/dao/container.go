@@ -52,31 +52,47 @@ func requireOneRow(result sql.Result, absent error) error {
 }
 
 type Container struct {
-	Audit        AuditDAO
-	Player       *PlayerSql
-	User         *UserSql
-	RefreshToken *RefreshTokenSql
-	Schema       *SchemaSql
-	Account      *AccountSql
-	Position     *PositionSql
-	Order        *OrderSql
-	Trade        *TradeSql
-	Ledger       *LedgerSql
-	Quote        *QuoteSql
+	Player             *PlayerSql
+	PlayerStatistics   *PlayerStatisticsSql
+	Audit              *AuditSql
+	User               *UserSql
+	RefreshToken       *RefreshTokenSql
+	Schema             *SchemaSql
+	PlayerScore        *PlayerScoreSql
+	ScoreHistogram     *ScoreHistogramSql
+	StrategyActivation *StrategyActivationSql
+	LeagueCoefficient  *LeagueCoefficientSql
+	ScoringStrategy    *ScoringStrategySql
+	SyncSchedule       *SyncScheduleSql
+	SyncRun            *SyncRunSql
+	Account            *AccountSql
+	Position           *PositionSql
+	Order              *OrderSql
+	Trade              *TradeSql
+	Ledger             *LedgerSql
+	Quote              *QuoteSql
 }
 
 func NewContainer(db *sql.DB) *Container {
 	return &Container{
-		Audit:        NewAuditDao(db),
-		Player:       NewPlayerDao(db),
-		User:         NewUserDao(db),
-		RefreshToken: NewRefreshTokenDao(db),
-		Schema:       NewSchemaDao(db),
-		Account:      NewAccountDao(db),
-		Position:     NewPositionDao(db),
-		Order:        NewOrderDao(db),
-		Trade:        NewTradeDao(db),
-		Ledger:       NewLedgerDao(db),
-		Quote:        NewQuoteDao(db),
+		Player:             NewPlayerDao(db),
+		PlayerStatistics:   NewPlayerStatisticsDao(db),
+		Audit:              NewAuditDao(db),
+		User:               NewUserDao(db),
+		RefreshToken:       NewRefreshTokenDao(db),
+		Schema:             NewSchemaDao(db),
+		PlayerScore:        NewPlayerScoreDao(db),
+		ScoreHistogram:     NewScoreHistogramDao(db),
+		StrategyActivation: NewStrategyActivationDao(db),
+		LeagueCoefficient:  NewLeagueCoefficientDao(db),
+		ScoringStrategy:    NewScoringStrategyDao(db),
+		SyncSchedule:       NewSyncScheduleDao(db),
+		SyncRun:            NewSyncRunDao(db),
+		Account:            NewAccountDao(db),
+		Position:           NewPositionDao(db),
+		Order:              NewOrderDao(db),
+		Trade:              NewTradeDao(db),
+		Ledger:             NewLedgerDao(db),
+		Quote:              NewQuoteDao(db),
 	}
 }

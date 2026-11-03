@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strings"
 	"testing"
-	"time"
 )
 
 // get pide el catálogo con la cabecera Authorization que se le indique. Una
@@ -50,8 +48,8 @@ func (s *stack) accessTokenFor(t *testing.T, email, password string) string {
 	return token
 }
 
-// Escenario: con credencial válida el catálogo se sirve.
-func TestCatalogIsServedWithAValidCredential(t *testing.T) {
+// Escenario: el catálogo se sirve sin credencial.
+func TestCatalogIsServed(t *testing.T) {
 	stack := newStack(t)
 
 	if _, err := stack.db.ExecContext(t.Context(),
@@ -75,84 +73,6 @@ func TestCatalogIsServedWithAValidCredential(t *testing.T) {
 	}
 	if len(page.Items) == 0 {
 		t.Error("el catálogo vino vacío, se esperaba el jugador sembrado")
-	}
-}
-
-func TestCatalogIsRefusedWithoutAUsableCredential(t *testing.T) {
-	stack := newStack(t)
-	token := stack.accessTokenFor(t, "nico@nosepudo.ar", "una-contraseña")
-
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		t.Fatalf("la credencial no es un JWS compacto")
-	}
-
-	cases := []struct {
-		name          string
-		authorization string
-	}{
-		{"sin credencial", ""},
-		{"sin esquema", token},
-		{"valor vacío", "Bearer"},
-		{"esquema desconocido", "Basic " + token},
-		{"payload alterado", "Bearer " + parts[0] + "." + parts[1][:len(parts[1])-2] + "XY." + parts[2]},
-		{"firma alterada", "Bearer " + parts[0] + "." + parts[1] + "." + parts[2][:len(parts[2])-2] + "XY"},
-		{"sin firma", "Bearer " + parts[0] + "." + parts[1] + "."},
-		{"no es una credencial", "Bearer esto-no-es-un-jwt"},
-	}
-
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			status, body := stack.get(t, "/players/1", c.authorization)
-
-			if status != http.StatusUnauthorized {
-				t.Errorf("status = %d, se esperaba 401: %s", status, body)
-			}
-
-			var decoded map[string]string
-			if err := json.Unmarshal([]byte(body), &decoded); err != nil {
-				t.Fatalf("la respuesta no es JSON: %v (%s)", err, body)
-			}
-			if decoded["error"] != "authentication required" {
-				t.Errorf("error = %q, se esperaba el mensaje del contrato", decoded["error"])
-			}
-			if len(decoded) != 1 {
-				t.Errorf("la respuesta tiene %d campos, el contrato fija 1: %v", len(decoded), decoded)
-			}
-		})
-	}
-}
-
-func TestCatalogIsRefusedWithAnExpiredCredential(t *testing.T) {
-	stack := newStackWithAccessTTL(t, time.Second)
-	token := stack.accessTokenFor(t, "nico@nosepudo.ar", "una-contraseña")
-
-	if status, body := stack.get(t, "/players/1", "Bearer "+token); status != http.StatusOK && status != http.StatusNotFound {
-		t.Fatalf("la credencial recién emitida ya no servía: %d %s", status, body)
-	}
-
-	time.Sleep(2 * time.Second)
-
-	status, body := stack.get(t, "/players/1", "Bearer "+token)
-	if status != http.StatusUnauthorized {
-		t.Errorf("status = %d, se esperaba 401 con la credencial expirada: %s", status, body)
-	}
-}
-
-func TestRefusedRequestsLeaveNoTrace(t *testing.T) {
-	stack := newStack(t)
-	stack.accessTokenFor(t, "nico@nosepudo.ar", "una-contraseña")
-
-	before := stack.countUsers(t)
-
-	for range 5 {
-		if status, _ := stack.get(t, "/players/1", ""); status != http.StatusUnauthorized {
-			t.Fatalf("status = %d, se esperaba 401", status)
-		}
-	}
-
-	if after := stack.countUsers(t); after != before {
-		t.Errorf("el estado cambió: había %d cuentas y quedaron %d", before, after)
 	}
 }
 

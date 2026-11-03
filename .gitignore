@@ -1,7 +1,9 @@
-# Skills de agentes
+# Skills de agentes y herramientas de analisis local
 .opencode/
 .claude/
 .agents/
+graphify-out/
+.playwright-mcp/
 
 # Estos archivos se excluyen ya que son configuraciones locales dependientes del agente que se usa 
 .specify/init-options.json

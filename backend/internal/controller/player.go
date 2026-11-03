@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -10,11 +11,16 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/service"
 )
 
-type RestPlayerController struct {
-	svc service.PlayerService
+type PlayerService interface {
+	ListPlayers(ctx context.Context, filter dto.PlayerFilterDTO) (dto.PaginatedResponse[dto.PlayerListItemResponse], error)
+	GetPlayerByID(ctx context.Context, id int64) (dto.PlayerDetailResponse, error)
 }
 
-func NewPlayerController(svc service.PlayerService) *RestPlayerController {
+type RestPlayerController struct {
+	svc PlayerService
+}
+
+func NewPlayerController(svc PlayerService) *RestPlayerController {
 	return &RestPlayerController{svc: svc}
 }
 

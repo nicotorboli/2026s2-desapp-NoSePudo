@@ -6,7 +6,7 @@ import * as playersApi from '../../api/players';
 afterEach(cleanup);
 
 describe('PlayerListPage', () => {
-  const mockPlayers: playersApi.PaginatedPlayersDTO = {
+  const mockPlayers: playersApi.PlayerRankingPageDTO = {
     items: [
       {
         id: 101,
@@ -14,6 +14,7 @@ describe('PlayerListPage', () => {
         club: 'Arsenal FC',
         league: 'Premier League',
         position: 'Attacker',
+        score: 0.87,
       },
       {
         id: 102,
@@ -21,12 +22,12 @@ describe('PlayerListPage', () => {
         club: 'Arsenal FC',
         league: 'Premier League',
         position: 'Midfielder',
+        score: null,
       },
     ],
-    page: 1,
-    limit: 20,
+    offset: 0,
+    limit: 25,
     total: 2,
-    totalPages: 1,
   };
 
   beforeEach(() => {
@@ -34,7 +35,7 @@ describe('PlayerListPage', () => {
   });
 
   it('renders loading state initially and then displays players', async () => {
-    vi.spyOn(playersApi, 'getPlayers').mockResolvedValueOnce(mockPlayers);
+    vi.spyOn(playersApi, 'getPlayersRanking').mockResolvedValueOnce(mockPlayers);
 
     render(<PlayerListPage onSelectPlayer={vi.fn()} />);
 
@@ -47,15 +48,15 @@ describe('PlayerListPage', () => {
 
     expect(screen.getAllByText('Arsenal FC').length).toBe(2);
     expect(screen.getAllByText('Premier League').length).toBe(2);
+    expect(screen.getByText('N/R')).toBeDefined();
   });
 
   it('displays empty state when no players are returned', async () => {
-    vi.spyOn(playersApi, 'getPlayers').mockResolvedValueOnce({
+    vi.spyOn(playersApi, 'getPlayersRanking').mockResolvedValueOnce({
       items: [],
-      page: 1,
-      limit: 20,
+      offset: 0,
+      limit: 25,
       total: 0,
-      totalPages: 0,
     });
 
     render(<PlayerListPage onSelectPlayer={vi.fn()} />);
@@ -67,7 +68,7 @@ describe('PlayerListPage', () => {
 
   it('displays error banner on API failure and allows retry', async () => {
     const spy = vi
-      .spyOn(playersApi, 'getPlayers')
+      .spyOn(playersApi, 'getPlayersRanking')
       .mockRejectedValueOnce(new Error('Network error'))
       .mockResolvedValueOnce(mockPlayers);
 
@@ -88,7 +89,7 @@ describe('PlayerListPage', () => {
   });
 
   it('calls onSelectPlayer when a row is clicked', async () => {
-    vi.spyOn(playersApi, 'getPlayers').mockResolvedValueOnce(mockPlayers);
+    vi.spyOn(playersApi, 'getPlayersRanking').mockResolvedValueOnce(mockPlayers);
     const handleSelect = vi.fn();
 
     render(<PlayerListPage onSelectPlayer={handleSelect} />);
@@ -99,5 +100,21 @@ describe('PlayerListPage', () => {
 
     fireEvent.click(screen.getByText('Bukayo Saka'));
     expect(handleSelect).toHaveBeenCalledWith(101);
+  });
+
+  it('sorts by score when the score header is clicked', async () => {
+    const spy = vi.spyOn(playersApi, 'getPlayersRanking').mockResolvedValue(mockPlayers);
+
+    render(<PlayerListPage onSelectPlayer={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Bukayo Saka')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /score/i }));
+
+    await waitFor(() => {
+      expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'score_desc' }));
+    });
   });
 });

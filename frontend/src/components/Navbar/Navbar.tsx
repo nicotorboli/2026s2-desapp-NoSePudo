@@ -2,39 +2,35 @@ import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import './Navbar.css';
 
+type NavView = 'catalog' | 'portfolio' | 'ranking' | 'admin' | 'detail';
+
 interface NavbarProps {
-  currentView?: 'catalog' | 'portfolio';
-  onNavigateHome?: () => void;
-  onNavigateView?: (view: 'catalog' | 'portfolio') => void;
+  currentView?: NavView;
+  onNavigate?: (view: NavView) => void;
   onOpenAuth?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentView = 'catalog',
-  onNavigateHome,
-  onNavigateView,
+  onNavigate,
   onOpenAuth,
 }) => {
   const { user, isAuthenticated, logout } = useAuth();
+  const isAdmin = user?.privilege === 'superuser';
 
-  const handleBrandClick = () => {
-    if (onNavigateView) {
-      onNavigateView('catalog');
-    }
-    if (onNavigateHome) {
-      onNavigateHome();
+  const go = (view: NavView) => {
+    if (onNavigate) {
+      onNavigate(view);
     }
   };
 
   const handleLogout = async () => {
     await logout();
-    if (onNavigateView) {
-      onNavigateView('catalog');
-    }
-    if (onNavigateHome) {
-      onNavigateHome();
-    }
+    go('catalog');
   };
+
+  const navClass = (view: NavView) =>
+    `navbar__nav-button ${currentView === view ? 'navbar__nav-button--active' : ''}`;
 
   return (
     <header className="navbar">
@@ -43,35 +39,38 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             className="navbar__brand-button"
-            onClick={handleBrandClick}
+            onClick={() => go('catalog')}
             aria-label="Ir al catálogo de jugadores"
           >
             <span className="navbar__title">NoSePudo Market</span>
           </button>
 
-          {onNavigateView && (
-            <nav className="navbar__nav-links">
+          <nav className="navbar__nav-links">
+            <button type="button" className={navClass('catalog')} onClick={() => go('catalog')}>
+              Catálogo
+            </button>
+            <button type="button" className={navClass('ranking')} onClick={() => go('ranking')}>
+              Ranking
+            </button>
+            {isAuthenticated && (
               <button
                 type="button"
-                className={`navbar__nav-button ${currentView === 'catalog' ? 'navbar__nav-button--active' : ''}`}
-                onClick={() => {
-                  onNavigateView('catalog');
-                  if (onNavigateHome) onNavigateHome();
-                }}
+                className={navClass('portfolio')}
+                onClick={() => go('portfolio')}
               >
-                Catálogo
+                Mi Patrimonio
               </button>
-              {isAuthenticated && (
-                <button
-                  type="button"
-                  className={`navbar__nav-button ${currentView === 'portfolio' ? 'navbar__nav-button--active' : ''}`}
-                  onClick={() => onNavigateView('portfolio')}
-                >
-                  Mi Patrimonio
-                </button>
-              )}
-            </nav>
-          )}
+            )}
+            {isAdmin && (
+              <button
+                type="button"
+                className={navClass('admin')}
+                onClick={() => go('admin')}
+              >
+                Administración
+              </button>
+            )}
+          </nav>
         </div>
 
         <div className="navbar__right">
@@ -80,21 +79,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="navbar__user-info">
                 <span className="navbar__user-email">{user.email}</span>
               </div>
-              <button
-                type="button"
-                className="navbar__logout-button"
-                onClick={handleLogout}
-              >
+              <button type="button" className="navbar__logout-button" onClick={handleLogout}>
                 Cerrar Sesión
               </button>
             </>
           ) : (
             onOpenAuth && (
-              <button
-                type="button"
-                className="navbar__auth-button"
-                onClick={onOpenAuth}
-              >
+              <button type="button" className="navbar__auth-button" onClick={onOpenAuth}>
                 Iniciar Sesión
               </button>
             )

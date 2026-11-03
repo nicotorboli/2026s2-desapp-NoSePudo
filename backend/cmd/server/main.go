@@ -35,7 +35,7 @@ func main() {
 // expectedTables son las tablas sin las cuales el servicio no puede trabajar.
 // La lista y la decisión de abortar viven acá y no en el DAO: el DAO sólo
 // corre la consulta.
-var expectedTables = []string{"players", "player_audit_logs", "users", "refresh_tokens"}
+var expectedTables = []string{"players", "player_statistics", "player_audit_logs", "users", "refresh_tokens", "scoring_strategies", "scoring_strategy_activations", "scoring_histograms", "player_scores", "league_coefficients", "sync_schedules", "sync_runs", "user_accounts", "user_positions", "market_orders", "market_trades", "ledger_entries", "player_quotes"}
 
 // ensureSchema se niega a arrancar cuando falta alguna tabla, por la misma
 // razón por la que el servicio se niega a arrancar sin secreto de firma: es
@@ -105,12 +105,42 @@ func startServer() error {
 		repository.WithInitialUserBalance(model.CreditsFromUnits(cfg.InitialUserBalance)),
 	)
 	adapterContainer := adapters.NewContainer(cfg)
-	services := service.NewContainer(repos, adapterContainer, logger)
+
+	runCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	services, err := service.NewContainerWithSync(
+		ctx,
+		runCtx,
+		repos,
+		adapterContainer,
+		service.SyncSettings{
+			RunTimeout:         cfg.SyncRunTimeout,
+			PlayersInterval:    cfg.SyncPlayersInterval,
+			StatisticsInterval: cfg.SyncStatisticsInterval,
+			PlayersEnabled:     cfg.SyncPlayersEnabled,
+			StatisticsEnabled:  cfg.SyncStatisticsEnabled,
+		},
+		logger,
+	)
+
+	if err != nil {
+		return err
+	}
 	if cfg.HasSuperuserCredentials() {
 		if err = services.Auth.EnsureSuperuser(ctx, cfg.SuperuserEmail, cfg.SuperuserPassword); err != nil {
 			return fmt.Errorf("aprovisionar el superusuario: %w", err)
 		}
 		logger.Info("Superuser account ensured")
+
+		superuser, superuserErr := services.Auth.Superuser(ctx, cfg.SuperuserEmail)
+		if superuserErr != nil {
+			return fmt.Errorf("obtener el superusuario: %w", superuserErr)
+		}
+		if activationErr := services.Score.EnsureDefaultActivation(ctx, superuser.ID); activationErr != nil {
+			return fmt.Errorf("activar la estrategia por defecto: %w", activationErr)
+		}
+		logger.Info("Default scoring strategy ensured")
 
 		if err = services.MarketMaker.Bootstrap(ctx); err != nil {
 			return fmt.Errorf("preparar el mercado: %w", err)
@@ -125,8 +155,18 @@ func startServer() error {
 
 	srv := server.NewServer(cfg.GetServerAddress(), logger, controllers, middlewares, contractPath)
 
-	runCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	services.SyncScheduler.Start(runCtx)
 
-	return srv.Run(runCtx)
+	err = srv.Run(runCtx)
+
+	stop()
+	services.SyncScheduler.Stop()
+
+	shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelShutdown()
+	if shutdownErr := services.SyncRuns.Shutdown(shutdownCtx); shutdownErr != nil {
+		logger.Warn("sync runs did not finish before shutdown", "error", shutdownErr.Error())
+	}
+
+	return err
 }

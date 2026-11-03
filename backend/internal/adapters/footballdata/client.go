@@ -19,10 +19,6 @@ var (
 	ErrRateLimitExceeded = errors.New("rate limit exceeded")
 )
 
-type Client interface {
-	FetchLeaguePlayers(ctx context.Context, leagueCode string) ([]model.Player, error)
-}
-
 type FootballDataClient struct {
 	httpClient   *http.Client
 	baseURL      string

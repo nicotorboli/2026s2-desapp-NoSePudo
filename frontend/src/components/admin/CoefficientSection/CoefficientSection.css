@@ -1,0 +1,124 @@
+.coefficient-section {
+  padding: 1.75rem;
+  border-radius: 6px;
+  background-color: #dfc29d;
+  border: 1px solid rgba(223, 175, 15, 0.25);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.coefficient-section__header {
+  margin-bottom: 1.25rem;
+  border-bottom: 2px solid rgba(19, 27, 35, 0.15);
+  padding-bottom: 0.75rem;
+}
+
+.coefficient-section__title {
+  margin: 0 0 0.35rem;
+  font-family: "Merriweather", Georgia, serif;
+  color: var(--ink-blue, #131b23);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.coefficient-section__subtitle {
+  margin: 0;
+  color: #3d2f1f;
+  font-size: 0.95rem;
+}
+
+.coefficient-section__table-wrapper {
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid var(--ink-blue, #131b23);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  background-color: #dfc29d;
+  margin-top: 1rem;
+}
+
+.coefficient-section__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.coefficient-section__table thead {
+  background-color: var(--ink-blue, #131b23);
+}
+
+.coefficient-section__table th {
+  padding: 0.85rem 1rem;
+  border-bottom: 2px solid var(--ink-blue, #131b23);
+  text-align: left;
+  color: var(--teal, #7ebdc2);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.coefficient-section__table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(19, 27, 35, 0.15);
+  text-align: left;
+  vertical-align: middle;
+  color: var(--ink-blue, #131b23);
+}
+
+.coefficient-section__table tbody tr:hover {
+  background-color: color-mix(in srgb, var(--orange-green, #a7af1f) 18%, transparent);
+}
+
+.coefficient-section__league {
+  display: block;
+  color: var(--ink-blue, #131b23);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.coefficient-section__code {
+  color: #5c4d3c;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.coefficient-section__input {
+  width: 8rem;
+  padding: 0.45rem 0.6rem;
+  background-color: #ffffff;
+  border: 1px solid #bba282;
+  border-radius: 4px;
+  font: inherit;
+  color: #1a202c;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.coefficient-section__input:focus {
+  outline: none;
+  border-color: var(--golden, #dfaf0f);
+  box-shadow: 0 0 0 2px rgba(223, 175, 15, 0.25);
+}
+
+.coefficient-section__button {
+  border: 1px solid #c95e09;
+  border-radius: 4px;
+  padding: 0.45rem 0.95rem;
+  background: linear-gradient(180deg, #ff9b49 0%, #ff7f1f 45%, #ea690b 100%);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: all 0.15s ease-in-out;
+}
+
+.coefficient-section__button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffa85c 0%, #ff8930 45%, #f27214 100%);
+}
+
+.coefficient-section__button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

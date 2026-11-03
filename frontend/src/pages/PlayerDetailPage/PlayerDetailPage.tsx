@@ -1,7 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { getPlayerById, PlayerDetailDTO } from '../../api/players';
+import {
+  getPlayerById,
+  getPlayerScore,
+  getPlayerScores,
+  getPlayerStatistics,
+  PlayerDetailDTO,
+  PlayerScoreDTO,
+  PlayerStatisticsDTO,
+} from '../../api/players';
 import { PlayerCard } from '../../components/PlayerCard/PlayerCard';
+import { PlayerStatistics } from '../../components/PlayerStatistics/PlayerStatistics';
+import { PlayerScore } from '../../components/PlayerScore/PlayerScore';
 import { PlayerTrade } from '../../components/PlayerTrade/PlayerTrade';
 import './PlayerDetailPage.css';
 
@@ -16,19 +25,14 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({
   onBack,
   onOpenAuth,
 }) => {
-  const { isAuthenticated } = useAuth();
   const [player, setPlayer] = useState<PlayerDetailDTO | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [stats, setStats] = useState<PlayerStatisticsDTO[] | null>(null);
+  const [score, setScore] = useState<PlayerScoreDTO | null>(null);
+  const [history, setHistory] = useState<PlayerScoreDTO[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setPlayer(null);
-      setIsLoading(false);
-      setError(null);
-      return;
-    }
-
     let isMounted = true;
     setIsLoading(true);
     setError(null);
@@ -50,7 +54,54 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [playerId, isAuthenticated]);
+  }, [playerId]);
+
+  useEffect(() => {
+    if (!player) {
+      return;
+    }
+    let isMounted = true;
+
+    getPlayerStatistics(playerId)
+      .then((data) => {
+        if (isMounted) {
+          setStats(data);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setStats([]);
+        }
+      });
+
+    getPlayerScore(playerId)
+      .then((data) => {
+        if (isMounted) {
+          setScore(data);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setScore(null);
+        }
+      });
+
+    getPlayerScores(playerId)
+      .then((data) => {
+        if (isMounted) {
+          setHistory(data);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setHistory([]);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [player, playerId]);
 
   return (
     <main className="player-detail-page">
@@ -66,42 +117,14 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({
       </nav>
 
       <section className="player-detail-page__content">
-        {!isAuthenticated && (
-          <div className="player-detail-page__unauth">
-            <h2 className="player-detail-page__unauth-title">Iniciá sesión para ver la ficha</h2>
-            <p className="player-detail-page__unauth-desc">
-              Para ver el detalle completo de este jugador y operar tokens en el mercado, necesitás iniciar sesión con tu cuenta o registrarte en segundos.
-            </p>
-            {onOpenAuth && (
-              <div className="player-detail-page__unauth-actions">
-                <button
-                  type="button"
-                  className="player-detail-page__auth-button"
-                  onClick={() => onOpenAuth('login')}
-                  aria-label="Iniciar Sesión / Registrarse"
-                >
-                  Iniciar Sesión / Registrarse
-                </button>
-                <button
-                  type="button"
-                  className="player-detail-page__auth-button player-detail-page__auth-button--register"
-                  onClick={() => onOpenAuth('register')}
-                >
-                  Crear Cuenta (1,000 CR Gratis)
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {isAuthenticated && isLoading && (
+        {isLoading && (
           <div className="player-detail-page__loading" role="status">
             <span className="player-detail-page__spinner" />
             <p>Cargando detalles del jugador...</p>
           </div>
         )}
 
-        {isAuthenticated && error && !isLoading && (
+        {error && !isLoading && (
           <div className="player-detail-page__error" role="alert">
             <h2 className="player-detail-page__error-title">Jugador no encontrado</h2>
             <p className="player-detail-page__error-desc">{error}</p>
@@ -115,10 +138,12 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({
           </div>
         )}
 
-        {isAuthenticated && !isLoading && !error && player && (
+        {!isLoading && !error && player && (
           <div className="player-detail-page__grid">
             <div className="player-detail-page__card-col">
               <PlayerCard player={player} />
+              <PlayerScore score={score} history={history} />
+              {stats !== null && <PlayerStatistics stats={stats} />}
             </div>
             <div className="player-detail-page__trade-col">
               <PlayerTrade

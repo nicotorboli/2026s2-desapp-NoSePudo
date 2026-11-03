@@ -84,14 +84,14 @@ func TestUnJugadorDesactivadoNoEntraAlMercado(t *testing.T) {
 	}
 }
 
-func newSyncServiceWithBootstrap(spy *bootstrapSpy) *service.PlayerSyncServiceImpl {
+func newSyncServiceWithBootstrap(spy *bootstrapSpy) *service.PlayerServiceImpl {
 	adapter := &mockFootballDataClient{
 		fetchLeaguePlayersFn: func(ctx context.Context, leagueCode string) ([]model.Player, error) {
 			return []model.Player{{ExternalID: 1, Name: "Jugador", LeagueCode: leagueCode}}, nil
 		},
 	}
 
-	return service.NewPlayerSyncService(
+	return service.NewPlayerService(
 		adapter,
 		&mockPlayerRepository{},
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -133,7 +133,7 @@ func TestSinBootstrapConfiguradoLaSincronizacionSigueAndando(t *testing.T) {
 		},
 	}
 
-	sync := service.NewPlayerSyncService(
+	sync := service.NewPlayerService(
 		adapter,
 		&mockPlayerRepository{},
 		slog.New(slog.NewTextHandler(io.Discard, nil)),

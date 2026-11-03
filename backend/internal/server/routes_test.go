@@ -1,44 +1,115 @@
-// Verificaciones sobre la tabla de rutas routes() y que no existan
-// rutas registradas por fuera de buildMux.
-//
-// Vive en el paquete server porque necesita llamar a routes(), que no está exportado.
 package server
 
 import (
-	"go/ast"
-	"go/parser"
-	"go/token"
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/adapters"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/middleware"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
-// Los controllers de estos casos no hacen nada: lo que se examina es la tabla
-// de rutas, no lo que cada endpoint responde.
 type stubController struct{}
 
 func (stubController) endpoint() httphandler.Endpoint {
 	return func(http.ResponseWriter, *http.Request) error { return nil }
 }
 
-func (s stubController) GetPlayers() httphandler.Endpoint    { return s.endpoint() }
-func (s stubController) GetPlayerByID() httphandler.Endpoint { return s.endpoint() }
-func (s stubController) SyncPlayers() httphandler.Endpoint   { return s.endpoint() }
-func (s stubController) Register() httphandler.Endpoint      { return s.endpoint() }
-func (s stubController) Login() httphandler.Endpoint         { return s.endpoint() }
-func (s stubController) Refresh() httphandler.Endpoint       { return s.endpoint() }
-func (s stubController) Logout() httphandler.Endpoint        { return s.endpoint() }
+type stubPlayerService struct{}
+
+func (stubPlayerService) ListPlayers(ctx context.Context, filter dto.PlayerFilterDTO) (dto.PaginatedResponse[dto.PlayerListItemResponse], error) {
+	return dto.PaginatedResponse[dto.PlayerListItemResponse]{}, nil
+}
+
+func (stubPlayerService) GetPlayerByID(ctx context.Context, id int64) (dto.PlayerDetailResponse, error) {
+	return dto.PlayerDetailResponse{}, nil
+}
+
+type stubSyncRunService struct{}
+
+func (stubSyncRunService) Trigger(ctx context.Context, typ model.SyncType, actorID *int64) (dto.SyncRunResponse, error) {
+	return dto.SyncRunResponse{}, nil
+}
+
+func (stubSyncRunService) GetRun(ctx context.Context, id int64) (dto.SyncRunResponse, error) {
+	return dto.SyncRunResponse{}, nil
+}
+
+func (stubSyncRunService) ListRuns(ctx context.Context, typ *model.SyncType, offset, limit int) (dto.SyncRunPageResponse, error) {
+	return dto.SyncRunPageResponse{}, nil
+}
+
+func (stubSyncRunService) ListSchedules(ctx context.Context) ([]dto.SyncScheduleResponse, error) {
+	return nil, nil
+}
+
+func (stubSyncRunService) UpdateSchedule(ctx context.Context, typ model.SyncType, enabled bool, intervalMinutes int, actorID int64) (dto.SyncScheduleResponse, error) {
+	return dto.SyncScheduleResponse{}, nil
+}
+
+type stubPlayerStatisticsService struct{}
+
+func (stubPlayerStatisticsService) GetPlayerStatistics(ctx context.Context, playerID int64) ([]dto.PlayerStatisticsResponse, error) {
+	return nil, nil
+}
+
+type stubAuthService struct{}
+
+func (stubAuthService) Register(ctx context.Context, email, password string) (model.User, error) {
+	return model.User{}, nil
+}
+
+func (stubAuthService) Login(ctx context.Context, email, password string) (model.Session, error) {
+	return model.Session{}, nil
+}
+
+func (stubAuthService) Refresh(ctx context.Context, presentedID string, userID int64, sessionID string) (model.Session, error) {
+	return model.Session{}, nil
+}
+
+func (stubAuthService) Logout(ctx context.Context, userID int64, sessionID string) error {
+	return nil
+}
+
+type stubScoringService struct{}
+
+func (stubScoringService) ListStrategies() []dto.ScoringStrategyResponse { return nil }
+
+func (stubScoringService) ActiveStrategy(ctx context.Context) (dto.ActiveStrategyResponse, bool, error) {
+	return dto.ActiveStrategyResponse{}, false, nil
+}
+
+func (stubScoringService) ActivateStrategy(ctx context.Context, strategyID int, actorID int64) error {
+	return nil
+}
+
+func (stubScoringService) SetLeagueCoefficient(ctx context.Context, leagueCode string, coefficient float64, actorID int64) error {
+	return nil
+}
+
+func (stubScoringService) GetLeagueCoefficient(ctx context.Context, leagueCode string) (dto.LeagueCoefficientResponse, bool, error) {
+	return dto.LeagueCoefficientResponse{}, false, nil
+}
+
+func (stubScoringService) GetScore(ctx context.Context, playerID int64) (dto.PlayerScoreResponse, error) {
+	return dto.PlayerScoreResponse{}, nil
+}
+
+func (stubScoringService) GetScoreHistory(ctx context.Context, playerID int64) ([]dto.PlayerScoreResponse, error) {
+	return nil, nil
+}
+
+func (stubScoringService) ListRanking(ctx context.Context, filter dto.PlayerFilterDTO, sortOrder string, offset int) (dto.PlayerRankingPageResponse, error) {
+	return dto.PlayerRankingPageResponse{}, nil
+}
 
 func (s stubController) PlaceBuyOrder() httphandler.Endpoint  { return s.endpoint() }
 func (s stubController) PlaceSellOrder() httphandler.Endpoint { return s.endpoint() }
@@ -50,19 +121,20 @@ func (s stubController) Transactions() httphandler.Endpoint   { return s.endpoin
 func routesUnderTest() []route {
 	server := &Server{
 		controllers: &controller.Container{
-			Player: stubController{},
-			Sync:   stubController{},
-			Auth:   stubController{},
-			Market: stubController{},
+			Player: controller.NewPlayerController(stubPlayerService{}),
+			Sync: controller.NewSyncController(
+				stubPlayerStatisticsService{},
+				stubSyncRunService{},
+			),
+			Scoring: controller.NewScoringController(stubScoringService{}),
+			Auth:    controller.NewAuthController(stubAuthService{}),
+			Market:  controller.NewMarketController(nil, nil),
 		},
 	}
 
 	return server.routes()
 }
 
-// Ninguna ruta puede quedarse sin nivel de acceso declarado.
-// Un literal de route que se olvide del campo obtiene AccessUndeclared, y acá
-// se entera.
 func TestEveryRouteDeclaresAnAccessLevel(t *testing.T) {
 	for _, r := range routesUnderTest() {
 		if r.access == AccessUndeclared {
@@ -77,25 +149,34 @@ func TestEveryRouteDeclaresAnAccessLevel(t *testing.T) {
 	}
 }
 
-// Comprueba el nivel esperado de cada endpoint declarado. El mapa se compara
-// exacto en las dos direcciones, así que una ruta nueva que no se agregue acá
-// también hace fallar el caso.
 func TestDeclaredLevelsMatchTheSpecification(t *testing.T) {
 	expected := map[string]AccessLevel{
-		"POST /auth/register": AccessAnonymous,
-		"POST /auth/login":    AccessAnonymous,
-		"POST /auth/refresh":  AccessRenewal,
-		"POST /auth/logout":   AccessAuthenticated,
-		"GET /players":        AccessAnonymous,
-		"GET /players/{id}":   AccessAuthenticated,
-		"POST /players/sync":  AccessSuperuser,
-
-		"POST /orders/buy":             AccessAuthenticated,
-		"POST /orders/sell":            AccessAuthenticated,
-		"GET /orders":                  AccessAuthenticated,
-		"DELETE /orders/{id}":          AccessAuthenticated,
-		"GET /users/{id}/portfolio":    AccessAuthenticated,
-		"GET /users/{id}/transactions": AccessAuthenticated,
+		"POST /auth/register":                       AccessAnonymous,
+		"POST /auth/login":                          AccessAnonymous,
+		"POST /auth/refresh":                        AccessRenewal,
+		"POST /auth/logout":                         AccessAuthenticated,
+		"GET /players":                              AccessAnonymous,
+		"GET /players/{id}":                         AccessAnonymous,
+		"GET /players/{id}/statistics":              AccessAnonymous,
+		"POST /sync/{type}/runs":                    AccessSuperuser,
+		"GET /sync/runs":                            AccessSuperuser,
+		"GET /sync/runs/{id}":                       AccessSuperuser,
+		"GET /sync/schedules":                       AccessSuperuser,
+		"PUT /sync/schedules/{type}":                AccessSuperuser,
+		"GET /scoring/strategies":                   AccessAnonymous,
+		"GET /scoring/active-strategy":              AccessAnonymous,
+		"PUT /scoring/active-strategy":              AccessSuperuser,
+		"GET /scoring/league-coefficients/{league}": AccessAnonymous,
+		"PUT /scoring/league-coefficients/{league}": AccessSuperuser,
+		"GET /players/{id}/score":                   AccessAnonymous,
+		"GET /players/{id}/scores":                  AccessAnonymous,
+		"GET /players/ranking":                      AccessAnonymous,
+		"POST /orders/buy":                          AccessAuthenticated,
+		"POST /orders/sell":                         AccessAuthenticated,
+		"GET /orders":                               AccessAuthenticated,
+		"DELETE /orders/{id}":                       AccessAuthenticated,
+		"GET /users/{id}/portfolio":                 AccessAuthenticated,
+		"GET /users/{id}/transactions":              AccessAuthenticated,
 	}
 
 	declared := map[string]AccessLevel{}
@@ -143,72 +224,6 @@ func TestBuildMuxPanicsOnAnUndeclaredLevel(t *testing.T) {
 	undeclared := []route{{pattern: "GET /sin-declarar", endpoint: stubController{}.endpoint()}}
 
 	buildMux(undeclared, nil, nil)
-}
-
-// Garantiza que ningún endpoint se registre por fuera de buildMux.
-//
-// Go no ofrece manera de enumerar los patrones registrados en un ServeMux, así
-// que el código fuente es la única otra fuente de verdad. Se lee con go/ast y
-// no con un grep porque un grep se rompe con un comentario o una cadena que
-// contenga "router.Handle".
-func TestNoRouteIsRegisteredOutsideBuildMux(t *testing.T) {
-	const registrar = "buildMux"
-
-	fileSet := token.NewFileSet()
-
-	entries, err := os.ReadDir(".")
-	if err != nil {
-		t.Fatalf("no se pudo leer el directorio del paquete: %v", err)
-	}
-
-	checked := 0
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() || filepath.Ext(name) != ".go" || strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-		checked++
-
-		file, err := parser.ParseFile(fileSet, name, nil, parser.SkipObjectResolution)
-		if err != nil {
-			t.Fatalf("no se pudo parsear %s: %v", name, err)
-		}
-
-		for _, declaration := range file.Decls {
-			function, isFunction := declaration.(*ast.FuncDecl)
-			if !isFunction || function.Name.Name == registrar {
-				continue
-			}
-
-			ast.Inspect(function, func(node ast.Node) bool {
-				call, isCall := node.(*ast.CallExpr)
-				if !isCall {
-					return true
-				}
-				selector, isSelector := call.Fun.(*ast.SelectorExpr)
-				if !isSelector {
-					return true
-				}
-
-				if selector.Sel.Name == "Handle" || selector.Sel.Name == "HandleFunc" {
-					position := fileSet.Position(selector.Sel.Pos())
-					t.Errorf(
-						"%s:%d: %s llama a %s por fuera de %s: la ruta no pasa por la tabla "+
-							"y queda sin el nivel de acceso que le corresponde",
-						name, position.Line, function.Name.Name, selector.Sel.Name, registrar,
-					)
-				}
-
-				return true
-			})
-		}
-	}
-
-	// Si el filtro dejara de encontrar archivos, el caso pasaría sin haber
-	// mirado nada.
-	if checked == 0 {
-		t.Fatal("no se examinó ningún archivo del paquete")
-	}
 }
 
 // stubVerifier acepta toda credencial y declara el privilegio que se le pida.

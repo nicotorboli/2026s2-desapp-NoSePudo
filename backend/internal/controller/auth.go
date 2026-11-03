@@ -26,13 +26,8 @@ func NewAuthController(authService AuthService) *RestAuthController {
 	return &RestAuthController{authService: authService}
 }
 
-// El controller hace tres cosas: decodifica, delega y traduce el
-// error de dominio a un status. La validación la corre Decode y las reglas las
-// tiene el service, que no sabe nada de HTTP.
 func (c *RestAuthController) Register() httphandler.Endpoint {
 	return func(w http.ResponseWriter, req *http.Request) error {
-		// Decode ya devuelve un error de borde con 400 cuando el cuerpo trae
-		// un campo inesperado, no es JSON válido o no pasa el Validate del DTO.
 		request, err := httphandler.Decode[dto.RegisterRequest](req)
 		if err != nil {
 			return err
