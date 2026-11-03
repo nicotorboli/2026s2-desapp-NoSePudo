@@ -145,6 +145,7 @@ func newTestServerWith(verifier middleware.TokenVerifier) *server.Server {
 			),
 			Scoring: controller.NewScoringController(&mockScoringService{}),
 			Auth:    controller.NewAuthController(&mockAuthService{}),
+			Market:  controller.NewMarketController(nil, nil),
 		},
 		middleware.NewContainer(verifier),
 		filepath.Join("..", "..", "api", "openapi.yaml"),
@@ -166,19 +167,21 @@ func TestServer_ServeHTTP_GetPlayers(t *testing.T) {
 
 func TestServer_ServeHTTP_RutasAnonimas(t *testing.T) {
 	cases := []struct {
+		method  string
 		pattern string
 		body    string
 		want    int
 	}{
-		{"/auth/register", `{"email":"a@b.com","password":"password123"}`, http.StatusCreated},
-		{"/auth/login", `{"email":"a@b.com","password":"password123"}`, http.StatusOK},
+		{http.MethodPost, "/auth/register", `{"email":"a@b.com","password":"password123"}`, http.StatusCreated},
+		{http.MethodPost, "/auth/login", `{"email":"a@b.com","password":"password123"}`, http.StatusOK},
+		{http.MethodGet, "/players", "", http.StatusOK},
 	}
 
 	for _, c := range cases {
 		t.Run(c.pattern, func(t *testing.T) {
 			srv := newTestServer()
 
-			req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, c.pattern, strings.NewReader(c.body))
+			req := httptest.NewRequestWithContext(t.Context(), c.method, c.pattern, strings.NewReader(c.body))
 			w := httptest.NewRecorder()
 
 			srv.ServeHTTP(w, req)

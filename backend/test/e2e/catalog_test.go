@@ -34,12 +34,24 @@ func (s *stack) get(t *testing.T, path, authorization string) (int, string) {
 	return response.StatusCode, string(body)
 }
 
+// accessTokenFor deja una cuenta creada y devuelve su credencial de acceso.
+func (s *stack) accessTokenFor(t *testing.T, email, password string) string {
+	t.Helper()
+
+	body := s.registerAndLogin(t, email, password)
+
+	token, _ := body["access_token"].(string)
+	if token == "" {
+		t.Fatalf("el login no devolvió credencial: %v", body)
+	}
+
+	return token
+}
+
 // Escenario: el catálogo se sirve sin credencial.
 func TestCatalogIsServed(t *testing.T) {
 	stack := newStack(t)
 
-	// init.sql ya no siembra jugadores (llegan por el sync), así que el caso
-	// inserta uno propio.
 	if _, err := stack.db.ExecContext(t.Context(),
 		`INSERT INTO players (external_id, name, club_name, league_name, league_code, position)
 		 VALUES (1, 'Ernesto Provitillo', 'Arsenal FC', 'Premier League', 'PL', 'Midfielder')`,

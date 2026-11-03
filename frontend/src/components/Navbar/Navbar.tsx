@@ -1,44 +1,96 @@
 import React from 'react';
+import { useAuth } from '../../context/AuthContext';
 import './Navbar.css';
 
+type NavView = 'catalog' | 'portfolio' | 'ranking' | 'admin' | 'detail';
+
 interface NavbarProps {
-  onNavigateHome?: () => void;
-  onNavigateRanking?: () => void;
-  onNavigateAdmin?: () => void;
-  isAdmin?: boolean;
+  currentView?: NavView;
+  onNavigate?: (view: NavView) => void;
+  onOpenAuth?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
-  onNavigateHome,
-  onNavigateRanking,
-  onNavigateAdmin,
-  isAdmin = false,
+  currentView = 'catalog',
+  onNavigate,
+  onOpenAuth,
 }) => {
+  const { user, isAuthenticated, logout } = useAuth();
+  const isAdmin = user?.privilege === 'superuser';
+
+  const go = (view: NavView) => {
+    if (onNavigate) {
+      onNavigate(view);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    go('catalog');
+  };
+
+  const navClass = (view: NavView) =>
+    `navbar__nav-button ${currentView === view ? 'navbar__nav-button--active' : ''}`;
+
   return (
     <header className="navbar">
       <div className="navbar__container">
-        <button
-          type="button"
-          className="navbar__brand-button"
-          onClick={onNavigateHome}
-          aria-label="Ir al catálogo de jugadores"
-        >
-          <span className="navbar__logo">⚽</span>
-          <span className="navbar__title">NoSePudo Market</span>
-        </button>
-        <nav className="navbar__nav" aria-label="Navegación principal">
-          <button type="button" className="navbar__link" onClick={onNavigateHome}>
-            Catálogo
+        <div className="navbar__left">
+          <button
+            type="button"
+            className="navbar__brand-button"
+            onClick={() => go('catalog')}
+            aria-label="Ir al catálogo de jugadores"
+          >
+            <span className="navbar__title">NoSePudo Market</span>
           </button>
-          <button type="button" className="navbar__link" onClick={onNavigateRanking}>
-            Ranking
-          </button>
-          {onNavigateAdmin && (
-            <button type="button" className="navbar__link" onClick={onNavigateAdmin}>
-              {isAdmin ? 'Administración' : 'Ingresar'}
+
+          <nav className="navbar__nav-links">
+            <button type="button" className={navClass('catalog')} onClick={() => go('catalog')}>
+              Catálogo
             </button>
+            <button type="button" className={navClass('ranking')} onClick={() => go('ranking')}>
+              Ranking
+            </button>
+            {isAuthenticated && (
+              <button
+                type="button"
+                className={navClass('portfolio')}
+                onClick={() => go('portfolio')}
+              >
+                Mi Patrimonio
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                type="button"
+                className={navClass('admin')}
+                onClick={() => go('admin')}
+              >
+                Administración
+              </button>
+            )}
+          </nav>
+        </div>
+
+        <div className="navbar__right">
+          {isAuthenticated && user ? (
+            <>
+              <div className="navbar__user-info">
+                <span className="navbar__user-email">{user.email}</span>
+              </div>
+              <button type="button" className="navbar__logout-button" onClick={handleLogout}>
+                Cerrar Sesión
+              </button>
+            </>
+          ) : (
+            onOpenAuth && (
+              <button type="button" className="navbar__auth-button" onClick={onOpenAuth}>
+                Iniciar Sesión
+              </button>
+            )
           )}
-        </nav>
+        </div>
       </div>
     </header>
   );

@@ -3,6 +3,10 @@ import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/re
 import { PlayerDetailPage } from './PlayerDetailPage';
 import * as playersApi from '../../api/players';
 
+vi.mock('../../components/PlayerTrade/PlayerTrade', () => ({
+  PlayerTrade: () => <div data-testid="trade-widget" />,
+}));
+
 afterEach(cleanup);
 
 describe('PlayerDetailPage', () => {
@@ -95,5 +99,15 @@ describe('PlayerDetailPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /volver al catálogo/i }));
     expect(handleBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the trade widget alongside the public detail', async () => {
+    vi.spyOn(playersApi, 'getPlayerById').mockResolvedValueOnce(mockDetail);
+
+    render(<PlayerDetailPage playerId={101} onBack={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trade-widget')).toBeDefined();
+    });
   });
 });

@@ -1,16 +1,34 @@
 import React from 'react';
-import { useAdminSession } from '../../auth/adminSession';
-import { AdminLogin } from '../../components/admin/AdminLogin/AdminLogin';
+import { useAuth } from '../../context/AuthContext';
 import { SyncSection } from '../../components/admin/SyncSection/SyncSection';
 import { StrategySection } from '../../components/admin/StrategySection/StrategySection';
 import { CoefficientSection } from '../../components/admin/CoefficientSection/CoefficientSection';
 import './AdminPage.css';
 
-export const AdminPage: React.FC = () => {
-  const { session, isSuperuser, login, logout } = useAdminSession();
+interface AdminPageProps {
+  onOpenAuth?: () => void;
+}
 
-  if (!session) {
-    return <AdminLogin onLogin={login} />;
+export const AdminPage: React.FC<AdminPageProps> = ({ onOpenAuth }) => {
+  const { user, isAuthenticated, logout } = useAuth();
+  const isSuperuser = user?.privilege === 'superuser';
+
+  if (!isAuthenticated) {
+    return (
+      <main className="admin-page admin-page--denied">
+        <div className="admin-page__denied-card">
+          <h1 className="admin-page__title">Acceso restringido</h1>
+          <p className="admin-page__subtitle">
+            Iniciá sesión con una cuenta de superusuario para administrar el catálogo.
+          </p>
+          {onOpenAuth && (
+            <button type="button" className="admin-page__logout" onClick={onOpenAuth}>
+              Iniciar Sesión
+            </button>
+          )}
+        </div>
+      </main>
+    );
   }
 
   if (!isSuperuser) {
@@ -19,7 +37,7 @@ export const AdminPage: React.FC = () => {
         <div className="admin-page__denied-card">
           <h1 className="admin-page__title">Acceso restringido</h1>
           <p className="admin-page__subtitle">
-            La cuenta {session.email} no tiene privilegios de superusuario.
+            La cuenta {user?.email} no tiene privilegios de superusuario.
           </p>
           <button
             type="button"
@@ -43,7 +61,7 @@ export const AdminPage: React.FC = () => {
           </p>
         </div>
         <div className="admin-page__session">
-          <span className="admin-page__email">{session.email}</span>
+          <span className="admin-page__email">{user?.email}</span>
           <button
             type="button"
             className="admin-page__logout"

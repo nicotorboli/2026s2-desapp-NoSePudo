@@ -53,7 +53,7 @@ func TestSyncScheduleSqlEnsureIsIdempotent(t *testing.T) {
 func TestSyncScheduleSqlSetUpdatesAndReportsMissing(t *testing.T) {
 	db := startPostgres(t)
 	schedules := dao.NewSyncScheduleDao(db)
-	actorID := seedUser(t, db, "schedules@nosepudo.ar")
+	actorID := seedUser(t, db)
 	now := time.Now().UTC().Truncate(time.Second)
 
 	if err := schedules.Ensure(t.Context(), model.SyncSchedule{
@@ -153,7 +153,7 @@ func TestSyncScheduleSqlReserveDueClaimsOnlyDueEnabled(t *testing.T) {
 func TestSyncScheduleSqlEnableLegacyDefaults(t *testing.T) {
 	db := startPostgres(t)
 	schedules := dao.NewSyncScheduleDao(db)
-	actorID := seedUser(t, db, "legacy@nosepudo.ar")
+	actorID := seedUser(t, db)
 	now := time.Now().UTC().Truncate(time.Second)
 
 	for _, schedule := range []model.SyncSchedule{

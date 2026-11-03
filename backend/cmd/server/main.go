@@ -18,6 +18,7 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/logger"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/middleware"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/dao"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/server"
@@ -34,7 +35,7 @@ func main() {
 // expectedTables son las tablas sin las cuales el servicio no puede trabajar.
 // La lista y la decisión de abortar viven acá y no en el DAO: el DAO sólo
 // corre la consulta.
-var expectedTables = []string{"players", "player_statistics", "player_audit_logs", "users", "refresh_tokens", "scoring_strategies", "scoring_strategy_activations", "scoring_histograms", "player_scores", "league_coefficients", "sync_schedules", "sync_runs"}
+var expectedTables = []string{"players", "player_statistics", "player_audit_logs", "users", "refresh_tokens", "scoring_strategies", "scoring_strategy_activations", "scoring_histograms", "player_scores", "league_coefficients", "sync_schedules", "sync_runs", "user_accounts", "user_positions", "market_orders", "market_trades", "ledger_entries", "player_quotes"}
 
 // ensureSchema se niega a arrancar cuando falta alguna tabla, por la misma
 // razón por la que el servicio se niega a arrancar sin secreto de firma: es
@@ -100,7 +101,9 @@ func startServer() error {
 	}
 	logger.Info("Database schema verified")
 
-	repos := repository.NewContainer(db, daos)
+	repos := repository.NewContainer(db, daos,
+		repository.WithInitialUserBalance(model.CreditsFromUnits(cfg.InitialUserBalance)),
+	)
 	adapterContainer := adapters.NewContainer(cfg)
 
 	runCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -138,6 +141,11 @@ func startServer() error {
 			return fmt.Errorf("activar la estrategia por defecto: %w", activationErr)
 		}
 		logger.Info("Default scoring strategy ensured")
+
+		if err = services.MarketMaker.Bootstrap(ctx); err != nil {
+			return fmt.Errorf("preparar el mercado: %w", err)
+		}
+		logger.Info("Market bootstrapped")
 	}
 
 	controllers := controller.NewContainer(services)

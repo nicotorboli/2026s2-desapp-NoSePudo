@@ -55,7 +55,7 @@ func insertSkippedRun(t *testing.T, db *sql.DB, runs *dao.SyncRunSql, run model.
 func TestSyncRunSqlInsertRunningRejectsAConcurrentRun(t *testing.T) {
 	db := startPostgres(t)
 	runs := dao.NewSyncRunDao(db)
-	actorID := seedUser(t, db, "runs@nosepudo.ar")
+	actorID := seedUser(t, db)
 	now := time.Now().UTC()
 
 	firstID := insertRunningRun(t, db, runs, model.SyncRun{

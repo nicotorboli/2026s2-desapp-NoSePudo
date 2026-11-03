@@ -74,14 +74,6 @@ interface LeagueCoefficientDTO {
   effectiveFrom: string | null;
 }
 
-export interface SessionDTO {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  access_expires_at: string;
-  refresh_expires_at: string;
-}
-
 const get = async <T>(url: string, params?: Record<string, unknown>): Promise<T> => {
   const response = await client.get<T>(url, { params });
   return response.data;
@@ -95,23 +87,6 @@ const post = async <T>(url: string, data?: unknown): Promise<T> => {
 const put = async <T>(url: string, data?: unknown): Promise<T> => {
   const response = await client.put<T>(url, data);
   return response.data;
-};
-
-export const login = async (email: string, password: string): Promise<SessionDTO> => {
-  return post<SessionDTO>('/auth/login', { email, password });
-};
-
-export const refresh = async (refreshToken: string): Promise<SessionDTO> => {
-  const response = await client.post<SessionDTO>('/auth/refresh', undefined, {
-    headers: { Authorization: `Bearer ${refreshToken}` },
-  });
-  return response.data;
-};
-
-export const logout = async (accessToken: string): Promise<void> => {
-  await client.post('/auth/logout', undefined, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
 };
 
 export const createSyncRun = async (type: SyncType): Promise<SyncRunDTO> => {

@@ -118,6 +118,36 @@ func (s *Server) routes() []route {
 			access:   AccessAnonymous,
 			endpoint: s.controllers.Scoring.GetPlayersRanking(),
 		},
+		{
+			pattern:  "POST /orders/buy",
+			access:   AccessAuthenticated,
+			endpoint: s.controllers.Market.PlaceBuyOrder(),
+		},
+		{
+			pattern:  "POST /orders/sell",
+			access:   AccessAuthenticated,
+			endpoint: s.controllers.Market.PlaceSellOrder(),
+		},
+		{
+			pattern:  "GET /orders",
+			access:   AccessAuthenticated,
+			endpoint: s.controllers.Market.ListOpenOrders(),
+		},
+		{
+			pattern:  "DELETE /orders/{id}",
+			access:   AccessAuthenticated,
+			endpoint: s.controllers.Market.CancelOrder(),
+		},
+		{
+			pattern:  "GET /users/{id}/portfolio",
+			access:   AccessAuthenticated,
+			endpoint: s.controllers.Market.Portfolio(),
+		},
+		{
+			pattern:  "GET /users/{id}/transactions",
+			access:   AccessAuthenticated,
+			endpoint: s.controllers.Market.Transactions(),
+		},
 	}
 }
 

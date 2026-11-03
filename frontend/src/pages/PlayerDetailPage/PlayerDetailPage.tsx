@@ -11,14 +11,20 @@ import {
 import { PlayerCard } from '../../components/PlayerCard/PlayerCard';
 import { PlayerStatistics } from '../../components/PlayerStatistics/PlayerStatistics';
 import { PlayerScore } from '../../components/PlayerScore/PlayerScore';
+import { PlayerTrade } from '../../components/PlayerTrade/PlayerTrade';
 import './PlayerDetailPage.css';
 
 interface PlayerDetailPageProps {
   playerId: number;
   onBack: () => void;
+  onOpenAuth?: (tab?: 'login' | 'register') => void;
 }
 
-export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({ playerId, onBack }) => {
+export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({
+  playerId,
+  onBack,
+  onOpenAuth,
+}) => {
   const [player, setPlayer] = useState<PlayerDetailDTO | null>(null);
   const [stats, setStats] = useState<PlayerStatisticsDTO[] | null>(null);
   const [score, setScore] = useState<PlayerScoreDTO | null>(null);
@@ -133,11 +139,20 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({ playerId, on
         )}
 
         {!isLoading && !error && player && (
-          <>
-            <PlayerCard player={player} />
-            <PlayerScore score={score} history={history} />
-            {stats !== null && <PlayerStatistics stats={stats} />}
-          </>
+          <div className="player-detail-page__grid">
+            <div className="player-detail-page__card-col">
+              <PlayerCard player={player} />
+              <PlayerScore score={score} history={history} />
+              {stats !== null && <PlayerStatistics stats={stats} />}
+            </div>
+            <div className="player-detail-page__trade-col">
+              <PlayerTrade
+                playerId={player.id}
+                playerName={player.name}
+                onOpenAuth={onOpenAuth}
+              />
+            </div>
+          </div>
         )}
       </section>
     </main>

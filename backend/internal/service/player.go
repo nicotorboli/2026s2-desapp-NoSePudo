@@ -22,17 +22,46 @@ type FootballDataClient interface {
 	FetchLeaguePlayers(ctx context.Context, leagueCode string) ([]model.Player, error)
 }
 
-type PlayerServiceImpl struct {
-	adapter FootballDataClient
-	repo    PlayerRepository
-	logger  *slog.Logger
+type MarketBootstrapper interface {
+	Bootstrap(ctx context.Context) error
 }
 
-func NewPlayerService(adapter FootballDataClient, repo PlayerRepository, logger *slog.Logger) *PlayerServiceImpl {
-	return &PlayerServiceImpl{
+type PlayerOption func(*PlayerServiceImpl)
+
+func WithMarketBootstrap(bootstrapper MarketBootstrapper) PlayerOption {
+	return func(s *PlayerServiceImpl) {
+		s.marketBootstrapper = bootstrapper
+	}
+}
+
+type PlayerServiceImpl struct {
+	adapter            FootballDataClient
+	repo               PlayerRepository
+	logger             *slog.Logger
+	marketBootstrapper MarketBootstrapper
+}
+
+func NewPlayerService(adapter FootballDataClient, repo PlayerRepository, logger *slog.Logger, options ...PlayerOption) *PlayerServiceImpl {
+	service := &PlayerServiceImpl{
 		adapter: adapter,
 		repo:    repo,
 		logger:  logger,
+	}
+
+	for _, option := range options {
+		option(service)
+	}
+
+	return service
+}
+
+func (s *PlayerServiceImpl) bootstrapMarket(ctx context.Context) {
+	if s.marketBootstrapper == nil {
+		return
+	}
+
+	if err := s.marketBootstrapper.Bootstrap(ctx); err != nil {
+		s.logger.ErrorContext(ctx, "Market bootstrap failed after sync", "error", err.Error())
 	}
 }
 
@@ -89,6 +118,8 @@ func (s *PlayerServiceImpl) SyncPlayers(ctx context.Context, actor string) (dto.
 			if errors.Is(err, footballdata.ErrRateLimitExceeded) {
 				s.logger.WarnContext(ctx, "Rate limit hit while syncing league", "league_code", code, "error", err.Error())
 				if totalProcessed > 0 {
+					s.bootstrapMarket(ctx)
+
 					return dto.SyncPlayersResponse{
 						Status:           "partial_success",
 						Message:          fmt.Sprintf("Sync partially completed; rate limit reached on league %s", code),
@@ -114,6 +145,8 @@ func (s *PlayerServiceImpl) SyncPlayers(ctx context.Context, actor string) (dto.
 		totalDeactivated += deact
 		s.logger.InfoContext(ctx, "Completed sync for league", "league_code", code, "processed", proc, "updated", upd, "deactivated", deact)
 	}
+
+	s.bootstrapMarket(ctx)
 
 	return dto.SyncPlayersResponse{
 		Status:           "success",

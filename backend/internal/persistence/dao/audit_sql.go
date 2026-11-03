@@ -9,6 +9,10 @@ import (
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
 )
 
+type AuditDAO interface {
+	InsertAuditLog(ctx context.Context, tx *sql.Tx, log model.AuditLog) error
+}
+
 type AuditSql struct {
 	db *sql.DB
 }

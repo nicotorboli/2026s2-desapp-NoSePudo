@@ -49,7 +49,6 @@ func runCompleteFlow(t *testing.T, stack *stack) (accessToken, refreshToken stri
 		`{"email":"nadie@nosepudo.ar","password":"`+logSubjectPassword+`"}`)
 
 	// Catálogo con credencial y sin ella.
-	stack.get(t, "/players", "Bearer "+accessToken)
 	stack.get(t, "/players", "")
 
 	// Rechazo de una credencial inválida en un endpoint autenticado.

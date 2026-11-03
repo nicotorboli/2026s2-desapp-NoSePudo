@@ -182,6 +182,92 @@ func (d *PlayerSql) GetPlayersByExternalIDs(ctx context.Context, externalIDs []i
 	return players, nil
 }
 
+func (d *PlayerSql) ListByIDs(ctx context.Context, ids []int64) (map[int64]model.Player, error) {
+	players := make(map[int64]model.Player, len(ids))
+	if len(ids) == 0 {
+		return players, nil
+	}
+	if d.db == nil {
+		return nil, fmt.Errorf("database connection is nil")
+	}
+
+	const query = `
+		SELECT id, external_id, name, club_name, league_name, league_code, date_of_birth,
+		       nationality, position, shirt_number, active, created_at, updated_at
+		FROM players WHERE id = ANY($1)`
+
+	rows, err := d.db.QueryContext(ctx, query, pq.Array(ids))
+	if err != nil {
+		return nil, fmt.Errorf("listar jugadores por identificador: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var p model.Player
+		if scanErr := rows.Scan(
+			&p.ID, &p.ExternalID, &p.Name, &p.ClubName, &p.LeagueName, &p.LeagueCode,
+			&p.DateOfBirth, &p.Nationality, &p.Position, &p.ShirtNumber, &p.Active,
+			&p.CreatedAt, &p.UpdatedAt,
+		); scanErr != nil {
+			return nil, fmt.Errorf("leer el jugador: %w", scanErr)
+		}
+		players[p.ID] = p
+	}
+
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("recorrer los jugadores: %w", rowsErr)
+	}
+
+	return players, nil
+}
+
+func (d *PlayerSql) LockPlayer(ctx context.Context, tx *sql.Tx, id int64) (bool, error) {
+	const query = `SELECT active FROM players WHERE id = $1 FOR UPDATE`
+
+	if tx == nil {
+		return false, errLockNeedsTransaction
+	}
+
+	var active bool
+	if err := tx.QueryRowContext(ctx, query, id).Scan(&active); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, ErrNotFound
+		}
+		return false, fmt.Errorf("tomar el lock del jugador: %w", err)
+	}
+
+	return active, nil
+}
+
+func (d *PlayerSql) ListActiveIDs(ctx context.Context) ([]int64, error) {
+	const query = `SELECT id FROM players WHERE active = TRUE ORDER BY id`
+
+	if d.db == nil {
+		return nil, errNilDatabase
+	}
+
+	rows, err := d.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("listar los jugadores activos: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	ids := make([]int64, 0)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("leer el identificador del jugador: %w", err)
+		}
+		ids = append(ids, id)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("recorrer los jugadores activos: %w", err)
+	}
+
+	return ids, nil
+}
+
 func (d *PlayerSql) UpsertPlayer(ctx context.Context, tx *sql.Tx, p model.Player) (int64, error) {
 	query := `INSERT INTO players (external_id, name, club_name, league_name, league_code, date_of_birth, nationality, position, shirt_number, active, updated_at)
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())

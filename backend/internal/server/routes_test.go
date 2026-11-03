@@ -111,6 +111,13 @@ func (stubScoringService) ListRanking(ctx context.Context, filter dto.PlayerFilt
 	return dto.PlayerRankingPageResponse{}, nil
 }
 
+func (s stubController) PlaceBuyOrder() httphandler.Endpoint  { return s.endpoint() }
+func (s stubController) PlaceSellOrder() httphandler.Endpoint { return s.endpoint() }
+func (s stubController) ListOpenOrders() httphandler.Endpoint { return s.endpoint() }
+func (s stubController) CancelOrder() httphandler.Endpoint    { return s.endpoint() }
+func (s stubController) Portfolio() httphandler.Endpoint      { return s.endpoint() }
+func (s stubController) Transactions() httphandler.Endpoint   { return s.endpoint() }
+
 func routesUnderTest() []route {
 	server := &Server{
 		controllers: &controller.Container{
@@ -121,6 +128,7 @@ func routesUnderTest() []route {
 			),
 			Scoring: controller.NewScoringController(stubScoringService{}),
 			Auth:    controller.NewAuthController(stubAuthService{}),
+			Market:  controller.NewMarketController(nil, nil),
 		},
 	}
 
@@ -155,14 +163,20 @@ func TestDeclaredLevelsMatchTheSpecification(t *testing.T) {
 		"GET /sync/runs/{id}":                       AccessSuperuser,
 		"GET /sync/schedules":                       AccessSuperuser,
 		"PUT /sync/schedules/{type}":                AccessSuperuser,
-		"GET /players/{id}/score":                   AccessAnonymous,
-		"GET /players/{id}/scores":                  AccessAnonymous,
-		"GET /players/ranking":                      AccessAnonymous,
 		"GET /scoring/strategies":                   AccessAnonymous,
 		"GET /scoring/active-strategy":              AccessAnonymous,
 		"PUT /scoring/active-strategy":              AccessSuperuser,
 		"GET /scoring/league-coefficients/{league}": AccessAnonymous,
 		"PUT /scoring/league-coefficients/{league}": AccessSuperuser,
+		"GET /players/{id}/score":                   AccessAnonymous,
+		"GET /players/{id}/scores":                  AccessAnonymous,
+		"GET /players/ranking":                      AccessAnonymous,
+		"POST /orders/buy":                          AccessAuthenticated,
+		"POST /orders/sell":                         AccessAuthenticated,
+		"GET /orders":                               AccessAuthenticated,
+		"DELETE /orders/{id}":                       AccessAuthenticated,
+		"GET /users/{id}/portfolio":                 AccessAuthenticated,
+		"GET /users/{id}/transactions":              AccessAuthenticated,
 	}
 
 	declared := map[string]AccessLevel{}

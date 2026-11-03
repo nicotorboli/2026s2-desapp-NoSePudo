@@ -9,6 +9,7 @@ type Container struct {
 	Sync    *RestSyncController
 	Scoring *RestScoringController
 	Auth    *RestAuthController
+	Market  *RestMarketController
 }
 
 func NewContainer(services *service.Container) *Container {
@@ -20,5 +21,6 @@ func NewContainer(services *service.Container) *Container {
 		),
 		Scoring: NewScoringController(services.Score),
 		Auth:    NewAuthController(services.Auth),
+		Market:  NewMarketController(services.Market, services.Portfolio),
 	}
 }

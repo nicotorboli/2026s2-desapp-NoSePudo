@@ -18,6 +18,9 @@ type Container struct {
 	Auth          *Auth
 	SyncRuns      *SyncRunService
 	SyncScheduler *SyncScheduler
+	Market        *MarketService
+	MarketMaker   *MarketMakerService
+	Portfolio     *PortfolioService
 }
 
 // NewContainer arma el contenedor con las sincronizaciones configuradas por
@@ -55,7 +58,14 @@ func buildContainer(ctx context.Context, runCtx context.Context, repos *reposito
 		logger,
 	)
 
-	player := NewPlayerService(adapterContainer.FootballData, repos.Player, logger)
+	marketMaker := NewMarketMakerService(repos.Market, time.Now)
+
+	player := NewPlayerService(
+		adapterContainer.FootballData,
+		repos.Player,
+		logger,
+		WithMarketBootstrap(marketMaker),
+	)
 	playerStats := NewPlayerStatisticsService(
 		adapterContainer.Whoscored,
 		repos.Player,
@@ -84,8 +94,12 @@ func buildContainer(ctx context.Context, runCtx context.Context, repos *reposito
 			adapterContainer.JWT,
 			repos.RefreshToken,
 			time.Now,
+			WithMarketAccounts(repos.Registration),
 		),
 		SyncRuns:      syncRuns,
 		SyncScheduler: NewSyncScheduler(syncRuns, repos.SyncSchedule, settings, logger),
+		Market:        NewMarketService(repos.Market, time.Now),
+		MarketMaker:   marketMaker,
+		Portfolio:     NewPortfolioService(repos.Portfolio),
 	}, nil
 }

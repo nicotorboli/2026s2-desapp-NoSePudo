@@ -3,6 +3,23 @@ import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import * as playersApi from './api/players';
 import App from './App';
 
+const mocks = vi.hoisted(() => ({
+  useAuth: vi.fn(),
+}));
+
+vi.mock('./context/AuthContext', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./context/AuthContext')>();
+  return { ...actual, useAuth: mocks.useAuth };
+});
+
+vi.mock('./components/PlayerTrade/PlayerTrade', () => ({
+  PlayerTrade: () => <div data-testid="trade-widget" />,
+}));
+
+vi.mock('./pages/PortfolioPage/PortfolioPage', () => ({
+  PortfolioPage: () => <div>Mi patrimonio</div>,
+}));
+
 afterEach(cleanup);
 
 describe('App', () => {
@@ -38,8 +55,18 @@ describe('App', () => {
     updatedAt: '2026-09-28T12:30:00Z',
   };
 
+  const anonymousAuth = {
+    user: null,
+    token: null,
+    isAuthenticated: false,
+    login: vi.fn(),
+    registerAndLogin: vi.fn(),
+    logout: vi.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(() => {
     vi.restoreAllMocks();
+    mocks.useAuth.mockReturnValue(anonymousAuth);
     vi.spyOn(playersApi, 'getPlayerStatistics').mockResolvedValue([]);
     vi.spyOn(playersApi, 'getPlayerScores').mockResolvedValue([]);
     vi.spyOn(playersApi, 'getPlayerScore').mockRejectedValue(new Error('not found'));
@@ -91,5 +118,41 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByText('Ranking de jugadores')).toBeDefined();
     });
+  });
+
+  it('shows Mi Patrimonio only when authenticated and navigates to the portfolio', async () => {
+    vi.spyOn(playersApi, 'getPlayersRanking').mockResolvedValue(mockPlayers);
+    mocks.useAuth.mockReturnValue({
+      user: { id: 1, email: 'user@test.local' },
+      token: 'valid-token',
+      isAuthenticated: true,
+      login: vi.fn(),
+      registerAndLogin: vi.fn(),
+      logout: vi.fn().mockResolvedValue(undefined),
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole('button', { name: /mi patrimonio/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Mi patrimonio')).toBeDefined();
+    });
+  });
+
+  it('shows the Administración entry for a superuser', async () => {
+    vi.spyOn(playersApi, 'getPlayersRanking').mockResolvedValue(mockPlayers);
+    mocks.useAuth.mockReturnValue({
+      user: { id: 1, email: 'admin@test.local', privilege: 'superuser' },
+      token: 'valid-token',
+      isAuthenticated: true,
+      login: vi.fn(),
+      registerAndLogin: vi.fn(),
+      logout: vi.fn().mockResolvedValue(undefined),
+    });
+
+    render(<App />);
+
+    expect(screen.getByRole('button', { name: /administración/i })).toBeDefined();
   });
 });

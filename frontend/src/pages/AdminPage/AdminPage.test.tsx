@@ -3,11 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminPage } from './AdminPage';
 
 const mocks = vi.hoisted(() => ({
-  useAdminSession: vi.fn(),
+  useAuth: vi.fn(),
 }));
 
-vi.mock('../../auth/adminSession', () => ({
-  useAdminSession: mocks.useAdminSession,
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: mocks.useAuth,
 }));
 
 vi.mock('../../components/admin/SyncSection/SyncSection', () => ({
@@ -23,15 +23,9 @@ vi.mock('../../components/admin/CoefficientSection/CoefficientSection', () => ({
 }));
 
 const logout = vi.fn().mockResolvedValue(undefined);
-const login = vi.fn().mockResolvedValue(undefined);
 
-const superuserSession = {
-  email: 'admin@nosepudo.ar',
-  accessToken: 'access',
-  refreshToken: 'refresh',
-  accessExpiresAt: '2030-01-01T00:00:00Z',
-  refreshExpiresAt: '2030-01-08T00:00:00Z',
-};
+const superuser = { id: 1, email: 'admin@nosepudo.ar', privilege: 'superuser' };
+const commonUser = { id: 2, email: 'user@nosepudo.ar', privilege: 'user' };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -40,22 +34,31 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('AdminPage', () => {
-  it('muestra el login cuando no hay sesión', () => {
-    mocks.useAdminSession.mockReturnValue({ session: null, isSuperuser: false, login, logout });
+  it('muestra acceso restringido y pide login cuando no hay sesión', () => {
+    mocks.useAuth.mockReturnValue({
+      user: null,
+      token: null,
+      isAuthenticated: false,
+      login: vi.fn(),
+      registerAndLogin: vi.fn(),
+      logout,
+    });
+    const onOpenAuth = vi.fn();
 
-    render(<AdminPage />);
+    render(<AdminPage onOpenAuth={onOpenAuth} />);
 
-    expect(screen.getByText('Administración')).toBeDefined();
-    expect(screen.getByLabelText('Email')).toBeDefined();
-    expect(screen.getByLabelText('Contraseña')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Ingresar' })).toBeDefined();
+    expect(screen.getByText('Acceso restringido')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /iniciar sesión/i }));
+    expect(onOpenAuth).toHaveBeenCalledTimes(1);
   });
 
   it('muestra acceso restringido para un usuario común', () => {
-    mocks.useAdminSession.mockReturnValue({
-      session: { ...superuserSession, email: 'user@nosepudo.ar' },
-      isSuperuser: false,
-      login,
+    mocks.useAuth.mockReturnValue({
+      user: commonUser,
+      token: 'valid-token',
+      isAuthenticated: true,
+      login: vi.fn(),
+      registerAndLogin: vi.fn(),
       logout,
     });
 
@@ -66,10 +69,12 @@ describe('AdminPage', () => {
   });
 
   it('muestra el panel y las secciones para un superusuario', () => {
-    mocks.useAdminSession.mockReturnValue({
-      session: superuserSession,
-      isSuperuser: true,
-      login,
+    mocks.useAuth.mockReturnValue({
+      user: superuser,
+      token: 'valid-token',
+      isAuthenticated: true,
+      login: vi.fn(),
+      registerAndLogin: vi.fn(),
       logout,
     });
 
@@ -84,10 +89,12 @@ describe('AdminPage', () => {
   });
 
   it('cierra sesión desde el panel', () => {
-    mocks.useAdminSession.mockReturnValue({
-      session: superuserSession,
-      isSuperuser: true,
-      login,
+    mocks.useAuth.mockReturnValue({
+      user: superuser,
+      token: 'valid-token',
+      isAuthenticated: true,
+      login: vi.fn(),
+      registerAndLogin: vi.fn(),
       logout,
     });
 

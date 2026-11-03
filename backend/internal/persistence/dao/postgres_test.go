@@ -3,76 +3,91 @@ package dao_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	_ "github.com/lib/pq"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/testsupport"
 )
 
-// startPostgres levanta un Postgres real con el mismo db/init.sql que usa el
-// resto del proyecto. Los DAOs se prueban contra SQL real, no contra mocks.
+var sharedPostgres *testsupport.SharedPostgres
+
+func TestMain(m *testing.M) {
+	ctx := context.Background()
+
+	shared, err := testsupport.StartSharedPostgres(ctx, filepath.Join("..", "..", "..", "db", "init.sql"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "no se pudo preparar Postgres para los tests del dao: %v\n", err)
+		os.Exit(1)
+	}
+	sharedPostgres = shared
+
+	code := m.Run()
+
+	shared.Close(ctx)
+	os.Exit(code)
+}
+
 func startPostgres(t *testing.T) *sql.DB {
 	t.Helper()
 
-	ctx := t.Context()
-
-	container, err := postgres.Run(ctx,
-		"postgres:15-alpine",
-		postgres.WithInitScripts(filepath.Join("..", "..", "..", "db", "init.sql")),
-		postgres.WithDatabase("nsp_db"),
-		postgres.WithUsername("devuser"),
-		postgres.WithPassword("devpassword"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(60*time.Second),
-		),
-	)
-	if err != nil {
-		t.Fatalf("no se pudo levantar Postgres con testcontainers (¿Docker está corriendo?): %v", err)
-	}
-
-	t.Cleanup(func() {
-		if terminateErr := testcontainers.TerminateContainer(container); terminateErr != nil {
-			t.Logf("no se pudo terminar el contenedor: %v", terminateErr)
-		}
-	})
-
-	dataSource, err := container.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("no se pudo armar la cadena de conexión: %v", err)
-	}
-
-	db, err := sql.Open("postgres", dataSource)
-	if err != nil {
-		t.Fatalf("no se pudo abrir la conexión: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	pingCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	if err := db.PingContext(pingCtx); err != nil {
-		t.Fatalf("la base no responde: %v", err)
-	}
-
-	return db
+	return sharedPostgres.Fresh(t)
 }
 
-// seedUser inserta una cuenta mínima y devuelve su id, para satisfacer las FK
-// de audit de activaciones y runs.
-func seedUser(t *testing.T, db *sql.DB, email string) int64 {
+const fakeBcryptHash = "$2a$04$" + "abcdefghijklmnopqrstuv" + "wxyz0123456789ABCDEFGHIJKLMNOPQ"
+
+var seedCounter int64
+
+func seedUser(t *testing.T, db *sql.DB) int64 {
 	t.Helper()
 
+	seedCounter++
+
 	var id int64
-	if err := db.QueryRowContext(t.Context(),
-		`INSERT INTO users (email, password_hash, privilege) VALUES ($1, 'x', 2) RETURNING id`,
-		email,
-	).Scan(&id); err != nil {
-		t.Fatalf("no se pudo sembrar el usuario: %v", err)
+	err := db.QueryRowContext(t.Context(),
+		`INSERT INTO users (email, password_hash, privilege, active) VALUES ($1, $2, $3, TRUE) RETURNING id`,
+		fmt.Sprintf("usuario-%d@test.local", seedCounter),
+		fakeBcryptHash,
+		int16(model.PrivilegeUser),
+	).Scan(&id)
+	if err != nil {
+		t.Fatalf("no se pudo sembrar un usuario: %v", err)
 	}
+
 	return id
+}
+
+func seedPlayer(t *testing.T, db *sql.DB) int64 {
+	t.Helper()
+
+	seedCounter++
+
+	var id int64
+	err := db.QueryRowContext(t.Context(),
+		`INSERT INTO players (external_id, name, club_name, league_name, league_code, position)
+		 VALUES ($1, $2, 'Arsenal FC', 'Premier League', 'PL', 'Offence') RETURNING id`,
+		seedCounter,
+		fmt.Sprintf("Jugador %d", seedCounter),
+	).Scan(&id)
+	if err != nil {
+		t.Fatalf("no se pudo sembrar un jugador: %v", err)
+	}
+
+	return id
+}
+
+func beginTx(t *testing.T, db *sql.DB) *sql.Tx {
+	t.Helper()
+
+	tx, err := db.BeginTx(t.Context(), nil)
+	if err != nil {
+		t.Fatalf("no se pudo abrir la transacción: %v", err)
+	}
+	t.Cleanup(func() { _ = tx.Rollback() })
+
+	return tx
 }
