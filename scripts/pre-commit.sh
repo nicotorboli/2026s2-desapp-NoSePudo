@@ -105,4 +105,31 @@ if ! golangci-lint run ./...; then
 fi
 
 echo "[SUCCESS] All backend pre-commit checks passed."
+
+FRONTEND_DIR="${REPO_ROOT}/frontend"
+if [ -d "${FRONTEND_DIR}/node_modules" ] && command -v npm >/dev/null 2>&1; then
+  echo "[INFO] Running frontend pre-commit checks in ${FRONTEND_DIR}..."
+  cd "${FRONTEND_DIR}"
+
+  echo "[INFO] Running TypeScript typecheck..."
+  if ! npm run typecheck; then
+    echo "[ERROR] TypeScript typecheck reported errors."
+    exit 1
+  fi
+
+  echo "[INFO] Running ESLint..."
+  if ! npm run lint; then
+    echo "[ERROR] ESLint reported rule violations."
+    exit 1
+  fi
+
+  echo "[INFO] Running Knip..."
+  if ! npm run knip; then
+    echo "[ERROR] Knip reported unused exports or dependencies."
+    exit 1
+  fi
+
+  echo "[SUCCESS] All frontend pre-commit checks passed."
+fi
+
 exit 0
