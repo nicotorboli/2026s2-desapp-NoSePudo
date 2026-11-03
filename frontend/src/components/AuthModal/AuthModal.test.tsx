@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { AuthModal } from './AuthModal';
 import * as AuthContextModule from '../../context/AuthContext';
 
 describe('AuthModal', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    cleanup();
   });
 
   it('does not render when isOpen is false', () => {
@@ -25,7 +26,7 @@ describe('AuthModal', () => {
   it('switches to register tab when clicking Registrarse', () => {
     render(<AuthModal isOpen={true} onClose={vi.fn()} />);
 
-    const registerTabBtn = screen.getByRole('button', { name: 'Registrarse' });
+    const registerTabBtn = screen.getAllByRole('button', { name: 'Registrarse' })[0];
     fireEvent.click(registerTabBtn);
 
     expect(screen.getByRole('heading', { name: 'Crear Cuenta' })).toBeDefined();
@@ -37,7 +38,7 @@ describe('AuthModal', () => {
     const onCloseMock = vi.fn();
     render(<AuthModal isOpen={true} onClose={onCloseMock} />);
 
-    const closeBtn = screen.getByRole('button', { name: /cerrar modal/i });
+    const closeBtn = screen.getAllByRole('button', { name: /cerrar modal/i })[0];
     fireEvent.click(closeBtn);
 
     expect(onCloseMock).toHaveBeenCalledOnce();
@@ -66,7 +67,7 @@ describe('AuthModal', () => {
       target: { value: 'password123' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Iniciar Sesión' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Iniciar Sesión' })[0]);
 
     await waitFor(() => {
       expect(mockLogin).toHaveBeenCalledWith({

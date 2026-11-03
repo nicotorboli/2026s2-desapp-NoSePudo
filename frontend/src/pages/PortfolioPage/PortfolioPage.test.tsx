@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import { PortfolioPage } from './PortfolioPage';
 import * as AuthContextModule from '../../context/AuthContext';
 import * as portfolioApi from '../../api/portfolio';
@@ -8,6 +8,7 @@ import * as ordersApi from '../../api/orders';
 describe('PortfolioPage', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    cleanup();
   });
 
   it('renders restricted access message if unauthenticated', () => {
@@ -71,8 +72,8 @@ describe('PortfolioPage', () => {
     render(<PortfolioPage onSelectPlayer={vi.fn()} onBackToCatalog={vi.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByText('950.00 CR')).toBeDefined();
-      expect(screen.getByText('50.00 CR')).toBeDefined();
+      expect(screen.getByText('950 Créditos')).toBeDefined();
+      expect(screen.getByText('50 Créditos')).toBeDefined();
       expect(screen.getByText('Lionel Messi')).toBeDefined();
     });
   });
