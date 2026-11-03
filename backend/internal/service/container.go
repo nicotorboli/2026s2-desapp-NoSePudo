@@ -20,10 +20,11 @@ type Container struct {
 	SyncScheduler *SyncScheduler
 }
 
-// NewContainer arma el contenedor con las sincronizaciones deshabilitadas por
-// defecto. Lo usan los tests; el proceso real usa NewContainerWithSync.
-func NewContainer(ctx context.Context, repos *repository.Container, adapterContainer *adapters.Container, logger *slog.Logger) (*Container, error) {
-	return buildContainer(ctx, context.Background(), repos, adapterContainer, DefaultSyncSettings(), logger)
+// NewContainer arma el contenedor con las sincronizaciones configuradas por
+// defecto y el contexto de vida que recibe. Lo usan los tests; el proceso real
+// usa NewContainerWithSync.
+func NewContainer(ctx context.Context, runCtx context.Context, repos *repository.Container, adapterContainer *adapters.Container, logger *slog.Logger) (*Container, error) {
+	return buildContainer(ctx, runCtx, repos, adapterContainer, DefaultSyncSettings(), logger)
 }
 
 // NewContainerWithSync es la construcción que usa cmd/server: recibe el

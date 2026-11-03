@@ -17,8 +17,6 @@ func NewSyncRunDao(db *sql.DB) *SyncRunSql {
 	return &SyncRunSql{db: db}
 }
 
-// syncRunColumns es la proyección completa de sync_runs. La comparten Get y
-// List para que las dos lean exactamente las mismas columnas.
 const syncRunColumns = `
 	id, type, trigger, status, started_at, finished_at,
 	total_processed, total_updated, total_deactivated,
@@ -114,8 +112,8 @@ func (d *SyncRunSql) Get(ctx context.Context, id int64) (model.SyncRun, bool, er
 	}
 
 	const query = `SELECT ` + syncRunColumns + ` FROM sync_runs WHERE id = $1`
-
-	run, err := scanSyncRun(d.db.QueryRowContext(ctx, query, id).Scan)
+	// Idem al otro comment respecto al issue
+	run, err := scanSyncRun(d.db.QueryRowContext(ctx, query, id).Scan) // NOSONAR
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.SyncRun{}, false, nil
@@ -143,7 +141,8 @@ func (d *SyncRunSql) List(ctx context.Context, typ *model.SyncType, offset, limi
 		ORDER BY started_at DESC, id DESC
 		LIMIT $2 OFFSET $3`
 
-	rows, err := d.db.QueryContext(ctx, query, typeArg, limit, offset)
+	// En este caso omito el error porque no hay peligro de sql injection, solo esta usando un const dentro del mismo file
+	rows, err := d.db.QueryContext(ctx, query, typeArg, limit, offset) // NOSONAR
 	if err != nil {
 		return nil, 0, fmt.Errorf("list sync runs: %w", err)
 	}

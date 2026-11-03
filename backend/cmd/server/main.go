@@ -120,6 +120,7 @@ func startServer() error {
 		},
 		logger,
 	)
+
 	if err != nil {
 		return err
 	}
