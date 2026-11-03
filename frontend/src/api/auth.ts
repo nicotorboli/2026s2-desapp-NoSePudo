@@ -10,7 +10,7 @@ export interface RegisterRequestDTO {
   password: string;
 }
 
-export interface SessionResponseDTO {
+interface SessionResponseDTO {
   access_token: string;
   refresh_token: string;
   token_type: string;
@@ -18,7 +18,7 @@ export interface SessionResponseDTO {
   refresh_expires_at: string;
 }
 
-export interface AccountResponseDTO {
+interface AccountResponseDTO {
   id: number;
   email: string;
   created_at?: string;

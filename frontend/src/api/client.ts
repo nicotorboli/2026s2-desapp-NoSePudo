@@ -44,7 +44,7 @@ export const getAuthToken = (): string | null => {
   return currentToken || (typeof window !== 'undefined' ? localStorage.getItem(ACCESS_TOKEN_KEY) : null);
 };
 
-export const getRefreshToken = (): string | null => {
+const getRefreshToken = (): string | null => {
   return currentRefreshToken || (typeof window !== 'undefined' ? localStorage.getItem(REFRESH_TOKEN_KEY) : null);
 };
 
