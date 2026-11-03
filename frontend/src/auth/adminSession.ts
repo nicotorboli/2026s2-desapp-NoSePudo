@@ -9,7 +9,7 @@ import {
 const STORAGE_KEY = 'nsp.admin.session';
 const SESSION_EVENT = 'nsp:admin-session';
 
-interface AdminSession {
+export interface AdminSession {
   email: string;
   accessToken: string;
   refreshToken: string;
@@ -29,7 +29,7 @@ const decodeBase64Url = (value: string): string => {
   return atob(padded);
 };
 
-const decodeAccessToken = (token: string): AccessClaims | null => {
+export const decodeAccessToken = (token: string): AccessClaims | null => {
   const payload = token.split('.')[1];
   if (!payload) {
     return null;
@@ -65,7 +65,7 @@ const notifySessionChange = () => {
   window.dispatchEvent(new Event(SESSION_EVENT));
 };
 
-const loadSession = (): AdminSession | null => {
+export const loadSession = (): AdminSession | null => {
   const raw = window.sessionStorage.getItem(STORAGE_KEY);
   if (!raw) {
     return null;
@@ -79,7 +79,7 @@ const loadSession = (): AdminSession | null => {
   }
 };
 
-const saveSession = (session: AdminSession) => {
+export const saveSession = (session: AdminSession) => {
   window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   notifySessionChange();
 };
@@ -91,7 +91,7 @@ export const clearSession = () => {
 
 export const getAccessToken = (): string | null => loadSession()?.accessToken ?? null;
 
-const isSuperuserSession = (session: AdminSession): boolean =>
+export const isSuperuserSession = (session: AdminSession): boolean =>
   decodeAccessToken(session.accessToken)?.privilege === 'superuser';
 
 const sessionFromDTO = (email: string, dto: SessionDTO): AdminSession => ({
@@ -127,14 +127,14 @@ export const refreshAdminSession = (): Promise<AdminSession> => {
   return refreshInFlight;
 };
 
-const loginAdmin = async (email: string, password: string): Promise<AdminSession> => {
+export const loginAdmin = async (email: string, password: string): Promise<AdminSession> => {
   const dto = await apiLogin(email, password);
   const session = sessionFromDTO(email, dto);
   saveSession(session);
   return session;
 };
 
-const logoutAdmin = async (): Promise<void> => {
+export const logoutAdmin = async (): Promise<void> => {
   const current = loadSession();
   try {
     if (current) {

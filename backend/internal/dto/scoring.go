@@ -19,7 +19,7 @@ type ActiveStrategyResponse struct {
 }
 
 type LeagueCoefficientResponse struct {
-	EffectiveFrom string  `json:"effectiveFrom"`
+	EffectiveFrom *string `json:"effectiveFrom"`
 	LeagueCode    string  `json:"leagueCode"`
 	Coefficient   float64 `json:"coefficient"`
 }
@@ -33,8 +33,9 @@ type SetLeagueCoefficientRequest struct {
 }
 
 func LeagueCoefficientDesdeModelo(c model.LeagueCoefficient) LeagueCoefficientResponse {
+	effectiveFrom := c.EffectiveFrom.Format(time.RFC3339)
 	return LeagueCoefficientResponse{
-		EffectiveFrom: c.EffectiveFrom.Format(time.RFC3339),
+		EffectiveFrom: &effectiveFrom,
 		LeagueCode:    c.LeagueCode,
 		Coefficient:   c.Coefficient,
 	}

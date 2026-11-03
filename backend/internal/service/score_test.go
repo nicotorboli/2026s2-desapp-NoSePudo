@@ -254,3 +254,46 @@ func TestScoreServiceListRankingSortsMissingScoresLast(t *testing.T) {
 		t.Errorf("el jugador sin score debería quedar al final con nil")
 	}
 }
+
+func TestScoreServiceEnsureDefaultActivationIsIdempotentAndRespectsOperatorChoice(t *testing.T) {
+	f := newScoreServiceFixture(t)
+
+	if err := f.svc.EnsureDefaultActivation(t.Context(), f.actorID); err != nil {
+		t.Fatalf("EnsureDefaultActivation devolvió error: %v", err)
+	}
+
+	active, found, err := f.svc.ActiveStrategy(t.Context())
+	if err != nil {
+		t.Fatalf("ActiveStrategy devolvió error: %v", err)
+	}
+	if !found || active.ID != 1 {
+		t.Fatalf("la estrategia activa por defecto debería ser 1, obtuve %+v (found=%v)", active, found)
+	}
+
+	if ensureErr := f.svc.EnsureDefaultActivation(t.Context(), f.actorID); ensureErr != nil {
+		t.Fatalf("el segundo EnsureDefaultActivation devolvió error: %v", ensureErr)
+	}
+
+	active, _, err = f.svc.ActiveStrategy(t.Context())
+	if err != nil {
+		t.Fatalf("ActiveStrategy después del segundo ensure: %v", err)
+	}
+	if active.ID != 1 {
+		t.Errorf("el segundo ensure cambió la estrategia activa a %d", active.ID)
+	}
+
+	if activateErr := f.svc.ActivateStrategy(t.Context(), testStrategyID, f.actorID); activateErr != nil {
+		t.Fatalf("ActivateStrategy devolvió error: %v", activateErr)
+	}
+	if ensureErr := f.svc.EnsureDefaultActivation(t.Context(), f.actorID); ensureErr != nil {
+		t.Fatalf("EnsureDefaultActivation después de una activación manual: %v", ensureErr)
+	}
+
+	active, _, err = f.svc.ActiveStrategy(t.Context())
+	if err != nil {
+		t.Fatalf("ActiveStrategy final: %v", err)
+	}
+	if active.ID != testStrategyID {
+		t.Errorf("EnsureDefaultActivation pisó la elección del operador: %d", active.ID)
+	}
+}

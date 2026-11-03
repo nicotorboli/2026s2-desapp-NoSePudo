@@ -128,6 +128,15 @@ func startServer() error {
 			return fmt.Errorf("aprovisionar el superusuario: %w", err)
 		}
 		logger.Info("Superuser account ensured")
+
+		superuser, superuserErr := services.Auth.Superuser(ctx, cfg.SuperuserEmail)
+		if superuserErr != nil {
+			return fmt.Errorf("obtener el superusuario: %w", superuserErr)
+		}
+		if activationErr := services.Score.EnsureDefaultActivation(ctx, superuser.ID); activationErr != nil {
+			return fmt.Errorf("activar la estrategia por defecto: %w", activationErr)
+		}
+		logger.Info("Default scoring strategy ensured")
 	}
 
 	controllers := controller.NewContainer(services)

@@ -227,6 +227,17 @@ func (a *Auth) EnsureSuperuser(ctx context.Context, email, password string) erro
 	return nil
 }
 
+// Superuser devuelve la cuenta de superusuario ya aprovisionada. Lo usan las
+// tareas de arranque que necesitan un actor concreto, como la activación de la
+// estrategia por defecto.
+func (a *Auth) Superuser(ctx context.Context, email string) (model.User, error) {
+	user, err := a.userRepository.GetByEmail(ctx, model.NormalizeEmail(email))
+	if err != nil {
+		return model.User{}, fmt.Errorf("buscar la cuenta de superusuario: %w", err)
+	}
+	return user, nil
+}
+
 func (a *Auth) Refresh(
 	ctx context.Context,
 	presentedID string,

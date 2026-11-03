@@ -96,8 +96,8 @@ func LoadCfg() (*Cfg, error) {
 		SyncRunTimeout:         syncRunTimeout,
 		SyncPlayersInterval:    syncPlayersInterval,
 		SyncStatisticsInterval: syncStatisticsInterval,
-		SyncPlayersEnabled:     boolFromEnv("NSP_SYNC_PLAYERS_ENABLED"),
-		SyncStatisticsEnabled:  boolFromEnv("NSP_SYNC_STATISTICS_ENABLED"),
+		SyncPlayersEnabled:     syncEnabledFromEnv("NSP_SYNC_PLAYERS_ENABLED"),
+		SyncStatisticsEnabled:  syncEnabledFromEnv("NSP_SYNC_STATISTICS_ENABLED"),
 	}, nil
 }
 
@@ -150,8 +150,8 @@ func syncIntervalFromEnv(name string) (time.Duration, error) {
 	return value, nil
 }
 
-// boolFromEnv lee un flag booleano; todo lo que no sea exactamente "true" es
-// false, así que un valor ausente o mal escrito deshabilita por defecto.
-func boolFromEnv(name string) bool {
-	return os.Getenv(name) == "true"
+// syncEnabledFromEnv lee un flag de sincronización con default habilitado: solo
+// el valor explícito "false" lo apaga.
+func syncEnabledFromEnv(name string) bool {
+	return os.Getenv(name) != "false"
 }

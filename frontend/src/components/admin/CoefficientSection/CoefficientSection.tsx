@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getLeagueCoefficientOptional, setLeagueCoefficient } from '../../../api/admin';
+import { getLeagueCoefficient, setLeagueCoefficient } from '../../../api/admin';
 import { LEAGUES } from '../../../utils/leagues';
 import { formatDateTime } from '../../../utils/format';
 import { AdminMessageKind, StatusMessage } from '../AdminFeedback/AdminFeedback';
@@ -39,7 +39,7 @@ export const CoefficientSection: React.FC = () => {
 
     const load = async () => {
       const results = await Promise.allSettled(
-        LEAGUES.map((league) => getLeagueCoefficientOptional(league.code)),
+        LEAGUES.map((league) => getLeagueCoefficient(league.code)),
       );
       if (cancelled) {
         return;
@@ -52,9 +52,9 @@ export const CoefficientSection: React.FC = () => {
           const dto = result.value;
           return {
             ...league,
-            coefficient: dto?.coefficient ?? null,
-            effectiveFrom: dto?.effectiveFrom ?? null,
-            input: dto ? String(dto.coefficient) : '',
+            coefficient: dto.coefficient,
+            effectiveFrom: dto.effectiveFrom,
+            input: String(dto.coefficient),
             isLoading: false,
           };
         }
@@ -147,9 +147,9 @@ export const CoefficientSection: React.FC = () => {
                 <td>
                   {row.isLoading
                     ? '...'
-                    : row.coefficient === null
-                      ? 'Sin definir'
-                      : row.coefficient.toFixed(4)}
+                    : row.effectiveFrom === null
+                      ? `${row.coefficient?.toFixed(4) ?? '1.0000'} (por defecto)`
+                      : (row.coefficient?.toFixed(4) ?? '—')}
                 </td>
                 <td>{formatDateTime(row.effectiveFrom)}</td>
                 <td>
@@ -158,6 +158,7 @@ export const CoefficientSection: React.FC = () => {
                     type="number"
                     min="0.0001"
                     step="0.01"
+                    aria-label={`Nuevo coeficiente de ${row.name}`}
                     value={row.input}
                     onChange={(event) => updateInput(row.code, event.target.value)}
                     disabled={row.isLoading || savingCode !== null}
@@ -167,6 +168,7 @@ export const CoefficientSection: React.FC = () => {
                   <button
                     type="button"
                     className="coefficient-section__button"
+                    aria-label={`Guardar coeficiente de ${row.name}`}
                     onClick={() => void handleSave(row)}
                     disabled={row.isLoading || savingCode !== null}
                   >

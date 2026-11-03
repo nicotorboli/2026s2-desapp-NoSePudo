@@ -44,6 +44,7 @@ type SyncScheduleRepository interface {
 	List(ctx context.Context) ([]model.SyncSchedule, error)
 	Get(ctx context.Context, typ model.SyncType) (model.SyncSchedule, bool, error)
 	Set(ctx context.Context, schedule model.SyncSchedule) (model.SyncSchedule, bool, error)
+	EnableLegacyDefaults(ctx context.Context, now time.Time) (int64, error)
 	ReserveDue(ctx context.Context, now time.Time) ([]model.SyncSchedule, error)
 }
 

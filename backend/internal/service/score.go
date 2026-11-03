@@ -18,6 +18,10 @@ const scoreMaxPlayersPerLeague = 10000
 
 const rankingMaxPlayers = 50000
 
+// defaultStrategyID es la estrategia que queda activa cuando el servidor
+// arranca sin ninguna activación previa.
+const defaultStrategyID = 1
+
 type ScoreRepository interface {
 	Save(ctx context.Context, scores []model.PlayerScore) error
 	HasScoreFor(ctx context.Context, playerID int64, strategyID int, statisticsID int64) (bool, error)
@@ -113,6 +117,21 @@ func (s *ScoreService) ActivateStrategy(ctx context.Context, strategyID int, act
 	}
 
 	return s.recalculate(ctx, strategyID, page.Items)
+}
+
+// EnsureDefaultActivation activa la estrategia por defecto solo si todavía no
+// hay ninguna activación. Es idempotente: no pisa una elección del operador en
+// reinicios posteriores.
+func (s *ScoreService) EnsureDefaultActivation(ctx context.Context, actorID int64) error {
+	_, found, err := s.activations.Active(ctx)
+	if err != nil {
+		return fmt.Errorf("check active strategy: %w", err)
+	}
+	if found {
+		return nil
+	}
+
+	return s.ActivateStrategy(ctx, defaultStrategyID, actorID)
 }
 
 func (s *ScoreService) SetLeagueCoefficient(ctx context.Context, leagueCode string, coefficient float64, actorID int64) error {

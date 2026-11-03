@@ -125,6 +125,27 @@ func (d *SyncScheduleSql) Set(ctx context.Context, schedule model.SyncSchedule) 
 	return updated, true, nil
 }
 
+// EnableLegacyDefaults enciende las filas que quedaron con el default viejo
+// (deshabilitadas y con intervalo diario, sin que un operador las haya tocado).
+// No pisa configuraciones explícitas: cualquier cambio por API deja updated_by.
+func (d *SyncScheduleSql) EnableLegacyDefaults(ctx context.Context, now time.Time) (int64, error) {
+	if d.db == nil {
+		return 0, errNilDatabase
+	}
+
+	const query = `
+		UPDATE sync_schedules
+		SET enabled = TRUE, next_run_at = $1 + INTERVAL '1440 minutes', updated_at = NOW()
+		WHERE updated_by IS NULL AND enabled = FALSE AND interval_minutes = 1440`
+
+	result, err := d.db.ExecContext(ctx, query, now)
+	if err != nil {
+		return 0, fmt.Errorf("enable legacy sync schedules: %w", err)
+	}
+
+	return result.RowsAffected()
+}
+
 // ReserveDue reclama los schedules habilitados que ya vencieron y adelanta su
 // próximo disparo. El UPDATE es atómico: si hubiera más de una instancia, solo
 // una se queda con cada fila.

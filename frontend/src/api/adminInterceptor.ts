@@ -43,10 +43,11 @@ client.interceptors.response.use(
     try {
       const session = await refreshAdminSession();
       config.headers.set('Authorization', `Bearer ${session.accessToken}`);
-      return await client.request(config);
     } catch {
       clearSession();
       return Promise.reject(error);
     }
+
+    return client.request(config);
   },
 );

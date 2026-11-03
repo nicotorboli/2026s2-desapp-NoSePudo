@@ -578,19 +578,15 @@ paths:
         - {name: league, in: path, required: true, schema: {type: string}}
       responses:
         '200':
-          description: The league coefficient.
+          description: |
+            The league coefficient. When no explicit coefficient has been set,
+            returns the default 1.0 with `effectiveFrom: null`.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LeagueCoefficient'
         '401':
           $ref: '#/components/responses/Unauthenticated'
-        '404':
-          description: The league has no coefficient set.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
     put:
@@ -1033,11 +1029,16 @@ components:
 
     LeagueCoefficient:
       type: object
-      required: [leagueCode, coefficient, effectiveFrom]
+      required: [leagueCode, coefficient]
       properties:
         leagueCode: {type: string, example: PL}
         coefficient: {type: number, format: double, example: 1.0}
-        effectiveFrom: {type: string, format: date-time}
+        effectiveFrom:
+          type: [string, 'null']
+          format: date-time
+          description: |
+            When the coefficient was stored. `null` means no explicit coefficient
+            exists and the default 1.0 applies.
 
     SetLeagueCoefficientRequest:
       type: object

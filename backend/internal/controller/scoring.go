@@ -89,7 +89,10 @@ func (c *RestScoringController) GetLeagueCoefficient() httphandler.Endpoint {
 			return err
 		}
 		if !found {
-			return httphandler.NewError(http.StatusNotFound, "league coefficient not set", nil)
+			response = dto.LeagueCoefficientResponse{
+				LeagueCode:  leagueCode,
+				Coefficient: 1.0,
+			}
 		}
 
 		return httphandler.Encode(w, http.StatusOK, response)

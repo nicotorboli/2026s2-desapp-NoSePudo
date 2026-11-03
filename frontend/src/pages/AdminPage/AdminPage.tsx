@@ -4,7 +4,6 @@ import { AdminLogin } from '../../components/admin/AdminLogin/AdminLogin';
 import { SyncSection } from '../../components/admin/SyncSection/SyncSection';
 import { StrategySection } from '../../components/admin/StrategySection/StrategySection';
 import { CoefficientSection } from '../../components/admin/CoefficientSection/CoefficientSection';
-import { CatalogSection } from '../../components/admin/CatalogSection/CatalogSection';
 import './AdminPage.css';
 
 export const AdminPage: React.FC = () => {
@@ -65,16 +64,12 @@ export const AdminPage: React.FC = () => {
         <a className="admin-page__nav-link" href="#admin-coeficientes">
           Coeficientes
         </a>
-        <a className="admin-page__nav-link" href="#admin-catalogo">
-          Catálogo
-        </a>
       </nav>
 
       <div className="admin-page__sections">
         <SyncSection />
         <StrategySection />
         <CoefficientSection />
-        <CatalogSection />
       </div>
     </main>
   );

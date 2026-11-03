@@ -19,7 +19,7 @@ func TestLeagueCoefficientDesdeModelo(t *testing.T) {
 	if got.LeagueCode != "PL" || got.Coefficient != 1.5 {
 		t.Fatalf("league = %q, coefficient = %v", got.LeagueCode, got.Coefficient)
 	}
-	if got.EffectiveFrom != "2026-11-02T10:00:00Z" {
-		t.Fatalf("effectiveFrom = %q", got.EffectiveFrom)
+	if got.EffectiveFrom == nil || *got.EffectiveFrom != "2026-11-02T10:00:00Z" {
+		t.Fatalf("effectiveFrom = %v", got.EffectiveFrom)
 	}
 }

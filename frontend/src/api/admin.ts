@@ -71,7 +71,7 @@ interface ActiveStrategyDTO {
 interface LeagueCoefficientDTO {
   leagueCode: string;
   coefficient: number;
-  effectiveFrom: string;
+  effectiveFrom: string | null;
 }
 
 export interface SessionDTO {
@@ -160,7 +160,7 @@ export const activateStrategy = async (id: number): Promise<ActiveStrategyDTO> =
   return put<ActiveStrategyDTO>('/scoring/active-strategy', { id });
 };
 
-const getLeagueCoefficient = async (league: string): Promise<LeagueCoefficientDTO> => {
+export const getLeagueCoefficient = async (league: string): Promise<LeagueCoefficientDTO> => {
   return get<LeagueCoefficientDTO>(`/scoring/league-coefficients/${league}`);
 };
 
@@ -170,19 +170,6 @@ const isNotFound = (error: unknown): boolean => {
   }
   const response = (error as { response?: { status?: number } }).response;
   return response?.status === 404;
-};
-
-export const getLeagueCoefficientOptional = async (
-  league: string,
-): Promise<LeagueCoefficientDTO | null> => {
-  try {
-    return await getLeagueCoefficient(league);
-  } catch (error) {
-    if (isNotFound(error)) {
-      return null;
-    }
-    throw error;
-  }
 };
 
 export const setLeagueCoefficient = async (

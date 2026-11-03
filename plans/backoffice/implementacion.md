@@ -1,3 +1,5 @@
+> Nota: la sección Catálogo de este plan se eliminó en la entrega de refactors y tests (`plans/refactors-y-tests/implementacion.md`).
+
 # Implementación — Backoffice (Fase 2)
 
 ## Alcance entregado

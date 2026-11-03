@@ -17,6 +17,11 @@ const usableSecret = "0123456789abcdef0123456789abcdef"
 func withSecret(t *testing.T) {
 	t.Helper()
 	t.Setenv("NSP_JWT_SECRET", usableSecret)
+	t.Setenv("NSP_SYNC_RUN_TIMEOUT", "")
+	t.Setenv("NSP_SYNC_PLAYERS_INTERVAL", "")
+	t.Setenv("NSP_SYNC_STATISTICS_INTERVAL", "")
+	t.Setenv("NSP_SYNC_PLAYERS_ENABLED", "")
+	t.Setenv("NSP_SYNC_STATISTICS_ENABLED", "")
 }
 
 // el requerimiento y el criterio: sin un secreto usable el servicio no arranca.
@@ -86,6 +91,29 @@ func TestLoadCfgAppliesDefaultsForTheOptionalValues(t *testing.T) {
 	}
 	if cfg.BcryptCost != 12 {
 		t.Errorf("BcryptCost = %d, se esperaba 12", cfg.BcryptCost)
+	}
+	if cfg.SyncRunTimeout != 30*time.Minute {
+		t.Errorf("SyncRunTimeout = %v, se esperaban 30m", cfg.SyncRunTimeout)
+	}
+	if cfg.SyncPlayersInterval != 24*time.Hour || cfg.SyncStatisticsInterval != 24*time.Hour {
+		t.Errorf("intervalos de sync = %v/%v, se esperaban 24h", cfg.SyncPlayersInterval, cfg.SyncStatisticsInterval)
+	}
+	if !cfg.SyncPlayersEnabled || !cfg.SyncStatisticsEnabled {
+		t.Errorf("las sincronizaciones deberían venir habilitadas: %+v", cfg)
+	}
+}
+
+func TestLoadCfgAllowsDisablingTheDefaultSchedules(t *testing.T) {
+	withSecret(t)
+	t.Setenv("NSP_SYNC_PLAYERS_ENABLED", "false")
+	t.Setenv("NSP_SYNC_STATISTICS_ENABLED", "false")
+
+	cfg, err := configuration.LoadCfg()
+	if err != nil {
+		t.Fatalf("LoadCfg devolvió error: %v", err)
+	}
+	if cfg.SyncPlayersEnabled || cfg.SyncStatisticsEnabled {
+		t.Errorf("los flags explícitos en false no se respetaron: %+v", cfg)
 	}
 }
 

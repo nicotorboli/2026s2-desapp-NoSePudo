@@ -24,13 +24,16 @@ type SyncSettings struct {
 	StatisticsEnabled  bool
 }
 
-// DefaultSyncSettings deshabilita las sincronizaciones por defecto. La usan
-// los tests y el camino que no recibe configuración explícita.
+// DefaultSyncSettings habilita las dos sincronizaciones con frecuencia diaria.
+// Es el punto de partida de un servidor nuevo; el operador puede cambiarlo
+// desde el backoffice.
 func DefaultSyncSettings() SyncSettings {
 	return SyncSettings{
 		RunTimeout:         30 * time.Minute,
 		PlayersInterval:    24 * time.Hour,
 		StatisticsInterval: 24 * time.Hour,
+		PlayersEnabled:     true,
+		StatisticsEnabled:  true,
 	}
 }
 
@@ -140,6 +143,15 @@ func (s *SyncScheduler) ensureSchedules(ctx context.Context) error {
 			return err
 		}
 	}
+
+	enabled, err := s.schedules.EnableLegacyDefaults(ctx, now)
+	if err != nil {
+		return err
+	}
+	if enabled > 0 {
+		s.logger.InfoContext(ctx, "enabled legacy sync schedules", "count", enabled)
+	}
+
 	return nil
 }
 
