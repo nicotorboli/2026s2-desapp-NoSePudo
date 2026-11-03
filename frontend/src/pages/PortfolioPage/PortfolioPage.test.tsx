@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { PortfolioPage } from './PortfolioPage';
 import * as AuthContextModule from '../../context/AuthContext';
 import * as portfolioApi from '../../api/portfolio';
@@ -10,6 +10,8 @@ describe('PortfolioPage', () => {
     vi.restoreAllMocks();
     cleanup();
   });
+
+  afterEach(cleanup);
 
   it('renders restricted access message if unauthenticated', () => {
     vi.spyOn(AuthContextModule, 'useAuth').mockReturnValue({

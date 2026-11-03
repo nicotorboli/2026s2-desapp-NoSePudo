@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AuthModal } from './AuthModal';
 import * as AuthContextModule from '../../context/AuthContext';
 
@@ -8,6 +8,8 @@ describe('AuthModal', () => {
     vi.restoreAllMocks();
     cleanup();
   });
+
+  afterEach(cleanup);
 
   it('does not render when isOpen is false', () => {
     const { container } = render(<AuthModal isOpen={false} onClose={vi.fn()} />);

@@ -52,10 +52,8 @@ describe('orders API', () => {
     const result = await placeSellOrder(payload);
 
     expect(client.post).toHaveBeenCalledWith('/orders/sell', {
-      playerId: 10,
-      quantity: 3,
+      ...payload,
       price: '1.5000',
-      timeInForce: 'GTC',
     });
     expect(result).toEqual(mockResponse);
   });
