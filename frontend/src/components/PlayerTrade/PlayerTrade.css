@@ -1,65 +1,68 @@
 .player-trade {
-  background: linear-gradient(180deg, #ffffff 0%, #faf8f5 100%);
-  border-radius: 8px;
-  border: 1px solid #d4cfc7;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  background: linear-gradient(180deg, #faf7ee 0%, #f4eee1 100%);
+  border-radius: 6px;
+  border: 1px solid #cfc4ae;
+  border-top: 4px solid var(--radiant-orange, #ff7f1f);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.95);
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  position: relative;
 }
 
 .player-trade__header {
-  border-bottom: 1px solid #e0dbd3;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+  border-bottom: 2px dashed #c0b49c;
   padding-bottom: 0.85rem;
 }
 
 .player-trade__title {
   margin: 0 0 0.5rem 0;
   font-family: "Merriweather", Georgia, serif;
-  font-size: 1.35rem;
-  font-weight: 700;
+  font-size: 1.3rem;
+  font-weight: 800;
   color: var(--ink-blue, #131b23);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
 }
 
 .player-trade__user-stats {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.35rem;
   font-size: 0.875rem;
-  color: #555047;
+  color: #4a4233;
 }
 
 .player-trade__stats-row {
   display: flex;
   justify-content: space-between;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .player-trade__quote-box {
-  background: linear-gradient(180deg, #f2f8ff 0%, #e4effd 100%);
-  border: 1px solid #b3d5fc;
-  border-radius: 5px;
+  background: #eff5ea;
+  border: 1px dashed #7a9c68;
+  border-radius: 4px;
   padding: 0.45rem 0.75rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.875rem;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.9rem;
   font-weight: 700;
-  color: #1e5a9c;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 1px 2px rgba(0, 0, 0, 0.05);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+  color: #1f5e18;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 1px 2px rgba(0, 0, 0, 0.05);
   margin-top: 0.35rem;
 }
 
 .player-trade__unauth {
-  background: linear-gradient(180deg, #f8f6f2 0%, #f0ece3 100%);
-  border: 1px dashed #c4bdad;
+  background: #f7f3e8;
+  border: 2px dashed #b8ab91;
   border-radius: 6px;
   padding: 1.5rem;
   text-align: center;
@@ -67,43 +70,42 @@
   flex-direction: column;
   align-items: center;
   gap: 0.85rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .player-trade__unauth-text {
   margin: 0;
-  color: #555047;
+  color: #4a4233;
   font-size: 0.95rem;
+  font-weight: 600;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .player-trade__unauth-btn {
   background: linear-gradient(180deg, #ff9b49 0%, #ff7f1f 45%, #ea690b 100%);
   color: #ffffff;
-  border: 1px solid #b84e03;
-  border-radius: 5px;
+  border: 1px solid #9e3f00;
+  border-radius: 4px;
   padding: 0.55rem 1.35rem;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.25);
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -1px 0 rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
   transition: all 0.15s ease-in-out;
 }
 
 .player-trade__unauth-btn:hover {
   background: linear-gradient(180deg, #ffa85c 0%, #ff8930 45%, #f27214 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 3px 6px rgba(0, 0, 0, 0.3);
   transform: translateY(-1px);
 }
 
 .player-trade__tabs {
   display: flex;
-  background: #ebe6de;
-  border: 1px solid #c8c2b7;
-  border-radius: 6px;
+  background: #e8e1cf;
+  border: 1px solid #c2b59b;
+  border-radius: 4px;
   padding: 3px;
   gap: 3px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15), 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .player-trade__tab {
@@ -111,33 +113,35 @@
   padding: 0.55rem;
   background: none;
   border: 1px solid transparent;
-  border-radius: 4px;
-  font-weight: 700;
+  border-radius: 3px;
+  font-weight: 800;
   font-size: 0.925rem;
-  color: #6a6459;
+  color: #5c5240;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
   cursor: pointer;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
   transition: all 0.15s ease-in-out;
 }
 
 .player-trade__tab:hover {
-  color: #2b2823;
+  color: #2b2416;
 }
 
 .player-trade__tab--buy.player-trade__tab--active {
-  background: linear-gradient(180deg, #3bb54a 0%, #298d36 100%);
+  background: linear-gradient(180deg, #2fa73e 0%, #1b7729 100%);
   color: #ffffff;
-  border: 1px solid #1e6e28;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 1px 3px rgba(0, 0, 0, 0.25);
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5);
+  border: 1px solid #13551c;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 2px 4px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
 }
 
 .player-trade__tab--sell.player-trade__tab--active {
-  background: linear-gradient(180deg, #e54b4b 0%, #bd2a2a 100%);
+  background: linear-gradient(180deg, #dc3d3d 0%, #a51e1e 100%);
   color: #ffffff;
-  border: 1px solid #941b1b;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 1px 3px rgba(0, 0, 0, 0.25);
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5);
+  border: 1px solid #731313;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 2px 4px rgba(0, 0, 0, 0.25);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
 }
 
 .player-trade__form {
@@ -154,9 +158,11 @@
 }
 
 .player-trade__label {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #3b362f;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #3b3324;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
@@ -170,56 +176,57 @@
   flex: 1;
   padding: 0.65rem 0.8rem;
   background: #ffffff;
-  border: 1px solid #beb7aa;
-  border-radius: 4px;
-  font-size: 1rem;
-  color: #2b2823;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15), 0 1px 0 rgba(255, 255, 255, 0.9);
+  border: 1px solid #b8ab94;
+  border-radius: 3px;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1a222a;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.12), 0 1px 0 #ffffff;
   transition: all 0.15s ease-in-out;
 }
 
 .player-trade__input:focus {
   outline: none;
   border-color: var(--radiant-orange, #ff7f1f);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15), 0 0 5px rgba(255, 127, 31, 0.45);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15), 0 0 6px rgba(255, 127, 31, 0.5);
 }
 
 .player-trade__max-btn {
-  background: linear-gradient(180deg, #f7f6f4 0%, #e6e2da 100%);
-  border: 1px solid #b8b1a5;
-  border-radius: 4px;
+  background: linear-gradient(180deg, #f7f3e8 0%, #ded4bc 100%);
+  border: 1px solid #a89a7f;
+  border-radius: 3px;
   padding: 0.65rem 0.95rem;
-  font-size: 0.825rem;
-  font-weight: 700;
-  color: #423d33;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #3b3221;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 1px 3px rgba(0, 0, 0, 0.15);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
   transition: all 0.15s ease-in-out;
 }
 
 .player-trade__max-btn:hover {
-  background: linear-gradient(180deg, #ffffff 0%, #eeeae2 100%);
-  border-color: #a39c8f;
+  background: linear-gradient(180deg, #ffffff 0%, #ebe2cd 100%);
 }
 
 .player-trade__max-btn:active {
-  background: #ded9cf;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  background: #d4c8ad;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);
   transform: translateY(1px);
 }
 
 .player-trade__hint {
   font-size: 0.775rem;
-  color: #7a7366;
+  color: #6a5e4b;
 }
 
 .player-trade__radios {
   display: flex;
   gap: 1.5rem;
   font-size: 0.875rem;
-  color: #3b362f;
+  color: #3b3324;
 }
 
 .player-trade__radio-label {
@@ -232,60 +239,60 @@
 }
 
 .player-trade__type-hint {
-  background: #fbf9f5;
-  border: 1px solid #e3ded6;
+  background: #faf6ec;
+  border: 1px solid #ded4bc;
   border-left: 3px solid var(--radiant-orange, #ff7f1f);
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
-  color: #555047;
-  border-radius: 0 4px 4px 0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  color: #4a4030;
+  border-radius: 0 3px 3px 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   margin-top: 0.35rem;
 }
 
 .player-trade__summary-box {
-  background: linear-gradient(180deg, #faf9f6 0%, #f3efe6 100%);
-  border: 1px solid #ded8cc;
-  border-radius: 6px;
+  background: linear-gradient(180deg, #fdfbf7 0%, #f4eee1 100%);
+  border: 1px solid #d4c8ad;
+  border-radius: 4px;
   padding: 0.9rem;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+  font-family: "Courier New", Courier, monospace;
   font-size: 0.875rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .player-trade__summary-row {
   display: flex;
   justify-content: space-between;
-  color: #5c564c;
+  color: #524736;
 }
 
 .player-trade__summary-row--total {
   font-weight: 800;
   color: var(--ink-blue, #131b23);
-  border-top: 1px solid #ded8cc;
+  border-top: 1px dashed #c0b49c;
   padding-top: 0.5rem;
-  font-size: 1rem;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+  font-size: 1.05rem;
 }
 
 .player-trade__alert {
   padding: 0.8rem;
-  border-radius: 5px;
+  border-radius: 4px;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .player-trade__alert--error {
-  background: #fff5f5;
+  background: #fdf2f2;
   border: 1px solid #f8b4b4;
   color: #9b1c1c;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .player-trade__alert--success {
-  background: #f3faf7;
+  background: #f1f8f3;
   border: 1px solid #84e1bc;
   color: #03543f;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
@@ -293,57 +300,58 @@
 
 .player-trade__submit-btn {
   padding: 0.85rem;
-  border-radius: 5px;
-  font-size: 1rem;
+  border-radius: 4px;
+  font-size: 1.05rem;
   font-weight: 800;
   color: #ffffff;
   cursor: pointer;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
   transition: all 0.15s ease-in-out;
 }
 
 .player-trade__submit-btn--buy {
-  background: linear-gradient(180deg, #3bb54a 0%, #298d36 100%);
-  border: 1px solid #1e6e28;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 0 rgba(0, 0, 0, 0.2), 0 3px 6px rgba(0, 0, 0, 0.25);
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5);
+  background: linear-gradient(180deg, #2fa73e 0%, #1b7729 100%);
+  border: 1px solid #13551c;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(0, 0, 0, 0.3), 0 3px 6px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
 }
 
 .player-trade__submit-btn--buy:hover:not(:disabled) {
-  background: linear-gradient(180deg, #44cc54 0%, #2f9f3d 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 4px 8px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(180deg, #3bbd4c 0%, #228b32 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 4px 8px rgba(0, 0, 0, 0.35);
   transform: translateY(-1px);
 }
 
 .player-trade__submit-btn--buy:active:not(:disabled) {
-  background: #298d36;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+  background: #1b7729;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
   transform: translateY(1px);
 }
 
 .player-trade__submit-btn--sell {
-  background: linear-gradient(180deg, #e54b4b 0%, #bd2a2a 100%);
-  border: 1px solid #941b1b;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 0 rgba(0, 0, 0, 0.2), 0 3px 6px rgba(0, 0, 0, 0.25);
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5);
+  background: linear-gradient(180deg, #dc3d3d 0%, #a51e1e 100%);
+  border: 1px solid #731313;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(0, 0, 0, 0.3), 0 3px 6px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
 }
 
 .player-trade__submit-btn--sell:hover:not(:disabled) {
-  background: linear-gradient(180deg, #f05c5c 0%, #d13232 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 4px 8px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(180deg, #eb4d4d 0%, #be2727 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 4px 8px rgba(0, 0, 0, 0.35);
   transform: translateY(-1px);
 }
 
 .player-trade__submit-btn--sell:active:not(:disabled) {
-  background: #bd2a2a;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+  background: #a51e1e;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
   transform: translateY(1px);
 }
 
 .player-trade__submit-btn:disabled {
-  background: #e5e0d8;
-  color: #9c9588;
-  border: 1px solid #c9c3b8;
+  background: #ded5c2;
+  color: #948873;
+  border: 1px solid #b8ab94;
   cursor: not-allowed;
   box-shadow: none;
   text-shadow: none;
@@ -351,32 +359,32 @@
 }
 
 .player-trade__book-section {
-  border-top: 1px solid #e0dbd3;
-  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.8);
+  border-top: 2px dashed #c0b49c;
   padding-top: 0.85rem;
 }
 
 .player-trade__book-toggle {
   width: 100%;
-  background: linear-gradient(180deg, #f7f6f4 0%, #e6e2da 100%);
-  border: 1px solid #b8b1a5;
-  border-radius: 5px;
+  background: linear-gradient(180deg, #f7f3e8 0%, #ded4bc 100%);
+  border: 1px solid #a89a7f;
+  border-radius: 4px;
   padding: 0.6rem 0.95rem;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: #423d33;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #3b3221;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 1px 2px rgba(0, 0, 0, 0.12);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
   transition: all 0.15s ease-in-out;
 }
 
 .player-trade__book-toggle:hover {
-  background: linear-gradient(180deg, #ffffff 0%, #eeeae2 100%);
-  border-color: #a39c8f;
+  background: linear-gradient(180deg, #ffffff 0%, #ebe2cd 100%);
 }
 
 .player-trade__book-content {
@@ -395,8 +403,8 @@
 
 .player-trade__book-column {
   background: #ffffff;
-  border: 1px solid #d4cfc7;
-  border-radius: 5px;
+  border: 1px solid #cfc4ae;
+  border-radius: 4px;
   padding: 0.75rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
@@ -413,11 +421,11 @@
 }
 
 .player-trade__book-col-title--buy {
-  color: #237731;
+  color: #1e7027;
 }
 
 .player-trade__book-col-title--sell {
-  color: #a62323;
+  color: #9e1c1c;
 }
 
 .player-trade__book-list {
@@ -434,18 +442,19 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.35rem 0.55rem;
-  background: #faf9f6;
-  border: 1px solid #e6e2da;
-  border-radius: 4px;
+  background: #faf7ee;
+  border: 1px solid #ded5c0;
+  border-radius: 3px;
+  font-family: "Courier New", Courier, monospace;
 }
 
 .player-trade__book-item--mine {
-  border-color: #ffb885;
+  border-color: #ff9b49;
   background: #fff6ee;
 }
 
 .player-trade__book-empty {
-  color: #8c8577;
+  color: #8c7e68;
   font-style: italic;
   font-size: 0.775rem;
   margin: 0;
@@ -454,12 +463,12 @@
 
 .player-trade__book-badge {
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: 800;
   padding: 2px 6px;
   border-radius: 3px;
   background: linear-gradient(180deg, #ff9b49 0%, #ea690b 100%);
   color: #ffffff;
-  border: 1px solid #b84e03;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.4);
+  border: 1px solid #9e3f00;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5);
 }

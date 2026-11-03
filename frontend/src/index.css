@@ -27,8 +27,11 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: color-mix(in srgb, var(--green-forest) 16%, var(--radiant-orange) 16%, transparent);
+  background-color: #16241b;
+  background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0px, rgba(255, 255, 255, 0.018) 70px, transparent 70px, transparent 140px);
+  background-attachment: fixed;
   font-family: "Rubik", sans-serif;
+  color: #232742;
 }
 
 #root {

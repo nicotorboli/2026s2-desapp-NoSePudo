@@ -36,14 +36,14 @@
   align-items: center;
   justify-content: center;
   padding: 5rem 2rem;
-  color: #4a5568;
+  color: #e2e8f0;
 }
 
 .player-detail-page__spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #e2e8f0;
-  border-top-color: #3182ce;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--golden, #dfaf0f);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin-bottom: 1rem;
@@ -56,16 +56,18 @@
 }
 
 .player-detail-page__error {
-  background-color: #fff5f5;
+  background: #fff5f5;
   border: 1px solid #feb2b2;
-  border-radius: 12px;
+  border-radius: 6px;
   padding: 3rem 2rem;
   text-align: center;
   max-width: 600px;
   margin: 0 auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .player-detail-page__error-title {
+  font-family: "Merriweather", Georgia, serif;
   font-size: 1.5rem;
   font-weight: 700;
   color: #c53030;
@@ -97,33 +99,110 @@
 
 @media (min-width: 768px) {
   .player-detail-page__grid {
-    grid-template-columns: 1.1fr 1fr;
+    grid-template-columns: 1.05fr 1fr;
     align-items: start;
   }
 }
 
-.player-detail-page__unauth {
-  background: linear-gradient(180deg, #ffffff 0%, #faf8f5 100%);
-  border: 1px solid #d4cfc7;
+.player-detail-page__card-col .player-card {
+  max-width: 100%;
+  width: 100%;
   border-radius: 8px;
+  border: 3px double #dfaf0f;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.02) 42%, transparent 42%), linear-gradient(180deg, #588a58 0%, #446d44 100%);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  padding: 2rem;
+  margin: 0;
+  position: relative;
+}
+
+.player-detail-page__card-col .player-card__header {
+  border-bottom: 2px solid #2e4c2e;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.player-detail-page__card-col .player-card__name {
+  font-family: "Merriweather", Georgia, serif;
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px rgba(0, 0, 0, 0.5);
+  letter-spacing: 0.3px;
+}
+
+.player-detail-page__card-col .player-card__club {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f7d070;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.player-detail-page__card-col .player-card__badge--active {
+  background: linear-gradient(135deg, #f7d070 0%, #dfaf0f 50%, #b8860b 100%);
+  color: #1a202c;
+  border: 1px solid #7a5805;
+  font-weight: 800;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.player-detail-page__card-col .player-card__badge--inactive {
+  background: linear-gradient(135deg, #fed7d7 0%, #feb2b2 100%);
+  color: #742a2a;
+  border: 1px solid #9b2c2c;
+  font-weight: 800;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.player-detail-page__card-col .player-card__field {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 0.65rem;
+}
+
+.player-detail-page__card-col .player-card__label {
+  color: #d2e4d2;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  font-size: 0.8rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.player-detail-page__card-col .player-card__value {
+  color: #ffffff;
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.player-detail-page__card-col .player-card__value--meta {
+  color: #c4d8c4;
+}
+
+.player-detail-page__unauth {
+  background: linear-gradient(180deg, #faf7ee 0%, #f4eee1 100%);
+  border: 1px solid #cfc4ae;
+  border-top: 4px solid var(--radiant-orange, #ff7f1f);
+  border-radius: 6px;
   padding: 3rem 2rem;
   text-align: center;
   max-width: 600px;
   margin: 0 auto;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .player-detail-page__unauth-title {
   font-family: "Merriweather", Georgia, serif;
   font-size: 1.55rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--ink-blue, #131b23);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
   margin-bottom: 0.75rem;
 }
 
 .player-detail-page__unauth-desc {
-  color: #555047;
+  color: #4a4233;
   margin-bottom: 2rem;
   line-height: 1.6;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
@@ -132,19 +211,19 @@
 .player-detail-page__auth-button {
   background: linear-gradient(180deg, #ff9b49 0%, #ff7f1f 45%, #ea690b 100%);
   color: #ffffff;
-  border: 1px solid #b84e03;
-  border-radius: 5px;
+  border: 1px solid #9e3f00;
+  border-radius: 4px;
   padding: 0.75rem 2rem;
   font-size: 1rem;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(0, 0, 0, 0.2), 0 2px 4px rgba(0, 0, 0, 0.25);
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -1px 0 rgba(0, 0, 0, 0.3), 0 2px 5px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.6);
   transition: all 0.15s ease-in-out;
 }
 
 .player-detail-page__auth-button:hover {
   background: linear-gradient(180deg, #ffa85c 0%, #ff8930 45%, #f27214 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 3px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 3px 7px rgba(0, 0, 0, 0.4);
   transform: translateY(-1px);
 }
