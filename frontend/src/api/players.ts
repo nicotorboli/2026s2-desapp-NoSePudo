@@ -42,7 +42,6 @@ export interface PlayerFilterParams {
   includeInactive?: boolean;
 }
 
-// Private helper method per Constitution Principle VI
 const get = async <T>(url: string, params?: Record<string, unknown>): Promise<T> => {
   const response = await client.get<T>(url, { params });
   return response.data;

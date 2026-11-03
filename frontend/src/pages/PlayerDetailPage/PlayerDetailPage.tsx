@@ -8,7 +8,7 @@ import './PlayerDetailPage.css';
 interface PlayerDetailPageProps {
   playerId: number;
   onBack: () => void;
-  onOpenAuth?: () => void;
+  onOpenAuth?: (tab?: 'login' | 'register') => void;
 }
 
 export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({
@@ -70,16 +70,26 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({
           <div className="player-detail-page__unauth">
             <h2 className="player-detail-page__unauth-title">Iniciá sesión para ver la ficha</h2>
             <p className="player-detail-page__unauth-desc">
-              Para ver el detalle completo de este jugador y operar tokens en el mercado, necesitás iniciar sesión con tu cuenta.
+              Para ver el detalle completo de este jugador y operar tokens en el mercado, necesitás iniciar sesión con tu cuenta o registrarte en segundos.
             </p>
             {onOpenAuth && (
-              <button
-                type="button"
-                className="player-detail-page__auth-button"
-                onClick={onOpenAuth}
-              >
-                Iniciar Sesión / Registrarse
-              </button>
+              <div className="player-detail-page__unauth-actions">
+                <button
+                  type="button"
+                  className="player-detail-page__auth-button"
+                  onClick={() => onOpenAuth('login')}
+                  aria-label="Iniciar Sesión / Registrarse"
+                >
+                  Iniciar Sesión / Registrarse
+                </button>
+                <button
+                  type="button"
+                  className="player-detail-page__auth-button player-detail-page__auth-button--register"
+                  onClick={() => onOpenAuth('register')}
+                >
+                  Crear Cuenta (1,000 CR Gratis)
+                </button>
+              </div>
             )}
           </div>
         )}

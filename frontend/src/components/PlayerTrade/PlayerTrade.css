@@ -80,6 +80,14 @@
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
+.player-trade__unauth-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .player-trade__unauth-btn {
   background: linear-gradient(180deg, #ff9b49 0%, #ff7f1f 45%, #ea690b 100%);
   color: #ffffff;
@@ -96,6 +104,15 @@
 .player-trade__unauth-btn:hover {
   background: linear-gradient(180deg, #ffa85c 0%, #ff8930 45%, #f27214 100%);
   transform: translateY(-1px);
+}
+
+.player-trade__unauth-btn--register {
+  background: linear-gradient(180deg, #3d8847 0%, #2f6b37 45%, #24552b 100%);
+  border: 1px solid #16361a;
+}
+
+.player-trade__unauth-btn--register:hover {
+  background: linear-gradient(180deg, #489b53 0%, #367b3f 45%, #2b6433 100%);
 }
 
 .player-trade__tabs {

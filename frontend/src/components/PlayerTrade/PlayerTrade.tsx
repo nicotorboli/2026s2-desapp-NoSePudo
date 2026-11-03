@@ -14,7 +14,7 @@ import './PlayerTrade.css';
 interface PlayerTradeProps {
   playerId: number;
   playerName: string;
-  onOpenAuth?: () => void;
+  onOpenAuth?: (tab?: 'login' | 'register') => void;
   onTradeExecuted?: () => void;
 }
 
@@ -83,13 +83,22 @@ export const PlayerTrade: React.FC<PlayerTradeProps> = ({
             Iniciá sesión o registrate para comprar y vender tokens de <strong>{playerName}</strong>.
           </p>
           {onOpenAuth && (
-            <button
-              type="button"
-              className="player-trade__unauth-btn"
-              onClick={onOpenAuth}
-            >
-              Iniciar Sesión / Registrarse
-            </button>
+            <div className="player-trade__unauth-actions">
+              <button
+                type="button"
+                className="player-trade__unauth-btn"
+                onClick={() => onOpenAuth('login')}
+              >
+                Iniciar Sesión / Registrarse
+              </button>
+              <button
+                type="button"
+                className="player-trade__unauth-btn player-trade__unauth-btn--register"
+                onClick={() => onOpenAuth('register')}
+              >
+                Crear Cuenta (1,000 CR)
+              </button>
+            </div>
           )}
         </div>
       </div>

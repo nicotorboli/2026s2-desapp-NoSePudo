@@ -208,6 +208,14 @@
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
+.player-detail-page__unauth-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .player-detail-page__auth-button {
   background: linear-gradient(180deg, #ff9b49 0%, #ff7f1f 45%, #ea690b 100%);
   color: #ffffff;
@@ -226,4 +234,13 @@
   background: linear-gradient(180deg, #ffa85c 0%, #ff8930 45%, #f27214 100%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 3px 7px rgba(0, 0, 0, 0.4);
   transform: translateY(-1px);
+}
+
+.player-detail-page__auth-button--register {
+  background: linear-gradient(180deg, #3d8847 0%, #2f6b37 45%, #24552b 100%);
+  border: 1px solid #16361a;
+}
+
+.player-detail-page__auth-button--register:hover {
+  background: linear-gradient(180deg, #489b53 0%, #367b3f 45%, #2b6433 100%);
 }

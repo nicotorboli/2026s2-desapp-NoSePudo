@@ -1,20 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import './AuthModal.css';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: 'login' | 'register';
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({
+  isOpen,
+  onClose,
+  initialTab = 'login',
+}) => {
   const { login, registerAndLogin } = useAuth();
-  const [tab, setTab] = useState<'login' | 'register'>('login');
+  const [tab, setTab] = useState<'login' | 'register'>(initialTab);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialTab) {
+        setTab(initialTab);
+      }
+      setError(null);
+    }
+  }, [isOpen, initialTab]);
 
   if (!isOpen) {
     return null;
@@ -29,7 +43,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   const handleTabChange = (newTab: 'login' | 'register') => {
     setTab(newTab);
-    resetForm();
+    setError(null);
+    setConfirmPassword('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -127,7 +142,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
         {error && (
           <div className="auth-modal__alert auth-modal__alert--error" role="alert">
-            {error}
+            <div>{error}</div>
+            {tab === 'login' && error.includes('Credenciales') && (
+              <button
+                type="button"
+                className="auth-modal__switch-link auth-modal__switch-link--inline"
+                onClick={() => {
+                  setTab('register');
+                  setError(null);
+                }}
+              >
+                ¿No tenés cuenta todavía? Creala acá
+              </button>
+            )}
           </div>
         )}
 

@@ -214,3 +214,11 @@
   text-decoration: underline;
   padding: 0 0.25rem;
 }
+
+.auth-modal__switch-link--inline {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0;
+  color: #771717;
+  font-size: 0.85rem;
+}

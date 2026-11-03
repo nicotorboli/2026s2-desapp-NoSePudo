@@ -11,12 +11,18 @@ const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState<'catalog' | 'portfolio'>('catalog');
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
+
+  const handleOpenAuth = (tab: 'login' | 'register' = 'login') => {
+    setAuthModalTab(tab);
+    setIsAuthModalOpen(true);
+  };
 
   const handleSelectPlayer = (id: number) => {
     setSelectedPlayerId(id);
     setCurrentView('catalog');
     if (!isAuthenticated) {
-      setIsAuthModalOpen(true);
+      handleOpenAuth('login');
     }
   };
 
@@ -38,7 +44,7 @@ const AppContent: React.FC = () => {
         currentView={currentView}
         onNavigateHome={handleBackToCatalog}
         onNavigateView={handleNavigateView}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenAuth={() => handleOpenAuth('login')}
       />
 
       {currentView === 'portfolio' ? (
@@ -52,12 +58,13 @@ const AppContent: React.FC = () => {
         <PlayerDetailPage
           playerId={selectedPlayerId}
           onBack={handleBackToCatalog}
-          onOpenAuth={() => setIsAuthModalOpen(true)}
+          onOpenAuth={handleOpenAuth}
         />
       )}
 
       <AuthModal
         isOpen={isAuthModalOpen}
+        initialTab={authModalTab}
         onClose={() => setIsAuthModalOpen(false)}
       />
     </div>
