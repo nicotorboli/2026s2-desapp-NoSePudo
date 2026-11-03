@@ -20,6 +20,7 @@ describe('RankingPage', () => {
           league: 'Premier League',
           position: 'Attacker',
           score: 0.95,
+          price: null,
         },
         {
           id: 2,
@@ -28,6 +29,7 @@ describe('RankingPage', () => {
           league: 'Premier League',
           position: 'Attacker',
           score: 0.87,
+          price: null,
         },
       ],
       offset: 0,
@@ -59,6 +61,7 @@ describe('RankingPage', () => {
           league: 'Premier League',
           position: 'Attacker',
           score: 0.95,
+          price: null,
         },
       ],
       offset: 0,

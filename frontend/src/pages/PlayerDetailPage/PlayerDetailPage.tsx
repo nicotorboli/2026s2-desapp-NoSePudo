@@ -11,6 +11,7 @@ import {
 import { PlayerCard } from '../../components/PlayerCard/PlayerCard';
 import { PlayerStatistics } from '../../components/PlayerStatistics/PlayerStatistics';
 import { PlayerScore } from '../../components/PlayerScore/PlayerScore';
+import { PlayerQuote } from '../../components/PlayerQuote/PlayerQuote';
 import { PlayerTrade } from '../../components/PlayerTrade/PlayerTrade';
 import './PlayerDetailPage.css';
 
@@ -143,6 +144,7 @@ export const PlayerDetailPage: React.FC<PlayerDetailPageProps> = ({
             <div className="player-detail-page__card-col">
               <PlayerCard player={player} />
               <PlayerScore score={score} history={history} />
+              <PlayerQuote playerId={player.id} />
               {stats !== null && <PlayerStatistics stats={stats} />}
             </div>
             <div className="player-detail-page__trade-col">
