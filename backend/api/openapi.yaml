@@ -691,6 +691,86 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /players/{id}/quotes:
+    get:
+      tags: [scoring]
+      summary: Get the quote history of one player
+      operationId: getPlayerQuoteHistory
+      x-access-level: anonymous
+      description: |
+        Returns the stored quotes of the player, newest first. A quote is recorded
+        each time a score is recalculated, so the history is the price timeline
+        that the market used over time.
+      security:
+        - accessToken: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+      responses:
+        '200':
+          description: The quotes of the player, newest first. Empty when the player has no quotes yet.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlayerQuoteHistoryItem'
+        '400':
+          description: The id is not a positive integer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: No player has that id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /players/{id}/price:
+    get:
+      tags: [scoring]
+      summary: Get the price of one player at a date
+      operationId: getPlayerPriceAt
+      x-access-level: anonymous
+      description: |
+        Reconstructs the price from the score in force at the requested instant:
+        `price = base + score * scale`, where the score is the percentile times
+        the league coefficient in force and the position discount. Without
+        `date`, the price is reconstructed for the current instant.
+      security:
+        - accessToken: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: integer, format: int64, minimum: 1}}
+        - {name: date, in: query, description: Instant to reconstruct the price at (RFC3339 or date-only). Defaults to now., schema: {type: string, format: date-time}}
+      responses:
+        '200':
+          description: The reconstructed price and the score it was derived from.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerPrice'
+        '400':
+          description: The id or the date is malformed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: The player or their score at that date was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /orders/buy:
     post:
       tags: [market]
@@ -1559,6 +1639,7 @@ components:
         dateOfBirth: {type: [string, 'null'], format: date, example: '2001-09-05'}
         nationality: {type: [string, 'null']}
         shirtNumber: {type: [integer, 'null']}
+        price: {type: [string, 'null'], description: Current price in credits with four decimal places. Null when the player has no quote.}
         active: {type: boolean}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
@@ -1717,6 +1798,27 @@ components:
         score: {type: number, format: double, minimum: 0, maximum: 1}
         leagueCoefficient: {type: number, format: double}
 
+    PlayerPrice:
+      type: object
+      required: [playerId, computedAt, strategyName, price, score, leagueCoefficient]
+      properties:
+        playerId: {type: integer, format: int64}
+        computedAt: {type: string, format: date-time, description: When the underlying score was computed}
+        strategyName: {type: string}
+        price: {type: string, description: Price in credits with four decimal places}
+        score: {type: number, format: double, minimum: 0, description: Percentile times league coefficient and position discount}
+        leagueCoefficient: {type: number, format: double}
+
+    PlayerQuoteHistoryItem:
+      type: object
+      required: [playerId, createdAt, strategy, strategyVersion, price]
+      properties:
+        playerId: {type: integer, format: int64}
+        createdAt: {type: string, format: date-time}
+        strategy: {type: string}
+        strategyVersion: {type: string}
+        price: {type: string, description: Price in credits with four decimal places}
+
     PlayerRankingItem:
       type: object
       required: [id, name, club, league, position]
@@ -1727,6 +1829,7 @@ components:
         league: {type: string}
         position: {type: string}
         score: {type: [number, "null"], format: double, minimum: 0}
+        price: {type: [string, "null"], description: Current price in credits with four decimal places. Null when the player has no quote.}
 
     PlayerRankingPage:
       type: object

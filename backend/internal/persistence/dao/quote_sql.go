@@ -42,8 +42,8 @@ func (dao *QuoteSql) InsertInitialIfAbsent(ctx context.Context, tx *sql.Tx, play
 
 func (dao *QuoteSql) Insert(ctx context.Context, tx *sql.Tx, quote model.PlayerQuote) (model.PlayerQuote, error) {
 	const query = `
-		INSERT INTO player_quotes (player_id, price, strategy, strategy_version)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO player_quotes (player_id, price, strategy, strategy_version, score_id)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at`
 
 	querier, err := querierFor(tx, dao.Db)
@@ -52,7 +52,7 @@ func (dao *QuoteSql) Insert(ctx context.Context, tx *sql.Tx, quote model.PlayerQ
 	}
 
 	err = querier.QueryRowContext(ctx, query,
-		quote.PlayerID, int64(quote.Price), quote.Strategy, quote.StrategyVersion,
+		quote.PlayerID, int64(quote.Price), quote.Strategy, quote.StrategyVersion, quote.ScoreID,
 	).Scan(&quote.ID, &quote.CreatedAt)
 	if err != nil {
 		if pqErr, ok := errors.AsType[*pq.Error](err); ok && pqErr.Code == uniqueViolation {
@@ -139,4 +139,54 @@ func (dao *QuoteSql) LatestPriceForPlayers(ctx context.Context, playerIDs []int6
 	}
 
 	return prices, nil
+}
+
+func (dao *QuoteSql) ListByPlayer(ctx context.Context, playerID int64) ([]model.PlayerQuote, error) {
+	const query = `
+		SELECT id, player_id, price, strategy, strategy_version, score_id, created_at
+		FROM player_quotes
+		WHERE player_id = $1
+		ORDER BY created_at DESC, id DESC`
+
+	if dao.Db == nil {
+		return nil, errNilDatabase
+	}
+
+	rows, err := dao.Db.QueryContext(ctx, query, playerID)
+	if err != nil {
+		return nil, fmt.Errorf("leer el historial de cotizaciones: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	quotes := make([]model.PlayerQuote, 0)
+	for rows.Next() {
+		var (
+			quote   model.PlayerQuote
+			price   int64
+			scoreID sql.NullInt64
+		)
+		if err := rows.Scan(
+			&quote.ID,
+			&quote.PlayerID,
+			&price,
+			&quote.Strategy,
+			&quote.StrategyVersion,
+			&scoreID,
+			&quote.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("leer una cotización del historial: %w", err)
+		}
+		quote.Price = model.Credits(price)
+		if scoreID.Valid {
+			value := scoreID.Int64
+			quote.ScoreID = &value
+		}
+		quotes = append(quotes, quote)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("recorrer el historial de cotizaciones: %w", err)
+	}
+
+	return quotes, nil
 }

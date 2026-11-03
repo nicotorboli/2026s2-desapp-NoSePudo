@@ -45,8 +45,12 @@ export const formatCredits = (
 ): string => {
   const num = parseCredits(val);
   if (num === 0) return '0';
-  const fixed = num.toFixed(decimals);
-  return fixed.replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.0+$/, '');
+  const capped = Math.min(decimals, 2);
+  const fixed = num.toFixed(capped);
+  return fixed
+    .replace(/(\.\d*?[1-9])0+$/, '$1')
+    .replace(/\.0+$/, '')
+    .replace('.', ',');
 };
 
 export const translateOrderStatus = (status: string): string => {

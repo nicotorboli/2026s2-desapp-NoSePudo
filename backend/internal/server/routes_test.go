@@ -170,6 +170,8 @@ func TestDeclaredLevelsMatchTheSpecification(t *testing.T) {
 		"PUT /scoring/league-coefficients/{league}": AccessSuperuser,
 		"GET /players/{id}/score":                   AccessAnonymous,
 		"GET /players/{id}/scores":                  AccessAnonymous,
+		"GET /players/{id}/quotes":                  AccessAnonymous,
+		"GET /players/{id}/price":                   AccessAnonymous,
 		"GET /players/ranking":                      AccessAnonymous,
 		"POST /orders/buy":                          AccessAuthenticated,
 		"POST /orders/sell":                         AccessAuthenticated,

@@ -194,3 +194,85 @@ func TestRecordQuoteNoTocaLasOrdenesDeLosUsuarios(t *testing.T) {
 		t.Errorf("al usuario le quedaron %d órdenes vivas, se esperaba la suya intacta", len(ordenes))
 	}
 }
+
+func TestRecordScoreQuoteGuardaElPrecioCalculado(t *testing.T) {
+	fixture := newMarketFixture(t)
+	fixture.seedSuperuser(t)
+	playerID := fixture.seedPlayer(t)
+
+	if err := fixture.marketMaker.Bootstrap(t.Context()); err != nil {
+		t.Fatalf("Bootstrap devolvió %v", err)
+	}
+
+	if err := fixture.marketMaker.RecordScoreQuote(t.Context(), playerID, 0.5, nil, "rateada"); err != nil {
+		t.Fatalf("RecordScoreQuote devolvió %v", err)
+	}
+
+	quote, err := fixture.daos.Quote.GetLatestByPlayer(t.Context(), nil, playerID)
+	if err != nil {
+		t.Fatalf("GetLatestByPlayer devolvió %v", err)
+	}
+	expected := model.DefaultPricePolicy().Price(0.5)
+	if quote.Price != expected {
+		t.Errorf("el precio cotizado es %d, se esperaba %d", quote.Price, expected)
+	}
+	if quote.Strategy != "rateada" {
+		t.Errorf("la estrategia es %q, se esperaba rateada", quote.Strategy)
+	}
+}
+
+func TestRecordScoreQuoteRepreciaLaOfertaDelCreador(t *testing.T) {
+	fixture := newMarketFixture(t)
+	fixture.seedSuperuser(t)
+	playerID := fixture.seedPlayer(t)
+
+	if err := fixture.marketMaker.Bootstrap(t.Context()); err != nil {
+		t.Fatalf("Bootstrap devolvió %v", err)
+	}
+
+	original, found := fixture.liveMarketMakerOrder(t, playerID)
+	if !found {
+		t.Fatal("el creador de mercado no dejó una oferta viva")
+	}
+
+	if err := fixture.marketMaker.RecordScoreQuote(t.Context(), playerID, 0.5, nil, "rateada"); err != nil {
+		t.Fatalf("RecordScoreQuote devolvió %v", err)
+	}
+
+	expected := model.DefaultPricePolicy().Price(0.5)
+	repreciada, found := fixture.liveMarketMakerOrder(t, playerID)
+	if !found {
+		t.Fatal("tras recotizar por score no quedó una oferta viva")
+	}
+	if repreciada.ID == original.ID {
+		t.Error("la oferta vieja sigue viva: tenía que cancelarse y reponerse")
+	}
+	if repreciada.Price != expected {
+		t.Errorf("la oferta quedó a %d, se esperaba %d", repreciada.Price, expected)
+	}
+	if fixture.orderStatus(t, original.ID) != model.StatusCancelled {
+		t.Error("la oferta original no quedó CANCELLED")
+	}
+}
+
+func TestRecordScoreQuoteConScoreCeroCobraLaBase(t *testing.T) {
+	fixture := newMarketFixture(t)
+	fixture.seedSuperuser(t)
+	playerID := fixture.seedPlayer(t)
+
+	if err := fixture.marketMaker.Bootstrap(t.Context()); err != nil {
+		t.Fatalf("Bootstrap devolvió %v", err)
+	}
+
+	if err := fixture.marketMaker.RecordScoreQuote(t.Context(), playerID, 0, nil, "rateada"); err != nil {
+		t.Fatalf("RecordScoreQuote devolvió %v", err)
+	}
+
+	order, found := fixture.liveMarketMakerOrder(t, playerID)
+	if !found {
+		t.Fatal("tras recotizar no quedó una oferta viva")
+	}
+	if order.Price != model.DefaultPricePolicy().Base {
+		t.Errorf("la oferta quedó a %d, se esperaba la base %d", order.Price, model.DefaultPricePolicy().Base)
+	}
+}

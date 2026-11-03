@@ -32,6 +32,7 @@ describe('App', () => {
         league: 'Premier League',
         position: 'Attacker',
         score: 0.87,
+        price: '51.0000',
       },
     ],
     offset: 0,
@@ -50,6 +51,7 @@ describe('App', () => {
     dateOfBirth: '2001-09-05',
     nationality: 'England',
     shirtNumber: 7,
+    price: '51.0000',
     active: true,
     createdAt: '2026-09-28T12:00:00Z',
     updatedAt: '2026-09-28T12:30:00Z',
@@ -69,6 +71,7 @@ describe('App', () => {
     mocks.useAuth.mockReturnValue(anonymousAuth);
     vi.spyOn(playersApi, 'getPlayerStatistics').mockResolvedValue([]);
     vi.spyOn(playersApi, 'getPlayerScores').mockResolvedValue([]);
+    vi.spyOn(playersApi, 'getPlayerQuotes').mockResolvedValue([]);
     vi.spyOn(playersApi, 'getPlayerScore').mockRejectedValue(new Error('not found'));
   });
 

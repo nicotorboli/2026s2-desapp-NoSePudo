@@ -2,6 +2,7 @@ import React from 'react';
 import { PlayerRankingItemDTO, RankingSort } from '../../api/players';
 import { ScoreBar } from '../ScoreBar/ScoreBar';
 import { translatePosition } from '../../utils/translations';
+import { formatCredits } from '../../utils/format';
 import './PlayerTable.css';
 
 interface PlayerTableProps {
@@ -45,6 +46,7 @@ export const PlayerTable: React.FC<PlayerTableProps> = ({
                 Score{scoreIndicator}
               </button>
             </th>
+            <th className="player-table__cell player-table__cell--header">Créditos</th>
           </tr>
         </thead>
         <tbody className="player-table__body">
@@ -74,6 +76,13 @@ export const PlayerTable: React.FC<PlayerTableProps> = ({
               </td>
               <td className="player-table__cell">
                 <ScoreBar score={player.score} />
+              </td>
+              <td className="player-table__cell player-table__cell--credits">
+                {player.price === null ? (
+                  '—'
+                ) : (
+                  <span className="player-table__credits">{`${formatCredits(player.price)} Créditos`}</span>
+                )}
               </td>
             </tr>
           ))}

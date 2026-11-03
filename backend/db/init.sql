@@ -294,6 +294,7 @@ CREATE TABLE IF NOT EXISTS player_quotes (
     price            BIGINT      NOT NULL,
     strategy         VARCHAR(50) NOT NULL,
     strategy_version VARCHAR(20) NOT NULL,
+    score_id         BIGINT      NULL REFERENCES player_scores (id) ON DELETE SET NULL,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_quotes_price_positive CHECK (price > 0)
 );

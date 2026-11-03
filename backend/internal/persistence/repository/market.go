@@ -126,6 +126,14 @@ func (r *MarketRepository) LiveMarketOrders(ctx context.Context, playerID int64)
 	return r.orderDao.ListLiveByPlayer(ctx, playerID)
 }
 
+func (r *MarketRepository) LatestPrices(ctx context.Context, playerIDs []int64) (map[int64]model.Credits, error) {
+	return r.quoteDao.LatestPriceForPlayers(ctx, playerIDs)
+}
+
+func (r *MarketRepository) QuoteHistory(ctx context.Context, playerID int64) ([]model.PlayerQuote, error) {
+	return r.quoteDao.ListByPlayer(ctx, playerID)
+}
+
 type MarketSession struct {
 	tx          *sql.Tx
 	accountDao  *dao.AccountSql
