@@ -1005,10 +1005,17 @@ components:
 
     ScoringStrategy:
       type: object
-      required: [id, name]
+      required: [id, name, alpha, weights]
       properties:
         id: {type: integer}
         name: {type: string}
+        alpha: {type: number, format: double, minimum: 0, maximum: 1, description: Weight of the rating term in the score formula}
+        weights:
+          type: object
+          description: Weight per position and statistic.
+          additionalProperties:
+            type: object
+            additionalProperties: {type: number, format: double}
 
     ActiveScoringStrategy:
       type: object

@@ -1,0 +1,226 @@
+.sync-section {
+  padding: 1.5rem;
+  border-radius: 14px;
+  background-color: #fff;
+  box-shadow: 0 8px 24px rgba(19, 27, 35, 0.08);
+}
+
+.sync-section__header {
+  margin-bottom: 1rem;
+}
+
+.sync-section__title {
+  margin: 0 0 0.35rem;
+  color: var(--ink-blue);
+  font-size: 1.5rem;
+}
+
+.sync-section__subtitle {
+  margin: 0;
+  color: #4a5568;
+}
+
+.sync-section__loading,
+.sync-section__meta {
+  color: #4a5568;
+}
+
+.sync-section__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.sync-section__card {
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.sync-section__card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.sync-section__card-title {
+  margin: 0;
+  color: var(--ink-blue);
+  font-size: 1.05rem;
+  text-transform: capitalize;
+}
+
+.sync-section__badge {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.sync-section__badge--on {
+  background-color: rgba(17, 78, 4, 0.12);
+  color: var(--green-forest);
+}
+
+.sync-section__badge--off {
+  background-color: #edf2f7;
+  color: #4a5568;
+}
+
+.sync-section__check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: var(--ink-blue);
+  font-weight: 600;
+}
+
+.sync-section__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  color: var(--ink-blue);
+  font-weight: 600;
+}
+
+.sync-section__field input {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.sync-section__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.sync-section__button {
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  padding: 0.5rem 0.85rem;
+  background-color: #fff;
+  color: var(--ink-blue);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sync-section__button--primary {
+  border-color: var(--radiant-orange);
+  background-color: var(--radiant-orange);
+  color: #fff;
+}
+
+.sync-section__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sync-section__run {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border-radius: 10px;
+  background-color: rgba(126, 189, 194, 0.12);
+}
+
+.sync-section__run-title {
+  margin: 0 0 0.5rem;
+  color: var(--ink-blue);
+}
+
+.sync-section__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.sync-section__progress progress {
+  width: 100%;
+  height: 0.75rem;
+}
+
+.sync-section__history {
+  margin-top: 1.5rem;
+}
+
+.sync-section__history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.sync-section__history-title {
+  margin: 0;
+  color: var(--ink-blue);
+}
+
+.sync-section__table-wrapper {
+  overflow-x: auto;
+}
+
+.sync-section__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.sync-section__table th,
+.sync-section__table td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.sync-section__table th {
+  color: var(--ink-blue);
+  font-weight: 800;
+}
+
+.sync-section__status {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sync-section__status--running {
+  background-color: rgba(126, 189, 194, 0.25);
+  color: var(--ink-blue);
+}
+
+.sync-section__status--succeeded {
+  background-color: rgba(17, 78, 4, 0.12);
+  color: var(--green-forest);
+}
+
+.sync-section__status--partial {
+  background-color: rgba(223, 175, 15, 0.2);
+  color: #7a5c00;
+}
+
+.sync-section__status--failed {
+  background-color: rgba(190, 30, 30, 0.1);
+  color: #8c1414;
+}
+
+.sync-section__status--skipped {
+  background-color: #edf2f7;
+  color: #4a5568;
+}
+
+.sync-section__message {
+  max-width: 18rem;
+  color: #4a5568;
+  overflow-wrap: anywhere;
+}

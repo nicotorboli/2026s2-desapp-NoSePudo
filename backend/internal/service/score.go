@@ -76,7 +76,12 @@ func NewScoreService(
 func (s *ScoreService) ListStrategies() []dto.ScoringStrategyResponse {
 	strategies := make([]dto.ScoringStrategyResponse, 0, len(s.strategies))
 	for _, strategy := range s.strategies {
-		strategies = append(strategies, dto.ScoringStrategyResponse{ID: strategy.ID, Name: strategy.Name})
+		strategies = append(strategies, dto.ScoringStrategyResponse{
+			ID:      strategy.ID,
+			Name:    strategy.Name,
+			Alpha:   strategy.Alpha,
+			Weights: strategy.Weights,
+		})
 	}
 	sort.Slice(strategies, func(i, j int) bool { return strategies[i].ID < strategies[j].ID })
 	return strategies

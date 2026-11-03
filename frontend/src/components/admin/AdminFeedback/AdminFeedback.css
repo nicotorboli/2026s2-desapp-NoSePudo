@@ -1,0 +1,84 @@
+.admin-status {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.admin-status--success {
+  background-color: rgba(17, 78, 4, 0.12);
+  border: 1px solid var(--green-forest);
+  color: var(--green-forest);
+}
+
+.admin-status--error {
+  background-color: rgba(190, 30, 30, 0.1);
+  border: 1px solid #be1e1e;
+  color: #8c1414;
+}
+
+.admin-status--info {
+  background-color: rgba(126, 189, 194, 0.2);
+  border: 1px solid var(--teal);
+  color: var(--ink-blue);
+}
+
+.admin-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background-color: rgba(19, 27, 35, 0.55);
+}
+
+.admin-dialog__panel {
+  width: min(32rem, 100%);
+  padding: 1.5rem;
+  border-radius: 12px;
+  background-color: #fff;
+  box-shadow: 0 20px 40px rgba(19, 27, 35, 0.25);
+}
+
+.admin-dialog__title {
+  margin: 0 0 0.5rem;
+  color: var(--ink-blue);
+  font-size: 1.25rem;
+}
+
+.admin-dialog__description {
+  margin: 0 0 1.25rem;
+  color: #4a5568;
+}
+
+.admin-dialog__actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.admin-dialog__button {
+  border: none;
+  border-radius: 6px;
+  padding: 0.55rem 0.95rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-dialog__button--cancel {
+  background-color: #e2e8f0;
+  color: var(--ink-blue);
+}
+
+.admin-dialog__button--confirm {
+  background-color: var(--radiant-orange);
+  color: #fff;
+}
+
+.admin-dialog__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

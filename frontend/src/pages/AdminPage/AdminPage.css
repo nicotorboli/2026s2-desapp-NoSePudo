@@ -1,0 +1,94 @@
+.admin-page {
+  padding: 1.5rem;
+}
+
+.admin-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-page__title {
+  margin: 0 0 0.35rem;
+  color: var(--ink-blue);
+  font-size: 2rem;
+}
+
+.admin-page__subtitle {
+  margin: 0;
+  color: #4a5568;
+}
+
+.admin-page__session {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-page__email {
+  color: var(--ink-blue);
+  font-weight: 600;
+}
+
+.admin-page__logout {
+  border: 1px solid var(--ink-blue);
+  border-radius: 6px;
+  padding: 0.45rem 0.8rem;
+  background-color: transparent;
+  color: var(--ink-blue);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-page__nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 0.6rem 0;
+  background-color: color-mix(in srgb, var(--green-forest) 16%, var(--radiant-orange) 16%, #f7fafc);
+}
+
+.admin-page__nav-link {
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background-color: #fff;
+  color: var(--ink-blue);
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(19, 27, 35, 0.12);
+}
+
+.admin-page__nav-link:hover {
+  color: var(--radiant-orange);
+}
+
+.admin-page__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.admin-page__sections > section {
+  scroll-margin-top: 5rem;
+}
+
+.admin-page--denied {
+  display: flex;
+  justify-content: center;
+}
+
+.admin-page__denied-card {
+  width: min(30rem, 100%);
+  padding: 2rem;
+  border-radius: 14px;
+  background-color: #fff;
+  box-shadow: 0 8px 24px rgba(19, 27, 35, 0.08);
+}

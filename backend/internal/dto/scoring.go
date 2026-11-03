@@ -7,8 +7,10 @@ import (
 )
 
 type ScoringStrategyResponse struct {
-	Name string `json:"name"`
-	ID   int    `json:"id"`
+	Weights map[string]map[string]float64 `json:"weights"`
+	Name    string                        `json:"name"`
+	Alpha   float64                       `json:"alpha"`
+	ID      int                           `json:"id"`
 }
 
 type ActiveStrategyResponse struct {

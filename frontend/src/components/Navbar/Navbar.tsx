@@ -4,9 +4,16 @@ import './Navbar.css';
 interface NavbarProps {
   onNavigateHome?: () => void;
   onNavigateRanking?: () => void;
+  onNavigateAdmin?: () => void;
+  isAdmin?: boolean;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onNavigateHome, onNavigateRanking }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  onNavigateHome,
+  onNavigateRanking,
+  onNavigateAdmin,
+  isAdmin = false,
+}) => {
   return (
     <header className="navbar">
       <div className="navbar__container">
@@ -26,6 +33,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigateHome, onNavigateRankin
           <button type="button" className="navbar__link" onClick={onNavigateRanking}>
             Ranking
           </button>
+          {onNavigateAdmin && (
+            <button type="button" className="navbar__link" onClick={onNavigateAdmin}>
+              {isAdmin ? 'Administración' : 'Ingresar'}
+            </button>
+          )}
         </nav>
       </div>
     </header>

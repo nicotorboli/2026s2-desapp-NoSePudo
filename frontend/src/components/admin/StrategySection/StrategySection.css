@@ -1,0 +1,131 @@
+.strategy-section {
+  padding: 1.5rem;
+  border-radius: 14px;
+  background-color: #fff;
+  box-shadow: 0 8px 24px rgba(19, 27, 35, 0.08);
+}
+
+.strategy-section__header {
+  margin-bottom: 1rem;
+}
+
+.strategy-section__title {
+  margin: 0 0 0.35rem;
+  color: var(--ink-blue);
+  font-size: 1.5rem;
+}
+
+.strategy-section__subtitle,
+.strategy-section__meta {
+  margin: 0;
+  color: #4a5568;
+}
+
+.strategy-section__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.strategy-section__card {
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.strategy-section__card--active {
+  border-color: var(--green-forest);
+  background-color: rgba(17, 78, 4, 0.04);
+}
+
+.strategy-section__card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.strategy-section__card-title {
+  margin: 0 0 0.25rem;
+  color: var(--ink-blue);
+  font-size: 1.15rem;
+  text-transform: capitalize;
+}
+
+.strategy-section__badge {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background-color: rgba(17, 78, 4, 0.12);
+  color: var(--green-forest);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.strategy-section__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.strategy-section__button {
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  padding: 0.5rem 0.85rem;
+  background-color: #fff;
+  color: var(--ink-blue);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.strategy-section__button--primary {
+  border-color: var(--radiant-orange);
+  background-color: var(--radiant-orange);
+  color: #fff;
+}
+
+.strategy-section__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.strategy-section__weights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.strategy-section__position {
+  padding: 0.75rem;
+  border-radius: 8px;
+  background-color: #f7fafc;
+}
+
+.strategy-section__position-title {
+  margin: 0 0 0.5rem;
+  color: var(--ink-blue);
+  font-size: 0.95rem;
+}
+
+.strategy-section__weight-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.strategy-section__weight {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.strategy-section__weight-value {
+  color: var(--ink-blue);
+  font-weight: 700;
+}

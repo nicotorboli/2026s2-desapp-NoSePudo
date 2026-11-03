@@ -1,0 +1,78 @@
+.coefficient-section {
+  padding: 1.5rem;
+  border-radius: 14px;
+  background-color: #fff;
+  box-shadow: 0 8px 24px rgba(19, 27, 35, 0.08);
+}
+
+.coefficient-section__header {
+  margin-bottom: 1rem;
+}
+
+.coefficient-section__title {
+  margin: 0 0 0.35rem;
+  color: var(--ink-blue);
+  font-size: 1.5rem;
+}
+
+.coefficient-section__subtitle {
+  margin: 0;
+  color: #4a5568;
+}
+
+.coefficient-section__table-wrapper {
+  overflow-x: auto;
+}
+
+.coefficient-section__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.coefficient-section__table th,
+.coefficient-section__table td {
+  padding: 0.6rem;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.coefficient-section__table th {
+  color: var(--ink-blue);
+  font-weight: 800;
+}
+
+.coefficient-section__league {
+  display: block;
+  color: var(--ink-blue);
+  font-weight: 700;
+}
+
+.coefficient-section__code {
+  color: #718096;
+  font-size: 0.85rem;
+}
+
+.coefficient-section__input {
+  width: 8rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.coefficient-section__button {
+  border: 1px solid var(--radiant-orange);
+  border-radius: 6px;
+  padding: 0.5rem 0.85rem;
+  background-color: var(--radiant-orange);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.coefficient-section__button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
