@@ -66,7 +66,39 @@ func ensureSchema(ctx context.Context, schema *dao.SchemaSql) error {
 	return nil
 }
 
+func loadDotEnv() {
+	candidates := []string{".env", "../.env"}
+	for _, path := range candidates {
+		data, err := os.ReadFile(filepath.Clean(path))
+		if err != nil {
+			continue
+		}
+
+		lines := strings.Split(string(data), "\n")
+		for _, rawLine := range lines {
+			line := strings.TrimSpace(rawLine)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+
+			key, val, found := strings.Cut(line, "=")
+			if !found {
+				continue
+			}
+
+			key = strings.TrimSpace(key)
+			val = strings.Trim(strings.TrimSpace(val), "\"'`\r")
+			if os.Getenv(key) == "" {
+				_ = os.Setenv(key, val)
+			}
+		}
+		return
+	}
+}
+
 func startServer() error {
+	loadDotEnv()
+
 	cfg, err := configuration.LoadCfg()
 	if err != nil {
 		return fmt.Errorf("configuración inválida: %w", err)
