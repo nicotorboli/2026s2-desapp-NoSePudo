@@ -3,16 +3,17 @@ package model
 import "time"
 
 type Trade struct {
-	ExecutedAt  time.Time
-	ID          int64
-	BuyOrderID  int64
-	SellOrderID int64
-	BuyerID     int64
-	SellerID    int64
-	PlayerID    int64
-	Quantity    int64
-	Price       Credits
-	TotalAmount Credits
+	ExecutedAt   time.Time
+	P2PSessionID *int64
+	ID           int64
+	BuyOrderID   int64
+	SellOrderID  int64
+	BuyerID      int64
+	SellerID     int64
+	PlayerID     int64
+	Quantity     int64
+	Price        Credits
+	TotalAmount  Credits
 }
 
 type LedgerReason string

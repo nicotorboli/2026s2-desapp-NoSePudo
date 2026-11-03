@@ -250,8 +250,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_market_maker_live
 
 CREATE TABLE IF NOT EXISTS market_trades (
     id            BIGSERIAL PRIMARY KEY,
-    buy_order_id  BIGINT      NOT NULL REFERENCES market_orders (id),
-    sell_order_id BIGINT      NOT NULL REFERENCES market_orders (id),
+    buy_order_id  BIGINT      REFERENCES market_orders (id),
+    sell_order_id BIGINT      REFERENCES market_orders (id),
     buyer_id      BIGINT      NOT NULL REFERENCES users (id),
     seller_id     BIGINT      NOT NULL REFERENCES users (id),
     player_id     BIGINT      NOT NULL REFERENCES players (id),
@@ -304,3 +304,38 @@ CREATE INDEX IF NOT EXISTS idx_quotes_player_latest ON player_quotes (player_id,
 CREATE UNIQUE INDEX IF NOT EXISTS uq_quotes_player_initial
     ON player_quotes (player_id)
     WHERE strategy = 'initial';
+
+CREATE TABLE IF NOT EXISTS p2p_sessions (
+    id           BIGSERIAL    PRIMARY KEY,
+    token        UUID         NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+    seller_id    BIGINT       NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    buyer_id     BIGINT                REFERENCES users(id) ON DELETE RESTRICT,
+    player_id    BIGINT       NOT NULL REFERENCES players(id) ON DELETE RESTRICT,
+    quantity     BIGINT       NOT NULL,
+    price        BIGINT       NOT NULL,
+    status       VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    expires_at   TIMESTAMPTZ  NOT NULL,
+    completed_at TIMESTAMPTZ,
+    CONSTRAINT chk_p2p_status CHECK (status IN ('PENDING', 'COMPLETED', 'CANCELLED', 'EXPIRED')),
+    CONSTRAINT chk_p2p_quantity CHECK (quantity > 0),
+    CONSTRAINT chk_p2p_price CHECK (price > 0)
+);
+
+CREATE INDEX IF NOT EXISTS idx_p2p_sessions_seller ON p2p_sessions (seller_id, status);
+CREATE INDEX IF NOT EXISTS idx_p2p_sessions_token ON p2p_sessions (token);
+CREATE INDEX IF NOT EXISTS idx_p2p_sessions_pending ON p2p_sessions (expires_at)
+    WHERE status = 'PENDING';
+
+ALTER TABLE market_trades
+    ADD COLUMN IF NOT EXISTS p2p_session_id BIGINT REFERENCES p2p_sessions(id) ON DELETE RESTRICT;
+
+ALTER TABLE market_trades
+    ALTER COLUMN buy_order_id DROP NOT NULL;
+
+ALTER TABLE market_trades
+    ALTER COLUMN sell_order_id DROP NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_trades_p2p ON market_trades (p2p_session_id)
+    WHERE p2p_session_id IS NOT NULL;
+

@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import './Navbar.css';
 
-type NavView = 'catalog' | 'portfolio' | 'ranking' | 'admin' | 'detail';
+type NavView = 'catalog' | 'portfolio' | 'ranking' | 'admin' | 'detail' | 'p2p-create' | 'p2p-session';
 
 interface NavbarProps {
   currentView?: NavView;
@@ -53,13 +53,22 @@ export const Navbar: React.FC<NavbarProps> = ({
               Ranking
             </button>
             {isAuthenticated && (
-              <button
-                type="button"
-                className={navClass('portfolio')}
-                onClick={() => go('portfolio')}
-              >
-                Mi Patrimonio
-              </button>
+              <>
+                <button
+                  type="button"
+                  className={navClass('portfolio')}
+                  onClick={() => go('portfolio')}
+                >
+                  Mi Patrimonio
+                </button>
+                <button
+                  type="button"
+                  className={navClass('p2p-create')}
+                  onClick={() => go('p2p-create')}
+                >
+                  Venta P2P
+                </button>
+              </>
             )}
             {isAdmin && (
               <button

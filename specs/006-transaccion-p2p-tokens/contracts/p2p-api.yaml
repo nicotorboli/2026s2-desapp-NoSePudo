@@ -1,0 +1,334 @@
+openapi: 3.1.0
+
+info:
+  title: NoSePudo API – P2P Session Endpoints
+  version: 0.1.0
+  description: |
+    Contrato de los 4 endpoints de sesiones P2P.
+    Estos paths se integran al `backend/api/openapi.yaml` principal.
+
+paths:
+
+  /p2p/sessions:
+    post:
+      tags: [p2p]
+      summary: Crear sesión P2P
+      operationId: createP2PSession
+      x-access-level: authenticated
+      description: |
+        El vendedor autenticado inicia una oferta de venta directa especificando
+        el jugador, la cantidad de tokens y el precio por token.
+        Los tokens quedan reservados inmediatamente en el escrow del vendedor.
+        La sesión expira automáticamente a los 5 minutos si no es aceptada.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateP2PSessionRequest'
+            example:
+              playerId: 42
+              quantity: 5
+              pricePerToken: 30000
+      responses:
+        '201':
+          description: Sesión creada exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/P2PSessionResponse'
+        '400':
+          description: Datos de entrada inválidos (cantidad ≤ 0, precio ≤ 0, jugador inactivo)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Jugador no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: El vendedor no tiene tokens disponibles suficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /p2p/sessions/{token}:
+    get:
+      tags: [p2p]
+      summary: Obtener sesión P2P
+      operationId: getP2PSession
+      x-access-level: authenticated
+      description: |
+        Devuelve los detalles de la sesión identificada por el token opaco.
+        Cualquier usuario autenticado con el link puede consultarla.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalles de la sesión
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/P2PSessionResponse'
+        '404':
+          description: Token no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /p2p/sessions/{token}/accept:
+    post:
+      tags: [p2p]
+      summary: Aceptar sesión P2P
+      operationId: acceptP2PSession
+      x-access-level: authenticated
+      description: |
+        El usuario autenticado acepta la oferta:
+        - Se valida que no sea el vendedor.
+        - Se valida que el comprador tenga créditos suficientes.
+        - Se transfieren tokens al comprador y créditos al vendedor.
+        - La sesión pasa a COMPLETED y se registra la transacción.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Transacción completada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/P2PTradeResponse'
+        '409':
+          description: |
+            Conflicto al aceptar la sesión:
+            - La oferta ya fue aceptada por otro usuario (COMPLETED)
+            - El comprador es el mismo usuario que el vendedor (auto-trade no permitido)
+            - La sesión fue cancelada por el vendedor (CANCELLED)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                alreadyTaken:
+                  summary: Oferta tomada por otro usuario
+                  value:
+                    error: "la oferta ya fue tomada por otro usuario"
+                selfTrade:
+                  summary: Auto-trade no permitido
+                  value:
+                    error: "el vendedor no puede aceptar su propia oferta"
+                notLive:
+                  summary: Sesión cancelada
+                  value:
+                    error: "la sesión P2P ya no está activa"
+        '410':
+          description: |
+            La oferta caducó por haber superado el límite de 5 minutos (EXPIRED).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "la oferta venció y ya no puede aceptarse"
+        '422':
+          description: El comprador no tiene créditos suficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Token no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /p2p/sessions/{token}/cancel:
+    post:
+      tags: [p2p]
+      summary: Cancelar sesión P2P
+      operationId: cancelP2PSession
+      x-access-level: authenticated
+      description: |
+        El vendedor (o un superusuario) cancela la sesión activa.
+        Los tokens reservados quedan liberados inmediatamente.
+        Usuarios que no son el vendedor reciben 403.
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Sesión cancelada; tokens liberados
+        '403':
+          description: El usuario no es el vendedor de esta sesión
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: La sesión ya está en estado terminal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Token no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+
+    CreateP2PSessionRequest:
+      type: object
+      required: [playerId, quantity, pricePerToken]
+      additionalProperties: false
+      properties:
+        playerId:
+          type: integer
+          format: int64
+          description: ID del jugador cuyos tokens se ofrecen
+        quantity:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Cantidad de tokens a vender
+        pricePerToken:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Precio por token en la escala interna (1 crédito = 10000 unidades)
+
+    P2PSessionResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        token:
+          type: string
+          format: uuid
+          description: Identificador opaco del enlace
+        sessionUrl:
+          type: string
+          format: uri
+          description: URL completa para compartir con el comprador
+        seller:
+          $ref: '#/components/schemas/UserSummary'
+        buyer:
+          $ref: '#/components/schemas/UserSummary'
+          nullable: true
+          description: null hasta que alguien acepte
+        player:
+          $ref: '#/components/schemas/PlayerSummary'
+        quantity:
+          type: integer
+          format: int64
+        pricePerToken:
+          type: integer
+          format: int64
+        totalAmount:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, CANCELLED, EXPIRED]
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+
+    P2PTradeResponse:
+      type: object
+      properties:
+        tradeId:
+          type: integer
+          format: int64
+        sessionToken:
+          type: string
+          format: uuid
+        buyerId:
+          type: integer
+          format: int64
+        sellerId:
+          type: integer
+          format: int64
+        playerId:
+          type: integer
+          format: int64
+        quantity:
+          type: integer
+          format: int64
+        pricePerToken:
+          type: integer
+          format: int64
+        totalAmount:
+          type: integer
+          format: int64
+        executedAt:
+          type: string
+          format: date-time
+
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        email:
+          type: string
+
+    PlayerSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        clubName:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+  responses:
+    InternalError:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

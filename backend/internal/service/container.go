@@ -21,6 +21,8 @@ type Container struct {
 	Market        *MarketService
 	MarketMaker   *MarketMakerService
 	Portfolio     *PortfolioService
+	P2P           *P2PService
+	P2PExpiration *P2PExpirationJob
 }
 
 // NewContainer arma el contenedor con las sincronizaciones configuradas por
@@ -104,5 +106,7 @@ func buildContainer(ctx context.Context, runCtx context.Context, repos *reposito
 		Market:        NewMarketService(repos.Market, time.Now),
 		MarketMaker:   marketMaker,
 		Portfolio:     NewPortfolioService(repos.Portfolio),
+		P2P:           NewP2PService(repos.P2P, repos.Player, time.Now),
+		P2PExpiration: NewP2PExpirationJob(repos.P2P, time.Now, logger),
 	}, nil
 }

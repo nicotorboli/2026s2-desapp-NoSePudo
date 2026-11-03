@@ -158,6 +158,26 @@ func (s *Server) routes() []route {
 			access:   AccessAuthenticated,
 			endpoint: s.controllers.Market.Transactions(),
 		},
+		{
+			pattern:  "POST /p2p/sessions",
+			access:   AccessAuthenticated,
+			endpoint: s.controllers.P2P.Create(),
+		},
+		{
+			pattern:  "GET /p2p/sessions/{token}",
+			access:   AccessAuthenticated,
+			endpoint: s.controllers.P2P.Get(),
+		},
+		{
+			pattern:  "POST /p2p/sessions/{token}/accept",
+			access:   AccessAuthenticated,
+			endpoint: s.controllers.P2P.Accept(),
+		},
+		{
+			pattern:  "POST /p2p/sessions/{token}/cancel",
+			access:   AccessAuthenticated,
+			endpoint: s.controllers.P2P.Cancel(),
+		},
 	}
 }
 

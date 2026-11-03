@@ -22,6 +22,7 @@ type Container struct {
 	Market             *MarketRepository
 	Portfolio          *PortfolioRepository
 	Registration       *RegistrationRepository
+	P2P                *P2PRepository
 }
 
 type containerSettings struct {
@@ -68,5 +69,16 @@ func NewContainer(db *sql.DB, daos *dao.Container, options ...ContainerOption) *
 		),
 		Portfolio:    NewPortfolioRepository(daos.Account, daos.Position, daos.Quote, daos.Trade, daos.Player),
 		Registration: NewRegistrationRepository(db, daos.User, daos.Account, daos.Ledger, settings.initialUserBalance),
+		P2P: NewP2PRepository(
+			db,
+			daos.P2PSession,
+			daos.Position,
+			daos.Account,
+			daos.Trade,
+			daos.Ledger,
+			daos.Audit,
+			daos.Player,
+			daos.User,
+		),
 	}
 }
