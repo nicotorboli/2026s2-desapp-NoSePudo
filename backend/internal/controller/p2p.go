@@ -43,12 +43,17 @@ func (c *RestP2PController) Create() httphandler.Endpoint {
 			return httphandler.NewError(http.StatusBadRequest, err.Error(), err)
 		}
 
+		price, err := request.ParsedPrice()
+		if err != nil {
+			return httphandler.NewError(http.StatusBadRequest, err.Error(), err)
+		}
+
 		created, player, err := c.p2pService.Create(req.Context(), service.CreateP2PCommand{
 			Actor:    auditActorOf(actor),
 			SellerID: actor.ID,
 			PlayerID: request.PlayerID,
 			Quantity: request.Quantity,
-			Price:    model.Credits(request.PricePerToken),
+			Price:    price,
 		})
 		if err != nil {
 			return p2pStatusFor(err)

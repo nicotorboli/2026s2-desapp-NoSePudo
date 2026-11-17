@@ -1,8 +1,21 @@
 # AGENTS.md
 
-Monorepo for **NoSePudo**: Go backend in `backend/`, React + TypeScript + Vite frontend in `frontend/`. All docs, comments, and tests are in Spanish.
+Monorepo for **NoSePudo**: Go backend in `backend/`, React + TypeScript + Vite frontend in `frontend/`.
 
 This file is the operative guidance for working in this repo and supersedes `.specify/memory/constitution.md` — do not rely on the constitution to implement features.
+
+## Language
+
+Agent-facing artifacts — `docs/`, `.opencode/`, new `plans/` files, skills, review reports, and this file — are written in English. Product strings, UI copy, existing test names, and existing code comments stay in Spanish and must never be translated. Existing Spanish docs and plans are left untouched.
+
+## Spec-kit (co-workers only)
+
+`specs/` and `.specify/` are input documentation maintained by other contributors. Read at most `specs/<feature>/spec.md`; never `plan.md`, `tasks.md`, or `research.md`. Do not invoke `speckit-*` skills, create `specs/NNN-*` directories, or write under `.specify/`. Working state lives in `plans/<task>/`.
+
+## Agent workflow
+
+- Review a branch before merge: skill `review-changes`, checklist in `docs/review.md`.
+- Working state and reports: `plans/<task>/plan.md`, `plans/<task>/review.md`.
 
 ## Architecture (backend)
 

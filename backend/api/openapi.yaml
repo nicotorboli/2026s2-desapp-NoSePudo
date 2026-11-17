@@ -1857,9 +1857,10 @@ components:
           format: int64
           minimum: 1
         pricePerToken:
-          type: integer
-          format: int64
-          minimum: 1
+          type: string
+          pattern: '^[0-9]+(\.[0-9]{1,4})?$'
+          example: '1.5000'
+          description: Price per token in credits with up to four decimal places.
 
     P2PUserSummary:
       type: object
@@ -1898,11 +1899,15 @@ components:
           type: integer
           format: int64
         pricePerToken:
-          type: integer
-          format: int64
+          type: string
+          pattern: '^[0-9]+(\.[0-9]{1,4})?$'
+          example: '1.5000'
+          description: Agreed price per token in credits with four decimal places.
         totalAmount:
-          type: integer
-          format: int64
+          type: string
+          pattern: '^[0-9]+(\.[0-9]{1,4})?$'
+          example: '7.5000'
+          description: Total amount in credits with four decimal places.
         status:
           type: string
           enum: [PENDING, COMPLETED, CANCELLED, EXPIRED]
@@ -1940,11 +1945,15 @@ components:
           type: integer
           format: int64
         pricePerToken:
-          type: integer
-          format: int64
+          type: string
+          pattern: '^[0-9]+(\.[0-9]{1,4})?$'
+          example: '1.5000'
+          description: Agreed price per token in credits with four decimal places.
         totalAmount:
-          type: integer
-          format: int64
+          type: string
+          pattern: '^[0-9]+(\.[0-9]{1,4})?$'
+          example: '7.5000'
+          description: Total amount in credits with four decimal places.
         executedAt:
           type: string
           format: date-time

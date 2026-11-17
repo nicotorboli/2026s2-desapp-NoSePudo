@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getUserPortfolio, PortfolioPositionDTO } from '../../api/portfolio';
 import { createP2PSession, P2PSessionDTO, CreateP2PSessionRequestDTO } from '../../api/p2p';
+import { formatCreditDecimal, parseCredits } from '../../utils/format';
 import './P2PCreatePage.css';
 
 interface P2PCreatePageProps {
@@ -19,7 +20,7 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
   const [positions, setPositions] = useState<PortfolioPositionDTO[]>([]);
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | ''>('');
   const [quantity, setQuantity] = useState<number>(1);
-  const [pricePerToken, setPricePerToken] = useState<number>(10000);
+  const [pricePerToken, setPricePerToken] = useState<string>('1');
   const [isLoading, setIsLoading] = useState(false);
   const [createdSession, setCreatedSession] = useState<P2PSessionDTO | null>(null);
   const [copied, setCopied] = useState(false);
@@ -71,11 +72,15 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
 
   const selectedPosition = positions.find((p) => p.playerId === Number(selectedPlayerId));
   const maxAvailable = selectedPosition ? (selectedPosition.availableQuantity ?? selectedPosition.quantity) : 0;
-  const totalAmount = quantity * pricePerToken;
+  const normalizedPrice = pricePerToken.trim().replace(',', '.');
+  const priceUnits = Math.round(parseCredits(normalizedPrice) * 10000);
+  const totalUnits = Number.isFinite(quantity) ? priceUnits * quantity : 0;
+  const totalAmount = formatCreditDecimal((totalUnits / 10000).toFixed(4));
+  const isValidPrice = /^\d+(\.\d{1,4})?$/.test(normalizedPrice) && priceUnits > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPlayerId || quantity <= 0 || pricePerToken <= 0) {
+    if (!selectedPlayerId || !(quantity > 0) || !isValidPrice) {
       setError('Por favor completa todos los campos con valores válidos.');
       return;
     }
@@ -90,7 +95,7 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
       const payload: CreateP2PSessionRequestDTO = {
         playerId: Number(selectedPlayerId),
         quantity,
-        pricePerToken,
+        pricePerToken: normalizedPrice,
       };
       const session = await createP2PSession(payload);
       setCreatedSession(session);
@@ -154,8 +159,8 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
           <div className="p2p-create__success-details">
             <div><strong>Jugador:</strong> {createdSession.player.name}</div>
             <div><strong>Cantidad:</strong> {createdSession.quantity} tokens</div>
-            <div><strong>Precio por token:</strong> {createdSession.pricePerToken} créditos</div>
-            <div><strong>Total a cobrar:</strong> {createdSession.totalAmount} créditos</div>
+            <div><strong>Precio por token:</strong> {formatCreditDecimal(createdSession.pricePerToken)} créditos</div>
+            <div><strong>Total a cobrar:</strong> {formatCreditDecimal(createdSession.totalAmount)} créditos</div>
           </div>
 
           <div className="p2p-create__actions">
@@ -235,11 +240,11 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
                 </label>
                 <input
                   id="priceInput"
-                  type="number"
-                  min="1"
+                  type="text"
+                  inputMode="decimal"
                   className="p2p-create__input"
                   value={pricePerToken}
-                  onChange={(e) => setPricePerToken(Number(e.target.value))}
+                  onChange={(e) => setPricePerToken(e.target.value)}
                   required
                 />
               </div>

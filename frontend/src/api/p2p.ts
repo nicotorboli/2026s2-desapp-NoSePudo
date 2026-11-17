@@ -21,8 +21,8 @@ export interface P2PSessionDTO {
   buyer: P2PUserSummaryDTO | null;
   player: P2PPlayerSummaryDTO;
   quantity: number;
-  pricePerToken: number;
-  totalAmount: number;
+  pricePerToken: string;
+  totalAmount: string;
   status: P2PSessionStatus;
   createdAt: string;
   expiresAt: string;
@@ -32,7 +32,7 @@ export interface P2PSessionDTO {
 export interface CreateP2PSessionRequestDTO {
   playerId: number;
   quantity: number;
-  pricePerToken: number;
+  pricePerToken: string;
 }
 
 export interface P2PTradeResponseDTO {
@@ -42,8 +42,8 @@ export interface P2PTradeResponseDTO {
   sellerId: number;
   playerId: number;
   quantity: number;
-  pricePerToken: number;
-  totalAmount: number;
+  pricePerToken: string;
+  totalAmount: string;
   executedAt: string;
 }
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getP2PSession, acceptP2PSession, cancelP2PSession, P2PSessionDTO, P2PTradeResponseDTO } from '../../api/p2p';
+import { formatCreditDecimal } from '../../utils/format';
 import './P2PSessionPage.css';
 
 interface P2PSessionPageProps {
@@ -186,7 +187,7 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
           <h2 className="p2p-session__title">Compra Exitosa</h2>
           <p className="p2p-session__text">
             Has adquirido <strong>{tradeResult.quantity} tokens</strong> del jugador por un total de{' '}
-            <strong>{tradeResult.totalAmount} créditos</strong>.
+            <strong>{formatCreditDecimal(tradeResult.totalAmount)} créditos</strong>.
           </p>
           <div className="p2p-session__grid">
             <div className="p2p-session__grid-item">
@@ -330,11 +331,11 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
           </div>
           <div className="p2p-session__grid-item">
             <span>Precio por token:</span>
-            <strong>{session.pricePerToken} créditos</strong>
+            <strong>{formatCreditDecimal(session.pricePerToken)} créditos</strong>
           </div>
           <div className="p2p-session__grid-item p2p-session__grid-item--highlight">
             <span>Total a pagar:</span>
-            <strong className="p2p-session__total">{session.totalAmount} créditos</strong>
+            <strong className="p2p-session__total">{formatCreditDecimal(session.totalAmount)} créditos</strong>
           </div>
         </div>
 
@@ -359,7 +360,7 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
                 onClick={handleAccept}
                 disabled={isSubmitting || secondsRemaining === 0}
               >
-                {isSubmitting ? 'Procesando...' : `Aceptar y Comprar (${session.totalAmount} créditos)`}
+                {isSubmitting ? 'Procesando...' : `Aceptar y Comprar (${formatCreditDecimal(session.totalAmount)} créditos)`}
               </button>
               <button
                 className="p2p-session__btn p2p-session__btn--secondary"
