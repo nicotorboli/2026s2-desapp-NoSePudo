@@ -16,6 +16,8 @@ Agent-facing artifacts — `docs/`, `.opencode/`, new `plans/` files, skills, re
 
 - Review a branch before merge: skill `review-changes`, checklist in `docs/review.md`.
 - Working state and reports: `plans/<task>/plan.md`, `plans/<task>/review.md`.
+- Designing a backend change: skill `design-backend`, decision doc in `docs/designs/<YYYY-MM-DD>-<topic>.md`.
+- Designing a frontend change: skill `design-frontend`, same output location.
 
 ## Architecture (backend)
 

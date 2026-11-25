@@ -53,7 +53,7 @@ No test files, frontend files, CI files, `go.mod`, or `.gitignore` changed.
 | `bash -n` on both scripts | pass |
 | `make help` | pass |
 | `make test-packages` | 12 unit / 4 integration, correct |
-| `make test` | 11 packages pass; `internal/server` fails on the known P2P route-map gap |
+| `make test` | 12 packages pass, 240 tests |
 | Synthetic build failure and failing subtest through `test-report.sh` | correct output, exit 1 |
 | `make test UNIT=... RACE=0` | pass, no race flags |
 | `make coverage-unit UNIT="./internal/model ./internal/dto"` | table, merged profile, HTML, exit 0 |
@@ -68,9 +68,10 @@ Not run: `make test-integration`, `make test-e2e`, `make test-all`, `make covera
 
 ## Known expected failure
 
-`internal/server` stays red until the four P2P routes are added to
-`backend/internal/server/routes_test.go` (slice 2, step 1). The runner reports it as a real
-failure; that is intended, not a tooling defect.
+None on the unit path. The four P2P routes were added to
+`backend/internal/server/routes_test.go` on 2026-11-25, so `internal/server` and
+`make test` are green. The integration and coverage paths remain unverified until Docker is
+available.
 
 ## Notes
 

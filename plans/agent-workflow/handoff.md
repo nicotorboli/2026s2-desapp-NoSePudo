@@ -1,159 +1,147 @@
 # Handoff — agent workflow
 
-Branch: `fix/p2p-price-scale` · Last update: 2026-11-16 · Language: English (per `AGENTS.md`)
+Branch: `rf/reestructurar-agents-workflow` · Last update: 2026-11-25 · Language: English
 
-Everything below is uncommitted. Read this first, then `AGENTS.md`, then the file for the task
-you are picking up.
+Read this first, then `AGENTS.md`, then the file for the task you are picking up.
 
-## 1. What exists and is verified
+## 1. What exists
 
 | Artifact | State | Notes |
 | --- | --- | --- |
-| `docs/review.md` | new, verified | Review checklist with mechanical checks. Commands were run against the tree and pass. |
-| `.opencode/agents/reviewer.md` | new, verified | Read-only subagent. Shell denied, `speckit-*` skills denied, `steps: 40`. |
-| `.opencode/skills/review-changes/SKILL.md` + `references/report-template.md` | new, discovered | Skill ID `review-changes` is loaded by OpenCode. |
-| `AGENTS.md` | edited | Added Language, Spec-kit (co-workers only), Agent workflow. |
-| `.gitignore` | edited | `.opencode/*` with `agents/` and `skills/` re-included so skills can be committed. |
-| `plans/p2p-token-session/review.md` | new | Calibration review of the merged P2P feature: 1 P0 + 6 P1. |
-| `plans/p2p-price-scale-fix/{plan,implementation}.md` | new | P0 task record. |
-| P2P price fix | implemented, verified | Backend + OpenAPI + frontend + tests. See section 3. |
-| 3 test files | new, passing | `dto/p2p_test.go`, `controller/p2p_test.go`, `P2PCreatePage.test.tsx`. |
+| `docs/review.md` | committed | Review checklist with mechanical checks |
+| `.opencode/agents/reviewer.md` | committed | Read-only reviewer subagent |
+| `.opencode/skills/review-changes/**` | committed | Skill ID `review-changes` |
+| `AGENTS.md` | committed, then edited | Language, spec-kit, Agent workflow; two design-skill rows added on 2026-11-25 |
+| `plans/p2p-token-session/review.md` | committed | Calibration review: fixed P0 plus open P1/P2 backlog |
+| `plans/p2p-price-scale-fix/**` | committed | P0 record and implementation |
+| P2P price fix | committed | Backend, OpenAPI, frontend, and three test files |
+| Backend test runner | committed (`e540a9f`) | `backend/Makefile` + `backend/scripts/*`; see `plans/test-runner/implementation.md` |
+| Slice 2 docs and ADRs | **uncommitted** | `docs/architecture-backend.md`, `docs/domain.md`, `docs/errors.md`, `docs/ui.md`, `docs/adr/0001…0006` |
+| Design skills | **uncommitted** | `design-backend` and `design-frontend`, both discovered by OpenCode |
+| Calibration designs | **uncommitted** | `docs/designs/2026-11-25-p2p-price-units.md`, `docs/designs/2026-11-25-p2p-create-states.md` |
+| Route-map fix | **uncommitted** | `backend/internal/server/routes_test.go`: P2P controller plus four routes |
 
-Verification already run on this branch:
+The last commit is `e540a9f` (test runner). The slice-2 docs, skills, calibration designs, and
+the route-map fix are in the working tree; no commits were requested for them.
+
+## 2. Verified on 2026-11-25
 
 ```bash
 cd backend && go build ./...
-go test ./internal/controller/... ./internal/model/... ./internal/dto/... \
-  ./internal/middleware/... ./internal/httphandler/...
-go test ./internal/server/ -run Contract
-./scripts/pre-commit.sh                 # 0 issues
-
-cd frontend && npm run typecheck && npm run lint && npm run knip && npm test
+cd backend && go test ./internal/server/        # green, including the route-map fix
+cd backend && make test                        # 12 packages, 240 tests, green
+./scripts/pre-commit.sh                        # 0 issues
 ```
 
-Results: backend targeted packages pass, contract 3/3, pre-commit clean, frontend 16 files /
-58 tests pass. Do not redo this unless you change code.
+The test runner's unit, formatting, merge, HTML, threshold, and failure paths were verified by
+hand. See `plans/test-runner/implementation.md` for the exact checks.
 
-## 2. Open decisions (do these before slice 2, they are small)
+## 3. Open blockers
 
-1. **Route test map.** `go test ./internal/server/` fails in
-   `TestDeclaredLevelsMatchTheSpecification` (`internal/server/routes_test.go:151`) because its
-   hardcoded map lacks the four P2P routes. Reproduces on `dev`; not caused by the price fix.
-   Decision: add the four P2P entries to the map, or record why they stay out. The test's own
-   message treats this as an exposure decision.
-2. **Existing P2P data.** The data check could not run: no Docker daemon, port 5433 closed.
-   Once Docker is available:
+1. **Docker is unavailable.** This blocks:
+   - `make test-integration`, `make test-e2e`, `make test-all`, `make coverage`, `make coverage-ci`;
+   - the coverage merge comparison against the CI one-shot number;
+   - the P2P data check below.
+2. **Slice 2 is uncommitted.** Decide the split before merging:
+   - route-map fix: `backend/internal/server/routes_test.go`
+   - docs and ADRs: `docs/architecture-backend.md`, `docs/domain.md`, `docs/errors.md`, `docs/ui.md`, `docs/adr/`, `plans/agent-workflow/slice-2-implementation.md`
+   - skills and calibration: `.opencode/skills/design-*/`, `docs/designs/`, the two `AGENTS.md` rows
+   - working state: `plans/agent-workflow/handoff.md`, `plans/test-runner/implementation.md`
 
-   ```bash
-   cd backend && docker compose up -d
-   docker compose exec -T db psql -U devuser -d nsp_db -c \
-     "SELECT count(*) FROM p2p_sessions;"
-   docker compose exec -T db psql -U devuser -d nsp_db -c \
-     "SELECT count(*) FROM market_trades WHERE p2p_session_id IS NOT NULL;"
-   ```
+Once Docker is available:
 
-   Empty → nothing to do. Non-empty → stop and decide remediation before deploying the fix;
-   the pre-fix rows store unscaled integers and intent cannot be inferred.
-3. **Commit split.** The tree mixes three concerns. Suggested commits:
-   - review tooling: `.gitignore`, `AGENTS.md`, `docs/review.md`, `.opencode/agents/reviewer.md`,
-     `.opencode/skills/review-changes/**`
-   - review report: `plans/p2p-token-session/review.md`
-   - price fix: `backend/`, `frontend/`, `plans/p2p-price-scale-fix/**`
+```bash
+cd backend
+make test-integration
+make test-all
+make coverage
+make coverage-ci
+```
 
-## 3. Slice 2 — context docs and design skills
+Compare the `make coverage` total with `make coverage-ci`. They should match; a difference points
+at the merge logic, not at coverage itself.
 
-Goal: make design decisions cheap by giving the agent the context it currently re-derives from
-~18k lines of backend code, then add two skills that use that context.
+## 4. P2P data check — still pending
 
-### 3.1 Docs (new, English)
+The price fix changed the wire boundary. Pre-fix rows stored the unscaled request integer and
+intent cannot be inferred. Before deploying:
 
-| File | Content | Sources |
-| --- | --- | --- |
-| `docs/architecture-backend.md` | layer table with responsibilities; one real request walkthrough (P2P create: route → controller → service → repository → dao → pg); "where does this change go?" table; package map; known asymmetries (two `dto` packages, repository vs service sentinels) | `backend/internal/*`, `backend/cmd/server` |
-| `docs/domain.md` | Credits scale and arithmetic; accounts and double-entry ledger; positions and reservations; orders/trades; quotes and scores; P2P state machine; invariants and owning package per concept | `backend/internal/model` (38 files) |
-| `docs/errors.md` | the three sentinel namespaces and the translation rule (repository → service → controller); error → status table per controller | 51 `errors.New` declarations, `marketStatusFor`, `p2pStatusFor` |
-| `docs/ui.md` | palette and tokens (`index.css`); Rubik; BEM convention (block = folder in kebab-case); 12 components and 7 pages with one-line responsibility; routing in `App.tsx`; single breakpoint at 768px; loading/empty/error/unauthorized patterns; rules (axios only in `src/api/`, no inline styles, Spanish copy) | `frontend/src` |
+```bash
+cd backend && docker compose up -d
+docker compose exec -T db psql -U devuser -d nsp_db -c "SELECT count(*) FROM p2p_sessions;"
+docker compose exec -T db psql -U devuser -d nsp_db -c \
+  "SELECT count(*) FROM market_trades WHERE p2p_session_id IS NOT NULL;"
+```
 
-Each doc header must include the command that regenerates its inventory.
+Empty → nothing to do. Non-empty → stop and decide remediation before deploying. Do not
+backfill automatically.
 
-### 3.2 ADRs (new, `docs/adr/`)
+## 5. Slice 2 results
 
-Five one-pagers, ~15 lines each: layered flow; consumer-defined interfaces; DTO boundary and no
-JSON tags; credits as scaled int64 plus the wire-boundary rule; explicit access levels and JWT
-middleware.
+- `docs/architecture-backend.md` — 126 non-test Go files, layered table, P2P create walkthrough,
+  change-placement table, package map, asymmetries.
+- `docs/domain.md` — 26 model files: credits, ledger, positions, orders/trades, quotes/scores,
+  P2P state machine, invariant table.
+- `docs/errors.md` — 77 `errors.New` sites across ten packages, ownership table, translation
+  rule, `marketStatusFor` / `p2pStatusFor` tables, known gaps.
+- `docs/ui.md` — tokens, 15 components (11 + 4 admin), 7 pages, view routing, one 768px
+  breakpoint, state matrix, rules with exceptions.
+- `docs/adr/0001…0006` — layered flow, consumer interfaces, DTO boundary, credits scale, access
+  levels, DTO package split.
+- `design-backend` / `design-frontend` — primary-session skills, one-page output plus checklist.
+- `AGENTS.md` — two Agent workflow rows.
 
-Unresolved, decide during the slice: `internal/dto` vs `internal/controller/dto`. Document
-reality as a sixth ADR or update `AGENTS.md`; do not consolidate packages now.
+Reality corrections found while writing the docs, worth keeping in mind:
 
-### 3.3 Skills (new, `.opencode/skills/`)
+- The frontend has 15 component folders, not 12; `docs/ui.md` says so.
+- `CreditsADecimal` is duplicated in `internal/dto` and `internal/controller/dto`; only the latter
+  has `CreditsDesdeDecimal`.
+- 630 hard-coded colour literals across 21 of 23 CSS files; the new docs record this as debt.
+- `README.md:93-95` claims tests skip without Docker; they fail loudly in `TestMain`. Left
+  untouched because existing Spanish docs are frozen.
 
-`design-backend` and `design-frontend`, each with `SKILL.md` and
-`references/decision-template.md`. They run in the **primary** session because they ask
-questions; they are not subagents.
+## 6. Calibration results
 
-Shared procedure:
+| Skill | Input | Output | Verdict |
+| --- | --- | --- | --- |
+| `design-backend` | The implemented P2P price fix | `docs/designs/2026-11-25-p2p-price-units.md` | Independently states decimal string at the wire, scaled `int64` inside, no service/repository change, OpenAPI and frontend deltas, data caveat, rejected options. |
+| `design-frontend` | The `P2PCreatePage` loading-state P1 | `docs/designs/2026-11-25-p2p-create-states.md` | One page, component tree, states matrix, two files in the checklist, accessibility and copy included. |
 
-1. Read only `AGENTS.md` + 3 relevant docs + `specs/<feature>/spec.md` if it exists.
-2. At most 3 questions, each with a stated default.
-3. Present 2–3 options with repo-specific trade-offs.
-4. Write `docs/designs/<YYYY-MM-DD>-<topic>.md`; never overwrite without asking.
-5. Stop. No code, no `plans/` writes, no builds.
+Both are about 68–73 lines above the checklist, inside the template's "about one page" target.
+No template change was needed. A useful side effect: the frontend calibration surfaced that
+`loadPositions` depends on `selectedPlayerId`, so a naive loading branch would replace the form
+on every selection; the design records the stable-callback fix.
 
-Backend template: invariants · data/constraints · transactions and lock order · HTTP contract
-delta (method, path, access level, DTOs, units) · authorization matrix · error mapping ·
-concurrency/idempotency · migration/rollback · observability · rejected options · file checklist
-· out of scope.
-
-Frontend template: route and placement · component tree (reuse vs create) · state ownership ·
-`src/api` functions with signatures · states matrix · BEM blocks and tokens · 768px behavior ·
-accessibility · new copy · file checklist · non-goals.
-
-Hard rules: output ≤ 1 page plus the checklist; cite `path:line`; never read
-`specs/*/{plan,tasks,research}.md`; never invoke `speckit-*`.
-
-### 3.4 `AGENTS.md`
-
-Add two rows to the Agent workflow table pointing at the two design skills and `docs/designs/`.
-
-### 3.5 Validation for slice 2
-
-- Run `design-backend` on the P2P price fix (already implemented) and compare its decision doc
-  with `plans/p2p-price-scale-fix/plan.md`. Missing the unit boundary means the template lacks a
-  section.
-- Run `design-frontend` on the portfolio loading-state P1; expect one page, component tree,
-  states matrix, ≤ 6 files.
-- Reject any design doc over one page plus checklist; tighten the template.
-- Check each doc's inventory command against the tree.
-
-Estimated effort: docs + ADRs ≈ 2 h, skills ≈ 1 h, calibration ≈ 30 min.
-
-## 4. Backlog found by the review, not scheduled
+## 7. Backlog — not scheduled
 
 | Sev | Finding | Location |
 | --- | --- | --- |
 | P1 | Expiry job discards every error, including `tx.Commit()` | `backend/internal/persistence/repository/p2p.go:400-431` |
 | P1 | Position/account locks taken in role order, not id order | `backend/internal/persistence/repository/p2p.go:189,202,239,252` |
-| P1 | Unknown player maps to 500 instead of 404 | `backend/internal/controller/p2p.go:124`, `backend/internal/service/p2p.go:65` |
-| P1 | Non-UUID token returns 500 | `backend/internal/controller/p2p.go:65,87,108` |
-| P1 | Portfolio empty state renders during load and after failure | `frontend/src/pages/P2PCreatePage/P2PCreatePage.tsx:181` |
+| P1 | Unknown player maps to 500 instead of 404 | `backend/internal/controller/p2p.go`, `backend/internal/service/p2p.go:65` |
+| P1 | Non-UUID token returns 500 | `backend/internal/controller/p2p.go` |
+| P1 | P2P create form renders the empty state during load and after failure | `frontend/src/pages/P2PCreatePage/P2PCreatePage.tsx:186` |
 | P1 | COMPLETED card tells the buyer the trade was taken by someone else | `frontend/src/pages/P2PSessionPage/P2PSessionPage.tsx:246-254` |
-| P2 | 11 items (constraints, duplicate index, missing `SKIP LOCKED`, audit errors, retry idempotency, OpenAPI nullability, email exposure, refetch loop, clipboard, missing CSS, added comments) | see `plans/p2p-token-session/review.md` |
+| P2 | 11 items: constraints, duplicate index, missing `SKIP LOCKED`, audit errors, retry idempotency, OpenAPI nullability, email exposure, refetch loop, clipboard, missing CSS, added comments | see `plans/p2p-token-session/review.md` |
 
-Do not fix these as part of slice 2. Each gets its own task if you take it.
+Each gets its own task. Do not fold them into unrelated changes.
 
-## 5. How to resume
+## 8. How to resume
 
-2. Read `AGENTS.md` (language and spec-kit rules), then `docs/review.md`.
-3. For the review workflow: say "review this branch". Base defaults to `origin/dev`; the skill
-   refuses diffs over 600 lines / 20 files and writes `plans/<task>/review.md`.
-4. For slice 2: start with `docs/architecture-backend.md`, because the backend design skill
-   depends on it; `docs/ui.md` is independent and can be done in parallel.
-5. Verify with the command block in section 1.
-6. `go test ./...` will fail in Docker-backed packages (`service`, `persistence/repository`)
-   without the daemon, and in `internal/server` until decision 2.1 is resolved. That is expected;
-   do not silence it.
+1. Read `AGENTS.md`, then `docs/review.md` and the docs relevant to your task.
+2. For a review: say "review this branch". Base defaults to `origin/dev`; the skill refuses
+   diffs over 600 lines / 20 files and writes `plans/<task>/review.md`.
+3. For a design: use `design-backend` or `design-frontend`. They ask at most three questions,
+   write `docs/designs/<YYYY-MM-DD>-<topic>.md`, and stop before code.
+4. For tests: `cd backend && make test` (unit, no Docker), `make test-integration` (Docker),
+   `make coverage` (Docker, merged table plus HTML).
+5. Re-run the command block in section 2 only after changing code. Do not redo the verified
+   checks to "confirm" them.
 
-## 6. Constraints that are easy to violate
+`go test ./...` fails in `service` and `persistence/repository` without Docker. That is expected;
+never silence or skip it.
+
+## 9. Constraints that are easy to violate
 
 - New agent-facing docs, plans, skills, and reports are English. Product strings, UI copy,
   existing test names, and existing comments stay Spanish and are never translated.
@@ -161,14 +149,14 @@ Do not fix these as part of slice 2. Each gets its own task if you take it.
   invoke `speckit-*`.
 - Tests were allowed for the price fix only, on explicit request. The default remains: no test
   edits in a feature task.
-- The reviewer subagent has no shell and cannot edit. Findings still need human triage.
-- `formatCredits` was not changed; the new helper is `formatCreditDecimal` (trims zeros, comma).
-- The P2P service, repository, and DAO work in `model.Credits` and were intentionally untouched.
+- The design skills never write code, builds, or `plans/` files.
+- Leave the tree uncommitted until the human chooses the split.
 
-## 7. Definition of done for the whole workflow project
+## 10. Definition of done
 
-- Review skill produces a report a human can triage in under 10 minutes on a normal-sized diff.
-- Both design skills produce a one-page decision plus a file checklist, with no code.
-- Docs are accurate enough that `design-backend` does not need to open persistence or service
-  packages to propose a change.
-- Co-workers' speckit flow still works untouched.
+- `review-changes` produces a report a human can triage in under 10 minutes. Done.
+- Both design skills produce a one-page decision plus a file checklist, with no code. Done.
+- Docs are accurate enough that `design-backend` proposes a change without opening persistence
+  or service internals. Verified by the price-fix calibration.
+- Co-workers' speckit flow is untouched. Done.
+- Remaining before merge: Docker verification, the data check, and the commit split.
