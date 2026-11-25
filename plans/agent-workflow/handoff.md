@@ -143,7 +143,6 @@ Do not fix these as part of slice 2. Each gets its own task if you take it.
 
 ## 5. How to resume
 
-1. `git status` — expect the three groups in section 2.3 to be uncommitted.
 2. Read `AGENTS.md` (language and spec-kit rules), then `docs/review.md`.
 3. For the review workflow: say "review this branch". Base defaults to `origin/dev`; the skill
    refuses diffs over 600 lines / 20 files and writes `plans/<task>/review.md`.
