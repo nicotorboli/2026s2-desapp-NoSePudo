@@ -92,7 +92,7 @@ func (r *P2PRepository) Create(ctx context.Context, session model.P2PSession, ac
 	}
 
 	if r.auditDao != nil {
-		_ = r.auditDao.InsertAuditLog(ctx, tx, model.AuditLog{
+		if err = r.auditDao.InsertAuditLog(ctx, tx, model.AuditLog{
 			EntityType: "p2p_session",
 			EntityID:   created.ID,
 			Action:     "PLACE",
@@ -104,7 +104,9 @@ func (r *P2PRepository) Create(ctx context.Context, session model.P2PSession, ac
 				"price":    int64(created.Price),
 				"status":   string(created.Status),
 			},
-		})
+		}); err != nil {
+			return model.P2PSession{}, fmt.Errorf("registrar auditoría p2p create: %w", err)
+		}
 	}
 
 	if r.userDao != nil {
@@ -140,6 +142,10 @@ func (r *P2PRepository) Accept(ctx context.Context, token string, buyerID int64,
 		return model.Trade{}, err
 	}
 
+	if session.Status == model.P2PStatusCompleted && session.BuyerID != nil && *session.BuyerID == buyerID {
+		return r.tradeDao.GetByP2PSessionID(ctx, tx, session.ID)
+	}
+
 	if err = session.Accept(buyerID, now); err != nil {
 		return model.Trade{}, err
 	}
@@ -164,7 +170,7 @@ func (r *P2PRepository) Accept(ctx context.Context, token string, buyerID int64,
 	}
 
 	if r.auditDao != nil {
-		_ = r.auditDao.InsertAuditLog(ctx, tx, model.AuditLog{
+		if err = r.auditDao.InsertAuditLog(ctx, tx, model.AuditLog{
 			EntityType: "p2p_session",
 			EntityID:   session.ID,
 			Action:     "ACCEPT",
@@ -175,7 +181,9 @@ func (r *P2PRepository) Accept(ctx context.Context, token string, buyerID int64,
 				"completedAt": session.CompletedAt,
 				"costBasis":   int64(costBasisReleased),
 			},
-		})
+		}); err != nil {
+			return model.Trade{}, fmt.Errorf("registrar auditoría p2p accept: %w", err)
+		}
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -186,9 +194,27 @@ func (r *P2PRepository) Accept(ctx context.Context, token string, buyerID int64,
 }
 
 func (r *P2PRepository) transferTokens(ctx context.Context, tx *sql.Tx, session model.P2PSession, buyerID int64) (model.Credits, error) {
-	sellerPos, err := r.positionDao.LockByUserAndPlayer(ctx, tx, session.SellerID, session.PlayerID)
-	if err != nil {
-		return 0, err
+	var sellerPos, buyerPos model.Position
+	var err error
+
+	if buyerID < session.SellerID {
+		buyerPos, err = r.lockOrCreateBuyerPosition(ctx, tx, buyerID, session.PlayerID)
+		if err != nil {
+			return 0, err
+		}
+		sellerPos, err = r.positionDao.LockByUserAndPlayer(ctx, tx, session.SellerID, session.PlayerID)
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		sellerPos, err = r.positionDao.LockByUserAndPlayer(ctx, tx, session.SellerID, session.PlayerID)
+		if err != nil {
+			return 0, err
+		}
+		buyerPos, err = r.lockOrCreateBuyerPosition(ctx, tx, buyerID, session.PlayerID)
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	costBasisReleased, err := sellerPos.DeliverReservedTokens(session.Quantity)
@@ -197,11 +223,6 @@ func (r *P2PRepository) transferTokens(ctx context.Context, tx *sql.Tx, session 
 	}
 	if err = r.positionDao.Update(ctx, tx, sellerPos); err != nil {
 		return 0, fmt.Errorf("actualizar posición vendedor: %w", err)
-	}
-
-	buyerPos, err := r.lockOrCreateBuyerPosition(ctx, tx, buyerID, session.PlayerID)
-	if err != nil {
-		return 0, err
 	}
 
 	totalAmount := session.TotalAmount()
@@ -236,9 +257,27 @@ func (r *P2PRepository) lockOrCreateBuyerPosition(ctx context.Context, tx *sql.T
 }
 
 func (r *P2PRepository) settleBalances(ctx context.Context, tx *sql.Tx, sellerID, buyerID int64, totalAmount model.Credits) error {
-	buyerAccount, err := r.accountDao.LockByUser(ctx, tx, buyerID)
-	if err != nil {
-		return err
+	var buyerAccount, sellerAccount model.Account
+	var err error
+
+	if buyerID < sellerID {
+		buyerAccount, err = r.accountDao.LockByUser(ctx, tx, buyerID)
+		if err != nil {
+			return err
+		}
+		sellerAccount, err = r.accountDao.LockByUser(ctx, tx, sellerID)
+		if err != nil {
+			return err
+		}
+	} else {
+		sellerAccount, err = r.accountDao.LockByUser(ctx, tx, sellerID)
+		if err != nil {
+			return err
+		}
+		buyerAccount, err = r.accountDao.LockByUser(ctx, tx, buyerID)
+		if err != nil {
+			return err
+		}
 	}
 
 	if buyerAccount.AvailableBalance < totalAmount {
@@ -249,10 +288,6 @@ func (r *P2PRepository) settleBalances(ctx context.Context, tx *sql.Tx, sellerID
 		return fmt.Errorf("actualizar saldo comprador: %w", err)
 	}
 
-	sellerAccount, err := r.accountDao.LockByUser(ctx, tx, sellerID)
-	if err != nil {
-		return err
-	}
 	sellerAccount.AvailableBalance += totalAmount
 	if err = r.accountDao.UpdateBalances(ctx, tx, sellerAccount); err != nil {
 		return fmt.Errorf("actualizar saldo vendedor: %w", err)
@@ -356,7 +391,7 @@ func (r *P2PRepository) Cancel(ctx context.Context, token string, actorID int64,
 	}
 
 	if r.auditDao != nil {
-		_ = r.auditDao.InsertAuditLog(ctx, tx, model.AuditLog{
+		if err = r.auditDao.InsertAuditLog(ctx, tx, model.AuditLog{
 			EntityType: "p2p_session",
 			EntityID:   session.ID,
 			Action:     "CANCEL",
@@ -365,7 +400,9 @@ func (r *P2PRepository) Cancel(ctx context.Context, token string, actorID int64,
 				"status":      string(session.Status),
 				"completedAt": session.CompletedAt,
 			},
-		})
+		}); err != nil {
+			return fmt.Errorf("registrar auditoría p2p cancel: %w", err)
+		}
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -380,55 +417,90 @@ func (r *P2PRepository) ExpirePending(ctx context.Context, now time.Time) error 
 		return ErrP2PDatabaseNil
 	}
 
-	sessions, err := r.sessionDao.ListPendingExpired(ctx, now)
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("iniciar transacción p2p expire: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	sessions, err := r.sessionDao.ListPendingExpired(ctx, tx, now)
 	if err != nil {
 		return err
 	}
 
+	var errs []error
 	for _, session := range sessions {
-		tx, txErr := r.db.BeginTx(ctx, nil)
-		if txErr != nil {
+		if _, savepointErr := tx.ExecContext(ctx, "SAVEPOINT p2p_expire_session"); savepointErr != nil {
+			errs = append(errs, fmt.Errorf("abrir savepoint p2p expire: %w", savepointErr))
+			return errors.Join(errs...)
+		}
+
+		if expireErr := r.expireSession(ctx, tx, session.Token, now); expireErr != nil {
+			if _, rollbackErr := tx.ExecContext(ctx, "ROLLBACK TO SAVEPOINT p2p_expire_session"); rollbackErr != nil {
+				errs = append(errs, expireErr, fmt.Errorf("revertir savepoint p2p expire: %w", rollbackErr))
+				return errors.Join(errs...)
+			}
+			errs = append(errs, expireErr)
 			continue
 		}
 
-		lockedSession, lockErr := r.sessionDao.LockByToken(ctx, tx, session.Token)
-		if lockErr != nil {
-			_ = tx.Rollback()
-			continue
+		if _, releaseErr := tx.ExecContext(ctx, "RELEASE SAVEPOINT p2p_expire_session"); releaseErr != nil {
+			errs = append(errs, fmt.Errorf("liberar savepoint p2p expire: %w", releaseErr))
+			return errors.Join(errs...)
 		}
+	}
 
-		if !lockedSession.IsLive() {
-			_ = tx.Rollback()
-			continue
+	if err = tx.Commit(); err != nil {
+		errs = append(errs, fmt.Errorf("commit transacción p2p expire: %w", err))
+	}
+
+	return errors.Join(errs...)
+}
+
+func (r *P2PRepository) expireSession(ctx context.Context, tx *sql.Tx, token string, now time.Time) error {
+	lockedSession, err := r.sessionDao.LockByToken(ctx, tx, token)
+	if err != nil {
+		return err
+	}
+
+	if !lockedSession.IsLive() {
+		return nil
+	}
+
+	if err = lockedSession.Expire(now); err != nil {
+		return err
+	}
+
+	pos, posErr := r.positionDao.LockByUserAndPlayer(ctx, tx, lockedSession.SellerID, lockedSession.PlayerID)
+	if posErr != nil && !errors.Is(posErr, model.ErrPositionNotFound) {
+		return posErr
+	}
+	if posErr == nil {
+		if err = pos.ReleaseReservedTokens(lockedSession.Quantity); err != nil {
+			return err
 		}
-
-		if expireErr := lockedSession.Expire(now); expireErr != nil {
-			_ = tx.Rollback()
-			continue
+		if err = r.positionDao.Update(ctx, tx, pos); err != nil {
+			return fmt.Errorf("actualizar posición vendedor: %w", err)
 		}
+	}
 
-		pos, posErr := r.positionDao.LockByUserAndPlayer(ctx, tx, lockedSession.SellerID, lockedSession.PlayerID)
-		if posErr == nil {
-			_ = pos.ReleaseReservedTokens(lockedSession.Quantity)
-			_ = r.positionDao.Update(ctx, tx, pos)
+	if err = r.sessionDao.UpdateStatus(ctx, tx, lockedSession); err != nil {
+		return fmt.Errorf("actualizar sesión p2p: %w", err)
+	}
+
+	if r.auditDao != nil {
+		if err = r.auditDao.InsertAuditLog(ctx, tx, model.AuditLog{
+			EntityType: "p2p_session",
+			EntityID:   lockedSession.ID,
+			Action:     "EXPIRE",
+			Actor:      "system/p2p-expiration",
+			DiffNew: map[string]any{
+				"status":      string(lockedSession.Status),
+				"completedAt": lockedSession.CompletedAt,
+			},
+		}); err != nil {
+			return fmt.Errorf("registrar auditoría p2p expire: %w", err)
 		}
-
-		_ = r.sessionDao.UpdateStatus(ctx, tx, lockedSession)
-
-		if r.auditDao != nil {
-			_ = r.auditDao.InsertAuditLog(ctx, tx, model.AuditLog{
-				EntityType: "p2p_session",
-				EntityID:   lockedSession.ID,
-				Action:     "EXPIRE",
-				Actor:      "system/p2p-expiration",
-				DiffNew: map[string]any{
-					"status":      string(lockedSession.Status),
-					"completedAt": lockedSession.CompletedAt,
-				},
-			})
-		}
-
-		_ = tx.Commit()
 	}
 
 	return nil

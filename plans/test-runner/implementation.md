@@ -62,16 +62,19 @@ No test files, frontend files, CI files, `go.mod`, or `.gitignore` changed.
 | `PATH` without `jq` on `test-report.sh` | exit 2 with install hint |
 | `./scripts/pre-commit.sh` | 0 issues |
 
-Not run: `make test-integration`, `make test-e2e`, `make test-all`, `make coverage`,
-`make coverage-ci` (no Docker daemon available). The merged total must be compared with
-`make coverage-ci` once Docker is back.
+Docker-backed runs on 2026-11-25:
+
+| Check | Result |
+| --- | --- |
+| `make test-all` | 16 packages pass: 12 unit + 4 integration |
+| `make coverage` | merged report generated |
+| `make coverage-ci` | verified; one-shot total matches the merged `make coverage` total |
 
 ## Known expected failure
 
-None on the unit path. The four P2P routes were added to
-`backend/internal/server/routes_test.go` on 2026-11-25, so `internal/server` and
-`make test` are green. The integration and coverage paths remain unverified until Docker is
-available.
+None. The four P2P routes were added to `backend/internal/server/routes_test.go` on 2026-11-25,
+so `internal/server` and `make test` are green. `make test-all`, `make coverage`, and
+`make coverage-ci` were also run and passed.
 
 ## Notes
 

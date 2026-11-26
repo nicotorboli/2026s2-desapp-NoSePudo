@@ -319,11 +319,13 @@ CREATE TABLE IF NOT EXISTS p2p_sessions (
     completed_at TIMESTAMPTZ,
     CONSTRAINT chk_p2p_status CHECK (status IN ('PENDING', 'COMPLETED', 'CANCELLED', 'EXPIRED')),
     CONSTRAINT chk_p2p_quantity CHECK (quantity > 0),
-    CONSTRAINT chk_p2p_price CHECK (price > 0)
+    CONSTRAINT chk_p2p_price CHECK (price > 0),
+    CONSTRAINT chk_p2p_distinct_parties CHECK (buyer_id IS NULL OR buyer_id <> seller_id),
+    CONSTRAINT chk_p2p_buyer_consistency CHECK ((status = 'COMPLETED') = (buyer_id IS NOT NULL))
 );
 
 CREATE INDEX IF NOT EXISTS idx_p2p_sessions_seller ON p2p_sessions (seller_id, status);
-CREATE INDEX IF NOT EXISTS idx_p2p_sessions_token ON p2p_sessions (token);
+DROP INDEX IF EXISTS idx_p2p_sessions_token;
 CREATE INDEX IF NOT EXISTS idx_p2p_sessions_pending ON p2p_sessions (expires_at)
     WHERE status = 'PENDING';
 
@@ -336,6 +338,8 @@ ALTER TABLE market_trades
 ALTER TABLE market_trades
     ALTER COLUMN sell_order_id DROP NOT NULL;
 
-CREATE INDEX IF NOT EXISTS idx_trades_p2p ON market_trades (p2p_session_id)
+DROP INDEX IF EXISTS idx_trades_p2p;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_trades_p2p ON market_trades (p2p_session_id)
     WHERE p2p_session_id IS NOT NULL;
 

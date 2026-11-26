@@ -23,7 +23,6 @@ implemented; its record was corrected now that `make test` is green.
 | `AGENTS.md` | Two Agent workflow rows for the design skills. |
 | `docs/designs/2026-11-25-p2p-price-units.md` | Calibration output for `design-backend`. |
 | `docs/designs/2026-11-25-p2p-create-states.md` | Calibration output for `design-frontend`. |
-| `plans/agent-workflow/handoff.md` | Rewritten to the current branch, work, blockers, and backlog. |
 | `plans/test-runner/implementation.md` | Removed the stale "known expected failure"; `make test` now passes. |
 
 No production code, frontend source, OpenAPI, CI, `specs/`, or `.specify/` changes beyond the
@@ -43,7 +42,8 @@ authorized test edit.
 | ADR count | 6 |
 | Skill discovery | both new skills listed by OpenCode |
 | Calibration docs | backend 68 lines and frontend 73 lines above the checklist, within the template target |
+| `make test-all` (Docker, 2026-11-25) | 16 packages pass: 12 unit + 4 integration |
+| `make coverage` / `make coverage-ci` (Docker, 2026-11-25) | verified; merged and one-shot totals match |
 | `git status` | only the expected paths; nothing committed |
 
-Not verified: Docker-backed integration tests, merged coverage, and the P2P data check. Docker is
-unavailable; `plans/agent-workflow/handoff.md` records the exact commands.
+The P2P data check remains pending: it requires a database that still holds pre-fix rows.

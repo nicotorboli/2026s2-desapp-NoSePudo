@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
+	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/persistence/repository"
 )
 
 var (
@@ -64,7 +65,7 @@ func (s *P2PService) Create(ctx context.Context, cmd CreateP2PCommand) (model.P2
 
 	player, err := s.playerRepo.GetPlayerByID(ctx, cmd.PlayerID)
 	if err != nil {
-		return model.P2PSession{}, model.Player{}, err
+		return model.P2PSession{}, model.Player{}, translateP2PPlayerError(err)
 	}
 	if !player.Active {
 		return model.P2PSession{}, model.Player{}, ErrPlayerInactive
@@ -83,7 +84,7 @@ func (s *P2PService) Create(ctx context.Context, cmd CreateP2PCommand) (model.P2
 
 	created, err := s.repo.Create(ctx, session, cmd.Actor)
 	if err != nil {
-		return model.P2PSession{}, model.Player{}, err
+		return model.P2PSession{}, model.Player{}, translateP2PPlayerError(err)
 	}
 
 	return created, player, nil
@@ -97,10 +98,21 @@ func (s *P2PService) Get(ctx context.Context, token string) (model.P2PSession, m
 
 	player, err := s.playerRepo.GetPlayerByID(ctx, session.PlayerID)
 	if err != nil {
-		return model.P2PSession{}, model.Player{}, err
+		return model.P2PSession{}, model.Player{}, translateP2PPlayerError(err)
 	}
 
 	return session, player, nil
+}
+
+func translateP2PPlayerError(err error) error {
+	switch {
+	case errors.Is(err, repository.ErrNotFound):
+		return ErrNotFound
+	case errors.Is(err, repository.ErrPlayerInactive):
+		return ErrPlayerInactive
+	default:
+		return err
+	}
 }
 
 func (s *P2PService) Accept(ctx context.Context, token string, buyerID int64, actor string) (model.Trade, error) {

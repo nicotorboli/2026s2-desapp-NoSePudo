@@ -65,6 +65,60 @@ func (dao *TradeSql) CountByParticipant(ctx context.Context, userID int64) (int6
 	return total, nil
 }
 
+func (dao *TradeSql) GetByP2PSessionID(ctx context.Context, tx *sql.Tx, sessionID int64) (model.Trade, error) {
+	const query = `
+		SELECT id, buy_order_id, sell_order_id, buyer_id, seller_id, player_id,
+		       price, quantity, total_amount, executed_at, p2p_session_id
+		FROM market_trades
+		WHERE p2p_session_id = $1`
+
+	querier, err := querierFor(tx, dao.Db)
+	if err != nil {
+		return model.Trade{}, err
+	}
+
+	var (
+		trade        model.Trade
+		price        int64
+		totalAmount  int64
+		buyOrderID   sql.NullInt64
+		sellOrderID  sql.NullInt64
+		p2pSessionID sql.NullInt64
+	)
+
+	err = querier.QueryRowContext(ctx, query, sessionID).Scan(
+		&trade.ID,
+		&buyOrderID,
+		&sellOrderID,
+		&trade.BuyerID,
+		&trade.SellerID,
+		&trade.PlayerID,
+		&price,
+		&trade.Quantity,
+		&totalAmount,
+		&trade.ExecutedAt,
+		&p2pSessionID,
+	)
+	if err != nil {
+		return model.Trade{}, fmt.Errorf("leer la operación p2p: %w", err)
+	}
+
+	if buyOrderID.Valid {
+		trade.BuyOrderID = buyOrderID.Int64
+	}
+	if sellOrderID.Valid {
+		trade.SellOrderID = sellOrderID.Int64
+	}
+	trade.Price = model.Credits(price)
+	trade.TotalAmount = model.Credits(totalAmount)
+	if p2pSessionID.Valid {
+		id := p2pSessionID.Int64
+		trade.P2PSessionID = &id
+	}
+
+	return trade, nil
+}
+
 func (dao *TradeSql) ListByParticipant(ctx context.Context, userID int64, limit, offset int) ([]model.Trade, error) {
 	const query = `
 		SELECT id, buy_order_id, sell_order_id, buyer_id, seller_id, player_id,

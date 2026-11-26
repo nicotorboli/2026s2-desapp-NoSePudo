@@ -18,6 +18,20 @@
   margin: 0;
 }
 
+.p2p-create__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.5rem;
+}
+
+.p2p-create__description {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #64748b;
+  margin: 0 0 1.5rem;
+}
+
 .p2p-create__back-btn {
   background: none;
   border: none;
@@ -197,6 +211,12 @@
 }
 
 .p2p-create__empty {
+  text-align: center;
+  padding: 2rem;
+  color: #64748b;
+}
+
+.p2p-create__loading {
   text-align: center;
   padding: 2rem;
   color: #64748b;

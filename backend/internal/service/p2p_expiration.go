@@ -36,9 +36,12 @@ func NewP2PExpirationJob(repo P2PExpirationRepository, now func() time.Time, log
 }
 
 func (j *P2PExpirationJob) Start(ctx context.Context) {
-	ctx, cancel := context.WithCancel(ctx)
-
 	j.mu.Lock()
+	if j.started {
+		j.mu.Unlock()
+		return
+	}
+	ctx, cancel := context.WithCancel(ctx)
 	j.cancel = cancel
 	j.started = true
 	j.mu.Unlock()

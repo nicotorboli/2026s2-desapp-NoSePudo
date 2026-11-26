@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getUserPortfolio, PortfolioPositionDTO } from '../../api/portfolio';
 import { createP2PSession, P2PSessionDTO, CreateP2PSessionRequestDTO } from '../../api/p2p';
@@ -21,10 +21,11 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | ''>('');
   const [quantity, setQuantity] = useState<number>(1);
   const [pricePerToken, setPricePerToken] = useState<string>('1');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(isAuthenticated);
   const [createdSession, setCreatedSession] = useState<P2PSessionDTO | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const copyTimeoutRef = useRef<number | null>(null);
 
   const loadPositions = useCallback(async () => {
     if (!user) return;
@@ -33,21 +34,29 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
       const port = await getUserPortfolio(user.id);
       const available = (port.positions || []).filter((p) => (p.availableQuantity ?? p.quantity) > 0);
       setPositions(available);
-      if (available.length > 0 && selectedPlayerId === '') {
-        setSelectedPlayerId(available[0].playerId);
+      if (available.length > 0) {
+        setSelectedPlayerId((previous) => (previous === '' ? available[0].playerId : previous));
       }
     } catch {
       setError('Error al cargar los jugadores de tu portfolio.');
     } finally {
       setIsLoading(false);
     }
-  }, [user, selectedPlayerId]);
+  }, [user]);
 
   useEffect(() => {
     if (isAuthenticated && user) {
       loadPositions();
     }
   }, [isAuthenticated, user, loadPositions]);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current !== null) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!isAuthenticated) {
     return (
@@ -112,12 +121,20 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
     return `${origin}/?token=${token}`;
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     if (!createdSession) return;
     const link = getFullUrl(createdSession.token);
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
+    try {
+      await navigator.clipboard.writeText(link);
+      setError(null);
+      setCopied(true);
+      if (copyTimeoutRef.current !== null) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = window.setTimeout(() => setCopied(false), 3000);
+    } catch {
+      setError('No se pudo copiar el enlace. Copialo manualmente.');
+    }
   };
 
   return (
@@ -129,7 +146,11 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
         <h1 className="p2p-create__heading">Nueva Oferta Directa P2P</h1>
       </div>
 
-      {error && <div className="p2p-create__alert p2p-create__alert--error">{error}</div>}
+      {error && (
+        <div className="p2p-create__alert p2p-create__alert--error" role="alert">
+          {error}
+        </div>
+      )}
 
       {createdSession ? (
         <div className="p2p-create__success-card">
@@ -183,7 +204,11 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
         </div>
       ) : (
         <form className="p2p-create__form" onSubmit={handleSubmit}>
-          {positions.length === 0 ? (
+          {isLoading && positions.length === 0 && !error ? (
+            <div className="p2p-create__loading" role="status" aria-live="polite">
+              Cargando tus posiciones...
+            </div>
+          ) : !isLoading && !error && positions.length === 0 ? (
             <div className="p2p-create__empty">
               <p>No tienes tokens disponibles en tu portfolio para vender en este momento.</p>
               <button

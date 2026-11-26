@@ -1126,6 +1126,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/P2PSessionResponse'
+        '400':
+          description: Token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
@@ -1159,6 +1165,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/P2PTradeResponse'
+        '400':
+          description: Token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
@@ -1206,6 +1218,12 @@ paths:
       responses:
         '204':
           description: Sesión cancelada exitosamente
+        '400':
+          description: Token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -1887,8 +1905,9 @@ components:
         seller:
           $ref: '#/components/schemas/P2PUserSummary'
         buyer:
-          $ref: '#/components/schemas/P2PUserSummary'
-          nullable: true
+          anyOf:
+            - $ref: '#/components/schemas/P2PUserSummary'
+            - type: 'null'
         player:
           type: object
           properties:
@@ -1918,9 +1937,10 @@ components:
           type: string
           format: date-time
         completedAt:
-          type: string
-          format: date-time
-          nullable: true
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
 
     P2PTradeResponse:
       type: object

@@ -52,7 +52,6 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
     }
   }, [isAuthenticated, loadSession]);
 
-  // Manejo del contador regresivo
   useEffect(() => {
     if (!session || session.status !== 'PENDING') {
       setSecondsRemaining(null);
@@ -178,7 +177,6 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
     return `${mins.toString().padStart(2, '0')}:${rem.toString().padStart(2, '0')}`;
   };
 
-  // 1. Caso de Éxito al Aceptar
   if (tradeResult) {
     return (
       <div className="p2p-session">
@@ -222,7 +220,6 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
     );
   }
 
-  // 2. Caso Oferta Vencida
   if (isExpired) {
     return (
       <div className="p2p-session">
@@ -243,15 +240,21 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
     );
   }
 
-  // 3. Caso Oferta Ya Tomada por Otro Usuario
   if (session.status === 'COMPLETED') {
+    const isBuyer = session.buyer?.id === user?.id;
     return (
       <div className="p2p-session">
         <div className="p2p-session__card p2p-session__card--completed">
           <div className="p2p-session__badge p2p-session__badge--info">Finalizada</div>
-          <h2 className="p2p-session__title">Oferta Ya Aceptada</h2>
+          <h2 className="p2p-session__title">
+            {isBuyer ? 'Compra Completada' : isSeller ? 'Oferta Completada' : 'Oferta Ya Aceptada'}
+          </h2>
           <p className="p2p-session__text">
-            Esta transacción ya fue completada por otro usuario y no admite más compras.
+            {isBuyer
+              ? 'Ya completaste esta compra y los tokens fueron transferidos a tu portfolio.'
+              : isSeller
+                ? 'Tu oferta fue aceptada y la transacción se completó correctamente.'
+                : 'Esta transacción ya fue completada por otro usuario y no admite más compras.'}
           </p>
           <div className="p2p-session__actions">
             <button className="p2p-session__btn p2p-session__btn--secondary" onClick={onBack}>
@@ -263,7 +266,6 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
     );
   }
 
-  // 4. Caso Oferta Cancelada por el Vendedor
   if (session.status === 'CANCELLED') {
     return (
       <div className="p2p-session">
@@ -283,7 +285,6 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
     );
   }
 
-  // 5. Caso Principal: Oferta PENDING Activa
   return (
     <div className="p2p-session">
       <div className="p2p-session__card">
