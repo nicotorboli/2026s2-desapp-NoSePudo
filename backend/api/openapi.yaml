@@ -1126,6 +1126,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/P2PSessionResponse'
+        '400':
+          description: Token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
@@ -1159,6 +1165,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/P2PTradeResponse'
+        '400':
+          description: Token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '404':
@@ -1206,6 +1218,12 @@ paths:
       responses:
         '204':
           description: Sesión cancelada exitosamente
+        '400':
+          description: Token inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '401':
           $ref: '#/components/responses/Unauthenticated'
         '403':
@@ -1857,9 +1875,10 @@ components:
           format: int64
           minimum: 1
         pricePerToken:
-          type: integer
-          format: int64
-          minimum: 1
+          type: string
+          pattern: '^[0-9]+(\.[0-9]{1,4})?$'
+          example: '1.5000'
+          description: Price per token in credits with up to four decimal places.
 
     P2PUserSummary:
       type: object
@@ -1886,8 +1905,9 @@ components:
         seller:
           $ref: '#/components/schemas/P2PUserSummary'
         buyer:
-          $ref: '#/components/schemas/P2PUserSummary'
-          nullable: true
+          anyOf:
+            - $ref: '#/components/schemas/P2PUserSummary'
+            - type: 'null'
         player:
           type: object
           properties:
@@ -1898,11 +1918,15 @@ components:
           type: integer
           format: int64
         pricePerToken:
-          type: integer
-          format: int64
+          type: string
+          pattern: '^[0-9]+(\.[0-9]{1,4})?$'
+          example: '1.5000'
+          description: Agreed price per token in credits with four decimal places.
         totalAmount:
-          type: integer
-          format: int64
+          type: string
+          pattern: '^[0-9]+(\.[0-9]{1,4})?$'
+          example: '7.5000'
+          description: Total amount in credits with four decimal places.
         status:
           type: string
           enum: [PENDING, COMPLETED, CANCELLED, EXPIRED]
@@ -1913,9 +1937,10 @@ components:
           type: string
           format: date-time
         completedAt:
-          type: string
-          format: date-time
-          nullable: true
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
 
     P2PTradeResponse:
       type: object
@@ -1940,11 +1965,15 @@ components:
           type: integer
           format: int64
         pricePerToken:
-          type: integer
-          format: int64
+          type: string
+          pattern: '^[0-9]+(\.[0-9]{1,4})?$'
+          example: '1.5000'
+          description: Agreed price per token in credits with four decimal places.
         totalAmount:
-          type: integer
-          format: int64
+          type: string
+          pattern: '^[0-9]+(\.[0-9]{1,4})?$'
+          example: '7.5000'
+          description: Total amount in credits with four decimal places.
         executedAt:
           type: string
           format: date-time

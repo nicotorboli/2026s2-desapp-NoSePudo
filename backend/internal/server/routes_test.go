@@ -129,6 +129,7 @@ func routesUnderTest() []route {
 			Scoring: controller.NewScoringController(stubScoringService{}),
 			Auth:    controller.NewAuthController(stubAuthService{}),
 			Market:  controller.NewMarketController(nil, nil),
+			P2P:     controller.NewP2PController(nil),
 		},
 	}
 
@@ -179,6 +180,10 @@ func TestDeclaredLevelsMatchTheSpecification(t *testing.T) {
 		"DELETE /orders/{id}":                       AccessAuthenticated,
 		"GET /users/{id}/portfolio":                 AccessAuthenticated,
 		"GET /users/{id}/transactions":              AccessAuthenticated,
+		"POST /p2p/sessions":                        AccessAuthenticated,
+		"GET /p2p/sessions/{token}":                 AccessAuthenticated,
+		"POST /p2p/sessions/{token}/accept":         AccessAuthenticated,
+		"POST /p2p/sessions/{token}/cancel":         AccessAuthenticated,
 	}
 
 	declared := map[string]AccessLevel{}

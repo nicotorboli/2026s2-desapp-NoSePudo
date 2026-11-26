@@ -117,7 +117,7 @@ func (dao *P2PSessionSql) UpdateStatus(ctx context.Context, tx *sql.Tx, session 
 	return requireOneRow(result, model.ErrP2PSessionNotFound)
 }
 
-func (dao *P2PSessionSql) ListPendingExpired(ctx context.Context, now time.Time) ([]model.P2PSession, error) {
+func (dao *P2PSessionSql) ListPendingExpired(ctx context.Context, tx *sql.Tx, now time.Time) ([]model.P2PSession, error) {
 	const query = `
 		SELECT s.id, s.token, s.seller_id, u_seller.email,
 		       s.buyer_id, COALESCE(u_buyer.email, ''),
@@ -127,13 +127,14 @@ func (dao *P2PSessionSql) ListPendingExpired(ctx context.Context, now time.Time)
 		JOIN users u_seller ON u_seller.id = s.seller_id
 		LEFT JOIN users u_buyer ON u_buyer.id = s.buyer_id
 		WHERE s.status = 'PENDING' AND s.expires_at <= $1
-		ORDER BY s.expires_at ASC`
+		ORDER BY s.expires_at ASC
+		FOR UPDATE OF s SKIP LOCKED`
 
-	if dao.Db == nil {
-		return nil, errNilDatabase
+	if tx == nil {
+		return nil, errLockNeedsTransaction
 	}
 
-	rows, err := dao.Db.QueryContext(ctx, query, now)
+	rows, err := tx.QueryContext(ctx, query, now)
 	if err != nil {
 		return nil, fmt.Errorf("listar sesiones p2p vencidas: %w", err)
 	}

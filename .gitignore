@@ -1,5 +1,7 @@
 # Skills de agentes y herramientas de analisis local
-.opencode/
+.opencode/*
+!.opencode/agents/
+!.opencode/skills/
 .claude/
 .agents/
 graphify-out/

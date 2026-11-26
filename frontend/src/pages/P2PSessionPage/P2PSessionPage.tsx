@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getP2PSession, acceptP2PSession, cancelP2PSession, P2PSessionDTO, P2PTradeResponseDTO } from '../../api/p2p';
+import { formatCreditDecimal } from '../../utils/format';
 import './P2PSessionPage.css';
 
 interface P2PSessionPageProps {
@@ -51,7 +52,6 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
     }
   }, [isAuthenticated, loadSession]);
 
-  // Manejo del contador regresivo
   useEffect(() => {
     if (!session || session.status !== 'PENDING') {
       setSecondsRemaining(null);
@@ -177,7 +177,6 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
     return `${mins.toString().padStart(2, '0')}:${rem.toString().padStart(2, '0')}`;
   };
 
-  // 1. Caso de Éxito al Aceptar
   if (tradeResult) {
     return (
       <div className="p2p-session">
@@ -186,7 +185,7 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
           <h2 className="p2p-session__title">Compra Exitosa</h2>
           <p className="p2p-session__text">
             Has adquirido <strong>{tradeResult.quantity} tokens</strong> del jugador por un total de{' '}
-            <strong>{tradeResult.totalAmount} créditos</strong>.
+            <strong>{formatCreditDecimal(tradeResult.totalAmount)} créditos</strong>.
           </p>
           <div className="p2p-session__grid">
             <div className="p2p-session__grid-item">
@@ -221,7 +220,6 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
     );
   }
 
-  // 2. Caso Oferta Vencida
   if (isExpired) {
     return (
       <div className="p2p-session">
@@ -242,15 +240,21 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
     );
   }
 
-  // 3. Caso Oferta Ya Tomada por Otro Usuario
   if (session.status === 'COMPLETED') {
+    const isBuyer = session.buyer?.id === user?.id;
     return (
       <div className="p2p-session">
         <div className="p2p-session__card p2p-session__card--completed">
           <div className="p2p-session__badge p2p-session__badge--info">Finalizada</div>
-          <h2 className="p2p-session__title">Oferta Ya Aceptada</h2>
+          <h2 className="p2p-session__title">
+            {isBuyer ? 'Compra Completada' : isSeller ? 'Oferta Completada' : 'Oferta Ya Aceptada'}
+          </h2>
           <p className="p2p-session__text">
-            Esta transacción ya fue completada por otro usuario y no admite más compras.
+            {isBuyer
+              ? 'Ya completaste esta compra y los tokens fueron transferidos a tu portfolio.'
+              : isSeller
+                ? 'Tu oferta fue aceptada y la transacción se completó correctamente.'
+                : 'Esta transacción ya fue completada por otro usuario y no admite más compras.'}
           </p>
           <div className="p2p-session__actions">
             <button className="p2p-session__btn p2p-session__btn--secondary" onClick={onBack}>
@@ -262,7 +266,6 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
     );
   }
 
-  // 4. Caso Oferta Cancelada por el Vendedor
   if (session.status === 'CANCELLED') {
     return (
       <div className="p2p-session">
@@ -282,7 +285,6 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
     );
   }
 
-  // 5. Caso Principal: Oferta PENDING Activa
   return (
     <div className="p2p-session">
       <div className="p2p-session__card">
@@ -330,11 +332,11 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
           </div>
           <div className="p2p-session__grid-item">
             <span>Precio por token:</span>
-            <strong>{session.pricePerToken} créditos</strong>
+            <strong>{formatCreditDecimal(session.pricePerToken)} créditos</strong>
           </div>
           <div className="p2p-session__grid-item p2p-session__grid-item--highlight">
             <span>Total a pagar:</span>
-            <strong className="p2p-session__total">{session.totalAmount} créditos</strong>
+            <strong className="p2p-session__total">{formatCreditDecimal(session.totalAmount)} créditos</strong>
           </div>
         </div>
 
@@ -359,7 +361,7 @@ export const P2PSessionPage: React.FC<P2PSessionPageProps> = ({
                 onClick={handleAccept}
                 disabled={isSubmitting || secondsRemaining === 0}
               >
-                {isSubmitting ? 'Procesando...' : `Aceptar y Comprar (${session.totalAmount} créditos)`}
+                {isSubmitting ? 'Procesando...' : `Aceptar y Comprar (${formatCreditDecimal(session.totalAmount)} créditos)`}
               </button>
               <button
                 className="p2p-session__btn p2p-session__btn--secondary"

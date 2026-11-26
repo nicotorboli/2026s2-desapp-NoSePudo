@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/controller/dto"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/httphandler"
 	"github.com/nicotorboli/2026s2-desapp-NoSePudo/backend/internal/model"
@@ -43,12 +45,17 @@ func (c *RestP2PController) Create() httphandler.Endpoint {
 			return httphandler.NewError(http.StatusBadRequest, err.Error(), err)
 		}
 
+		price, err := request.ParsedPrice()
+		if err != nil {
+			return httphandler.NewError(http.StatusBadRequest, err.Error(), err)
+		}
+
 		created, player, err := c.p2pService.Create(req.Context(), service.CreateP2PCommand{
 			Actor:    auditActorOf(actor),
 			SellerID: actor.ID,
 			PlayerID: request.PlayerID,
 			Quantity: request.Quantity,
-			Price:    model.Credits(request.PricePerToken),
+			Price:    price,
 		})
 		if err != nil {
 			return p2pStatusFor(err)
@@ -62,9 +69,9 @@ func (c *RestP2PController) Create() httphandler.Endpoint {
 
 func (c *RestP2PController) Get() httphandler.Endpoint {
 	return func(w http.ResponseWriter, req *http.Request) error {
-		token := req.PathValue("token")
-		if token == "" {
-			return httphandler.NewError(http.StatusBadRequest, "token es obligatorio", errors.New("token faltante"))
+		token, err := p2pTokenFromPath(req)
+		if err != nil {
+			return err
 		}
 
 		session, player, err := c.p2pService.Get(req.Context(), token)
@@ -84,9 +91,9 @@ func (c *RestP2PController) Accept() httphandler.Endpoint {
 			return err
 		}
 
-		token := req.PathValue("token")
-		if token == "" {
-			return httphandler.NewError(http.StatusBadRequest, "token es obligatorio", errors.New("token faltante"))
+		token, err := p2pTokenFromPath(req)
+		if err != nil {
+			return err
 		}
 
 		trade, err := c.p2pService.Accept(req.Context(), token, actor.ID, auditActorOf(actor))
@@ -105,9 +112,9 @@ func (c *RestP2PController) Cancel() httphandler.Endpoint {
 			return err
 		}
 
-		token := req.PathValue("token")
-		if token == "" {
-			return httphandler.NewError(http.StatusBadRequest, "token es obligatorio", errors.New("token faltante"))
+		token, err := p2pTokenFromPath(req)
+		if err != nil {
+			return err
 		}
 
 		if err := c.p2pService.Cancel(req.Context(), token, actor.ID, auditActorOf(actor)); err != nil {
@@ -117,6 +124,17 @@ func (c *RestP2PController) Cancel() httphandler.Endpoint {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
+}
+
+func p2pTokenFromPath(req *http.Request) (string, error) {
+	token := req.PathValue("token")
+	if token == "" {
+		return "", httphandler.NewError(http.StatusBadRequest, "token es obligatorio", errors.New("token faltante"))
+	}
+	if _, err := uuid.Parse(token); err != nil {
+		return "", httphandler.NewError(http.StatusBadRequest, "token inválido", err)
+	}
+	return token, nil
 }
 
 func p2pStatusFor(err error) error {

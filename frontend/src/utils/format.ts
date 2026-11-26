@@ -53,6 +53,11 @@ export const formatCredits = (
     .replace('.', ',');
 };
 
+export const formatCreditDecimal = (val: string): string => {
+  const trimmed = val.includes('.') ? val.replace(/0+$/, '').replace(/\.$/, '') : val;
+  return trimmed.replace('.', ',');
+};
+
 export const translateOrderStatus = (status: string): string => {
   switch (status) {
     case 'PENDING':

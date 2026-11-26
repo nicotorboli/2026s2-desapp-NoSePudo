@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getUserPortfolio, PortfolioPositionDTO } from '../../api/portfolio';
 import { createP2PSession, P2PSessionDTO, CreateP2PSessionRequestDTO } from '../../api/p2p';
+import { formatCreditDecimal, parseCredits } from '../../utils/format';
 import './P2PCreatePage.css';
 
 interface P2PCreatePageProps {
@@ -19,11 +20,12 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
   const [positions, setPositions] = useState<PortfolioPositionDTO[]>([]);
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | ''>('');
   const [quantity, setQuantity] = useState<number>(1);
-  const [pricePerToken, setPricePerToken] = useState<number>(10000);
-  const [isLoading, setIsLoading] = useState(false);
+  const [pricePerToken, setPricePerToken] = useState<string>('1');
+  const [isLoading, setIsLoading] = useState(isAuthenticated);
   const [createdSession, setCreatedSession] = useState<P2PSessionDTO | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const copyTimeoutRef = useRef<number | null>(null);
 
   const loadPositions = useCallback(async () => {
     if (!user) return;
@@ -32,21 +34,29 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
       const port = await getUserPortfolio(user.id);
       const available = (port.positions || []).filter((p) => (p.availableQuantity ?? p.quantity) > 0);
       setPositions(available);
-      if (available.length > 0 && selectedPlayerId === '') {
-        setSelectedPlayerId(available[0].playerId);
+      if (available.length > 0) {
+        setSelectedPlayerId((previous) => (previous === '' ? available[0].playerId : previous));
       }
     } catch {
       setError('Error al cargar los jugadores de tu portfolio.');
     } finally {
       setIsLoading(false);
     }
-  }, [user, selectedPlayerId]);
+  }, [user]);
 
   useEffect(() => {
     if (isAuthenticated && user) {
       loadPositions();
     }
   }, [isAuthenticated, user, loadPositions]);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current !== null) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!isAuthenticated) {
     return (
@@ -71,11 +81,15 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
 
   const selectedPosition = positions.find((p) => p.playerId === Number(selectedPlayerId));
   const maxAvailable = selectedPosition ? (selectedPosition.availableQuantity ?? selectedPosition.quantity) : 0;
-  const totalAmount = quantity * pricePerToken;
+  const normalizedPrice = pricePerToken.trim().replace(',', '.');
+  const priceUnits = Math.round(parseCredits(normalizedPrice) * 10000);
+  const totalUnits = Number.isFinite(quantity) ? priceUnits * quantity : 0;
+  const totalAmount = formatCreditDecimal((totalUnits / 10000).toFixed(4));
+  const isValidPrice = /^\d+(\.\d{1,4})?$/.test(normalizedPrice) && priceUnits > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPlayerId || quantity <= 0 || pricePerToken <= 0) {
+    if (!selectedPlayerId || !(quantity > 0) || !isValidPrice) {
       setError('Por favor completa todos los campos con valores válidos.');
       return;
     }
@@ -90,7 +104,7 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
       const payload: CreateP2PSessionRequestDTO = {
         playerId: Number(selectedPlayerId),
         quantity,
-        pricePerToken,
+        pricePerToken: normalizedPrice,
       };
       const session = await createP2PSession(payload);
       setCreatedSession(session);
@@ -107,12 +121,20 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
     return `${origin}/?token=${token}`;
   };
 
-  const handleCopyLink = () => {
+  const handleCopyLink = async () => {
     if (!createdSession) return;
     const link = getFullUrl(createdSession.token);
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
+    try {
+      await navigator.clipboard.writeText(link);
+      setError(null);
+      setCopied(true);
+      if (copyTimeoutRef.current !== null) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = window.setTimeout(() => setCopied(false), 3000);
+    } catch {
+      setError('No se pudo copiar el enlace. Copialo manualmente.');
+    }
   };
 
   return (
@@ -124,7 +146,11 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
         <h1 className="p2p-create__heading">Nueva Oferta Directa P2P</h1>
       </div>
 
-      {error && <div className="p2p-create__alert p2p-create__alert--error">{error}</div>}
+      {error && (
+        <div className="p2p-create__alert p2p-create__alert--error" role="alert">
+          {error}
+        </div>
+      )}
 
       {createdSession ? (
         <div className="p2p-create__success-card">
@@ -154,8 +180,8 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
           <div className="p2p-create__success-details">
             <div><strong>Jugador:</strong> {createdSession.player.name}</div>
             <div><strong>Cantidad:</strong> {createdSession.quantity} tokens</div>
-            <div><strong>Precio por token:</strong> {createdSession.pricePerToken} créditos</div>
-            <div><strong>Total a cobrar:</strong> {createdSession.totalAmount} créditos</div>
+            <div><strong>Precio por token:</strong> {formatCreditDecimal(createdSession.pricePerToken)} créditos</div>
+            <div><strong>Total a cobrar:</strong> {formatCreditDecimal(createdSession.totalAmount)} créditos</div>
           </div>
 
           <div className="p2p-create__actions">
@@ -178,7 +204,11 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
         </div>
       ) : (
         <form className="p2p-create__form" onSubmit={handleSubmit}>
-          {positions.length === 0 ? (
+          {isLoading && positions.length === 0 && !error ? (
+            <div className="p2p-create__loading" role="status" aria-live="polite">
+              Cargando tus posiciones...
+            </div>
+          ) : !isLoading && !error && positions.length === 0 ? (
             <div className="p2p-create__empty">
               <p>No tienes tokens disponibles en tu portfolio para vender en este momento.</p>
               <button
@@ -235,11 +265,11 @@ export const P2PCreatePage: React.FC<P2PCreatePageProps> = ({
                 </label>
                 <input
                   id="priceInput"
-                  type="number"
-                  min="1"
+                  type="text"
+                  inputMode="decimal"
                   className="p2p-create__input"
                   value={pricePerToken}
-                  onChange={(e) => setPricePerToken(Number(e.target.value))}
+                  onChange={(e) => setPricePerToken(e.target.value)}
                   required
                 />
               </div>

@@ -12,12 +12,13 @@ var (
 	ErrP2PPlayerRequired   = errors.New("playerId es obligatorio y debe ser mayor a cero")
 	ErrP2PQuantityRequired = errors.New("quantity debe ser mayor a cero")
 	ErrP2PPriceRequired    = errors.New("pricePerToken debe ser mayor a cero")
+	ErrP2PPriceInvalid     = errors.New("pricePerToken debe ser un número decimal con hasta cuatro decimales")
 )
 
 type CreateP2PSessionRequest struct {
-	PlayerID      int64 `json:"playerId"`
-	Quantity      int64 `json:"quantity"`
-	PricePerToken int64 `json:"pricePerToken"`
+	PricePerToken string `json:"pricePerToken"`
+	PlayerID      int64  `json:"playerId"`
+	Quantity      int64  `json:"quantity"`
 }
 
 func (r *CreateP2PSessionRequest) Validate() error {
@@ -27,10 +28,21 @@ func (r *CreateP2PSessionRequest) Validate() error {
 	if r.Quantity <= 0 {
 		return ErrP2PQuantityRequired
 	}
-	if r.PricePerToken <= 0 {
-		return ErrP2PPriceRequired
+	if _, err := r.ParsedPrice(); err != nil {
+		return err
 	}
 	return nil
+}
+
+func (r *CreateP2PSessionRequest) ParsedPrice() (model.Credits, error) {
+	price, err := CreditsDesdeDecimal(r.PricePerToken)
+	if err != nil {
+		return 0, ErrP2PPriceInvalid
+	}
+	if price <= 0 {
+		return 0, ErrP2PPriceRequired
+	}
+	return price, nil
 }
 
 type P2PUserSummary struct {
@@ -51,13 +63,13 @@ type P2PSessionResponse struct {
 	Token         string           `json:"token"`
 	SessionURL    string           `json:"sessionUrl"`
 	Status        string           `json:"status"`
+	PricePerToken string           `json:"pricePerToken"`
+	TotalAmount   string           `json:"totalAmount"`
 	Seller        P2PUserSummary   `json:"seller"`
 	Buyer         *P2PUserSummary  `json:"buyer"`
 	Player        P2PPlayerSummary `json:"player"`
 	ID            int64            `json:"id"`
 	Quantity      int64            `json:"quantity"`
-	PricePerToken int64            `json:"pricePerToken"`
-	TotalAmount   int64            `json:"totalAmount"`
 }
 
 func P2PSessionResponseDesdeModelo(session model.P2PSession, player model.Player, sessionURL string) P2PSessionResponse {
@@ -88,8 +100,8 @@ func P2PSessionResponseDesdeModelo(session model.P2PSession, player model.Player
 			ClubName: player.ClubName,
 		},
 		Quantity:      session.Quantity,
-		PricePerToken: int64(session.Price),
-		TotalAmount:   int64(session.TotalAmount()),
+		PricePerToken: CreditsADecimal(session.Price),
+		TotalAmount:   CreditsADecimal(session.TotalAmount()),
 		Status:        string(session.Status),
 		CreatedAt:     session.CreatedAt,
 		ExpiresAt:     session.ExpiresAt,
@@ -100,13 +112,13 @@ func P2PSessionResponseDesdeModelo(session model.P2PSession, player model.Player
 type P2PTradeResponse struct {
 	ExecutedAt    time.Time `json:"executedAt"`
 	SessionToken  string    `json:"sessionToken"`
+	PricePerToken string    `json:"pricePerToken"`
+	TotalAmount   string    `json:"totalAmount"`
 	TradeID       int64     `json:"tradeId"`
 	BuyerID       int64     `json:"buyerId"`
 	SellerID      int64     `json:"sellerId"`
 	PlayerID      int64     `json:"playerId"`
 	Quantity      int64     `json:"quantity"`
-	PricePerToken int64     `json:"pricePerToken"`
-	TotalAmount   int64     `json:"totalAmount"`
 }
 
 func P2PTradeResponseDesdeModelo(trade model.Trade, sessionToken string) P2PTradeResponse {
@@ -117,8 +129,8 @@ func P2PTradeResponseDesdeModelo(trade model.Trade, sessionToken string) P2PTrad
 		SellerID:      trade.SellerID,
 		PlayerID:      trade.PlayerID,
 		Quantity:      trade.Quantity,
-		PricePerToken: int64(trade.Price),
-		TotalAmount:   int64(trade.TotalAmount),
+		PricePerToken: CreditsADecimal(trade.Price),
+		TotalAmount:   CreditsADecimal(trade.TotalAmount),
 		ExecutedAt:    trade.ExecutedAt,
 	}
 }
