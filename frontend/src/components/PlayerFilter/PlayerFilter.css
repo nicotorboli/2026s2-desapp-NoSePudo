@@ -1,43 +1,47 @@
 .player-filter {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  background-color: color-mix(in srgb, var(--orange-green) 19%, var(--radiant-orange) 5%, transparent);
-  padding: 1.5rem;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
+  gap: var(--s2);
   align-items: flex-end;
+  background-color: var(--paper-deep);
+  border: var(--rule-thin);
+  border-radius: 0;
+  box-shadow: var(--shadow-hard-sm);
+  padding: var(--s3);
+  margin-bottom: var(--s4);
 }
 
 .player-filter__group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--s1);
 }
 
 .player-filter__label {
-  font-size: 0.875rem;
+  color: var(--ink);
+  font-size: var(--t1);
   font-weight: 600;
-  color: var(--green-forest);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .player-filter__input,
 .player-filter__select {
-  padding: 0.625rem 0.75rem;
-  border: 1px solid #cbd5e0;
-  border-radius: 6px;
-  font-size: 0.9375rem;
-  color: #2d3748;
-  background-color: color-mix(in srgb, #ffffff 39%, transparent);
+  background-color: var(--paper);
+  border: var(--rule-thin);
+  border-radius: 0;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--t3);
+  padding: var(--s1) var(--s2);
   transition: border-color 0.2s;
 }
 
 .player-filter__input:focus,
 .player-filter__select:focus {
-  outline: none;
-  border-color: var(--teal);
-  box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.2);
+  outline: 3px solid var(--press);
+  outline-offset: 1px;
+  border-color: var(--ink);
 }
 
 .player-filter__actions {
@@ -47,20 +51,32 @@
 
 .player-filter__button {
   width: 100%;
-  padding: 0.625rem 1rem;
-  border-radius: 6px;
-  font-size: 0.9375rem;
+  padding: var(--s1) var(--s2);
+  border: 2px solid var(--ink);
+  white-space: nowrap;
+  border-radius: 0;
+  font-family: var(--font-body);
+  font-size: var(--t2);
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition: box-shadow 0.15s ease-in-out;
 }
 
 .player-filter__button--reset {
-  background-color: color-mix(in srgb, #ffffff 59%, transparent);
-  color: #4a5568;
-  border: 1px solid #cbd5e0;
+  background-color: var(--press);
+  color: var(--ink);
+  box-shadow: var(--shadow-hard-sm);
 }
 
 .player-filter__button--reset:hover {
-  background-color: #e2e8f0;
+  box-shadow: var(--shadow-hard);
+}
+
+@media (min-width: 768px) {
+  .player-filter {
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    column-gap: var(--s2);
+  }
 }

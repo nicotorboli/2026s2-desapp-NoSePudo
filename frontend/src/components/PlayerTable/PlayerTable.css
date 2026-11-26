@@ -1,70 +1,76 @@
 .player-table-container {
   width: 100%;
   overflow-x: auto;
-  background-color: color-mix(in srgb, var(--radiant-orange) 15%, transparent);
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: transparent;
+  border: var(--rule);
+  border-radius: 0;
+  box-shadow: var(--shadow-hard-sm);
 }
 
 .player-table {
   width: 100%;
+  min-width: 780px;
   border-collapse: collapse;
   text-align: left;
 }
 
 .player-table__head {
-  background-color: var(--ink-blue);
-  border-bottom: solid var(--ink-blue);
+  background-color: var(--ink);
 }
 
 .player-table__cell {
-  padding: 1rem 1.25rem;
-  font-size: 0.9375rem;
-  color: var(--ink-blue);
+  padding: var(--s2) var(--s3);
+  font-size: var(--t3);
+  color: var(--ink);
 }
 
 .player-table__cell--header {
-  font-size: 0.8125rem;
+  font-size: var(--t1);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--teal);
+  letter-spacing: 0.1em;
+  color: var(--paper);
+  white-space: nowrap;
 }
 
 .player-table__sort {
+  padding: 0;
   background: none;
   border: none;
-  padding: 0;
+  color: inherit;
   font: inherit;
   text-transform: inherit;
   letter-spacing: inherit;
-  color: var(--teal);
   cursor: pointer;
+}
+
+.player-table__sort:hover {
+  color: var(--gold);
 }
 
 .player-table__cell--name {
   font-weight: 600;
-  color: var(--green-forest);
+  color: var(--ink);
 }
 
 .player-table__cell--credits {
-  font-weight: 600;
-  color: var(--green-forest);
+  font-variant-numeric: tabular-nums;
+  color: var(--green-ink);
   white-space: nowrap;
 }
 
 .player-table__credits {
   display: inline-block;
-  padding: 0.25rem 0.65rem;
-  border-radius: 10px;
-  background-color: #fff3d6;
-  border: 1px solid #f0c46b;
-  color: var(--green-forest);
+  padding: 2px var(--s1);
+  background-color: var(--paper);
+  border: var(--rule-thin);
+  color: var(--green-ink);
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
 
 .player-table__row {
-  border: 1px solid var(--ink-blue);
+  border-bottom: var(--rule-thin);
   transition: background-color 0.15s ease-in-out;
 }
 
@@ -72,36 +78,39 @@
   cursor: pointer;
 }
 
-.player-table__row--interactive:hover {
-  background-color: color-mix(in srgb, var(--orange-green) 20%, transparent);
+.player-table__body .player-table__row:nth-child(even) {
+  background-color: var(--paper-deep);
+}
+
+.player-table__body .player-table__row--interactive:hover {
+  background-color: color-mix(in srgb, var(--press) 12%, var(--paper));
 }
 
 .player-table__position {
   display: inline-block;
-  padding: 0.25rem 0.625rem;
-  border-radius: 10px;
-  font-size: 0.75rem;
+  padding: 2px var(--s1);
+  border: var(--rule-thin);
+  border-radius: 0;
+  background-color: var(--paper-deep);
+  color: var(--ink);
+  font-size: var(--t1);
   font-weight: 600;
-  background-color: #edf2f7;
-  color: #4a5568;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .player-table__position--attacker {
-  background-color: #feebc8;
-  color: #c05621;
+  background-color: var(--press);
 }
 
 .player-table__position--midfielder {
-  background-color: #c6f6d5;
-  color: #22543d;
+  background-color: var(--green);
 }
 
 .player-table__position--defender {
-  background-color: #bee3f8;
-  color: #2b6cb0;
+  background-color: var(--teal);
 }
 
 .player-table__position--goalkeeper {
-  background-color: #fed7d7;
-  color: #9b2c2c;
+  background-color: var(--gold);
 }

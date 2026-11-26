@@ -1,35 +1,39 @@
 .score-bar {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  min-width: 7rem;
+  gap: var(--s1);
+  min-width: 10rem;
 }
 
 .score-bar--missing {
-  color: var(--ink-blue);
-  font-style: italic;
-  opacity: 0.6;
+  color: var(--ink-muted);
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 1;
 }
 
 .score-bar__value {
-  font-size: 0.8125rem;
+  min-width: 3rem;
+  font-size: var(--t1);
   font-weight: 700;
-  color: var(--ink-blue);
-  min-width: 3.5rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
   text-align: right;
 }
 
 .score-bar__track {
   flex: 1;
-  height: 0.5rem;
-  border-radius: 999px;
-  background-color: rgba(19, 27, 35, 0.15);
+  height: 10px;
+  background-color: var(--paper-deep);
+  border: var(--rule-thin);
+  border-radius: 0;
   overflow: hidden;
 }
 
 .score-bar__fill {
   display: block;
   height: 100%;
-  border-radius: 999px;
-  background-color: var(--golden);
+  background-color: var(--press);
+  border-radius: 0;
 }

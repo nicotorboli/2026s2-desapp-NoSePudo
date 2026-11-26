@@ -15,36 +15,64 @@ plus 4 under `components/admin/`), each with one `.tsx` and one `.css`. Pages ar
 
 ## 1. Palette and tokens
 
-`frontend/src/index.css:1-12` defines one `:root` block with seven colour variables and the
-document font. It is the only `:root` in `frontend/src`. No spacing, radius, shadow, or type-size
-tokens exist; sizes are literal `rem`/`px` values per file. There is no theme switch.
+`frontend/src/index.css:1-12` defines one `:root` block with the font stack, the palette and its
+legacy aliases, the type scale, spacing, grid, rule, and texture tokens. It is the only `:root` in
+`frontend/src`. Sizes in unmigrated files are still literal `rem`/`px` values; the shell now takes
+spacing, type, and colour from tokens. There is no theme switch.
 
 | Token | Value | Role in practice |
 | --- | --- | --- |
-| `--ink-blue` | `#131b23` | body text, table text (63 `var()` uses) |
-| `--golden` | `#dfaf0f` | brand accent, Navbar and score highlights (19) |
-| `--radiant-orange` | `#ff7f1f` | primary action, focus ring (12) |
-| `--green-forest` | `#114e04` | pagination and success-leaning controls (15) |
-| `--orange-green` | `#a7af1f` | filter label accent (5) |
-| `--violet` | `#3f004f` | defined, never referenced (0) |
-| `--teal` | `#7ebdc2` | hover borders and secondary text (9) |
+| `--press` | `#e83b20` | primary accent at 8°; stamp fills and rules |
+| `--press-ink` | `#b02918` | red text on paper |
+| `--gold` | `#dcb207` | foil accent at 60.5°, Navbar title and brand |
+| `--green` | `#1a9e57` | positive fills at 145.5° |
+| `--green-ink` | `#11703c` | positive text on paper |
+| `--teal` | `#17a2b8` | secondary accent at 198°, Navbar links |
+| `--violet` | `#7b2fb0` | admin accent at 283°, defined and not yet referenced |
+| `--paper` | `#f4ead8` | 60% surface: sheets and text on ink |
+| `--paper-deep` | `#e7d7bb` | alternating rows and wells |
+| `--paper-edge` | `#d8c4a0` | die-cut edges |
+| `--ink` | `#0d0b09` | 30% surface: cover, type, rules |
+| `--ink-2` | `#2a2521` | cover gradient top |
+| `--ink-muted` | `#5c5348` | secondary text on paper |
 
-Typeface: Rubik is the base family, declared on `:root` at `frontend/src/index.css:2` and
-re-applied to `body` at `index.css:33`. It is not bundled; it is loaded from Google Fonts by the
-`<link>` in `frontend/index.html:6`, which requests Merriweather in the same call. Merriweather
-is the display face for headings in 12 CSS files (for example
-`frontend/src/pages/PlayerDetailPage/PlayerDetailPage.css:70`), and `Courier New` renders numeric
-trade columns (`frontend/src/components/PlayerTrade/PlayerTrade.css:55`). Fonts are requested
-from the network at page load; there is no self-hosted fallback.
+The palette is the golden-angle set anchored on `--press`. The five legacy names still resolve as
+aliases at `frontend/src/index.css:6`: `--ink-blue: var(--ink)`, `--golden: var(--gold)`,
+`--radiant-orange: var(--press)`, `--green-forest: var(--green-ink)`, and
+`--orange-green: var(--gold)`; `--teal` and `--violet` keep their names on the new values. No alias
+is removed in this pass.
 
-Hard-coded colours are the norm, not the exception. The 23 CSS files under `frontend/src`
-contain 630 hex literals; 21 of them contain at least one, including colours that duplicate a
-token: `#dfaf0f` is both `--golden` and a literal border in
-`frontend/src/components/AuthModal/AuthModal.css:31`. Only
-`frontend/src/components/PlayerScore/PlayerScore.css` and
-`frontend/src/components/ScoreBar/ScoreBar.css` are hex-free. The page background `#16241b` and
-body text `#232742` are literals at `frontend/src/index.css:30` and `index.css:34`, not tokens.
-This is known debt: new work should prefer an existing token, but do not mass-rewrite old files.
+The block also defines `--t1`-`--t8` and `--display` at `index.css:7`, Fibonacci spacing
+`--s1`-`--s6` at `index.css:8`, grid tokens (`--page`, `--gutter`, `--split`, `--split-rev`) at
+`index.css:9`, rules and print tokens (`--rule`, `--shadow-hard`, `--radius`, `--tilt`) at
+`index.css:10`, and textures (`--halftone`, its 6px `--halftone-tile`, `--grain`) at `index.css:11`.
+The body tiles the paper halftone over the grain on the ink cover at `index.css:30-32`.
+
+Typeface: Space Grotesk is the base family, declared as `--font-body` at
+`frontend/src/index.css:4` and applied to `:root` at `index.css:2` and `body` at `index.css:33`;
+Anton is the display face, `--font-display` at `index.css:4`, and it drives the base `h1`-`h3`
+rule at `index.css:50-56`. Both are loaded from Google Fonts by the `<link>` in
+`frontend/index.html:6`, which still requests Rubik and Merriweather in the same call. Rubik is the
+fallback in `--font-body`; Merriweather still renders headings in the unmigrated CSS files (for
+example `frontend/src/pages/PlayerDetailPage/PlayerDetailPage.css:70`), and `Courier New` renders
+numeric trade columns (`frontend/src/components/PlayerTrade/PlayerTrade.css:55`). Space Grotesk
+ships 300-700 and no italic. Fonts are requested from the network at page load; there is no
+self-hosted fallback.
+
+Hard-coded colours remain the norm outside the shell. The 23 CSS files under `frontend/src`
+contain 569 hex literals; 16 of them contain at least one, including colours that predate the
+tokens: `#dfaf0f` is still a literal border in
+`frontend/src/components/AuthModal/AuthModal.css:31` and no longer matches `--gold`. Seven files are hex-free:
+`frontend/src/components/Navbar/Navbar.css`,
+`frontend/src/components/Pagination/Pagination.css`,
+`frontend/src/components/PlayerFilter/PlayerFilter.css`,
+`frontend/src/components/PlayerScore/PlayerScore.css`,
+`frontend/src/components/PlayerTable/PlayerTable.css`,
+`frontend/src/components/ScoreBar/ScoreBar.css`, and
+`frontend/src/pages/PlayerListPage/PlayerListPage.css`. In `frontend/src/index.css` the
+literals now live only in the `:root` palette at `index.css:5`; `body` reads `--ink` at
+`index.css:30` and `--paper` at `index.css:34` instead of the old `#16241b` and `#232742`. This is
+known debt: new work should prefer an existing token, but do not mass-rewrite old files.
 
 ## 2. BEM convention
 
@@ -132,19 +160,30 @@ session ends.
 
 ## 5. Responsive
 
-There is exactly one media query under `frontend/src`:
+There are four media queries under `frontend/src`, all at the same breakpoint:
 
 ```bash
 grep -rn "@media" frontend/src
 # frontend/src/pages/PlayerDetailPage/PlayerDetailPage.css:100
+# frontend/src/pages/PlayerListPage/PlayerListPage.css:152
+# frontend/src/components/PlayerFilter/PlayerFilter.css:77
+# frontend/src/components/Pagination/Pagination.css:51
 ```
 
-It is `@media (min-width: 768px)` (`PlayerDetailPage.css:100-105`) and switches the detail page
-grid from one column to `1.05fr 1fr`. So the single breakpoint is 768px, applied to one page
-only.
+Each one is `@media (min-width: 768px)`, so 768px is the only breakpoint and mobile is the default
+layout. No file has more than one media query. `PlayerDetailPage.css:100-105` switches the detail
+grid from one column to `1.05fr 1fr`. `PlayerListPage.css:152` widens the catalog sheet padding and
+turns its header into the `--split` grid with the title and subtitle stacked in the wide column and
+the rotated press band in the narrow one at `PlayerListPage.css:182`. `PlayerFilter.css:77` replaces
+the `auto-fit` columns of `PlayerFilter.css:3` with the spans `2fr 1fr 1fr 1fr auto`.
+`Pagination.css:51` puts the footer on one `auto 1fr auto` row and restores the info line order at
+`Pagination.css:59`.
+
+The catalog table has no media query: it keeps its horizontal overflow wrapper at
+`PlayerTable.css:3` and its `min-width: 780px` at `PlayerTable.css:12` at every width.
 
 Everything else adapts without breakpoints: `repeat(auto-fit, minmax(...))` grids in
-`PlayerCard.css:60`, `PlayerFilter.css:3`, `PlayerStatistics.css:51`, `PortfolioPage.css:31`,
+`PlayerCard.css:60`, `PlayerStatistics.css:51`, `PortfolioPage.css:31`,
 `StrategySection.css:124`, `SyncSection.css:39`; horizontal table scrolling in
 `PlayerTable.css:3`, `RankingPage.css:68`, `PortfolioPage.css:135`, `SyncSection.css:225`,
 `CoefficientSection.css:31`; and `min-width: 320px` on `body` (`frontend/src/index.css:28`).
