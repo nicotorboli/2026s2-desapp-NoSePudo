@@ -36,26 +36,28 @@ export const PlayerScore: React.FC<PlayerScoreProps> = ({ score, history }) => {
           </div>
 
           {history.length > 1 && (
-            <table className="player-score__history">
-              <thead>
-                <tr>
-                  <th scope="col">Fecha</th>
-                  <th scope="col">Score</th>
-                  <th scope="col">Percentil</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((entry) => (
-                  <tr key={entry.computedAt}>
-                    <td>{new Date(entry.computedAt).toLocaleString('es-ES')}</td>
-                    <td>
-                      <ScoreBar score={entry.score} />
-                    </td>
-                    <td>{(entry.percentile * 100).toFixed(2)}%</td>
+            <div className="player-score__history-wrap">
+              <table className="player-score__history">
+                <thead>
+                  <tr>
+                    <th scope="col">Fecha</th>
+                    <th scope="col">Score</th>
+                    <th scope="col">Percentil</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {history.map((entry) => (
+                    <tr key={entry.computedAt}>
+                      <td>{new Date(entry.computedAt).toLocaleString('es-ES')}</td>
+                      <td>
+                        <ScoreBar score={entry.score} />
+                      </td>
+                      <td>{(entry.percentile * 100).toFixed(2)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </>
       )}

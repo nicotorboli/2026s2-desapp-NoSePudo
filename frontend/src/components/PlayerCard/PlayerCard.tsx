@@ -56,7 +56,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player }) => {
 
         <div className="player-card__field">
           <span className="player-card__label">Número de camiseta</span>
-          <span className="player-card__value">{formatShirtNumber(player.shirtNumber)}</span>
+          <span className="player-card__value player-card__value--shirt">{formatShirtNumber(player.shirtNumber)}</span>
         </div>
 
         <div className="player-card__field">

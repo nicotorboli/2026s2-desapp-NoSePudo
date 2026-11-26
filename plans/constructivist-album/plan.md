@@ -27,12 +27,59 @@ Design: `docs/designs/2026-11-26-constructivist-album.md`. Branch `redesign-fron
 - Mobile: navbar horizontal padding reduced to `--s3` so the three tabs fit one row, `.navbar__right` right-aligned, filter button `nowrap`, table header cells `nowrap`, table `min-width` 780px.
 - Design doc and `docs/ui.md` updated for the new ink value, the 780px table width, and the shifted line numbers.
 
+## P2 amendments after the first visual pass
+
+- `frontend/src/components/PlayerFilter/PlayerFilter.css` — grid overflow above 768px fixed. The 768px
+  template is now `repeat(4, minmax(0, 1fr)) auto`; `.player-filter__group` carries `min-width: 0`;
+  the inputs and selects carry `width: 100%` and `min-width: 0`. The controls no longer force their
+  intrinsic width, so the band shrinks inside the sheet instead of scrolling the page sideways. The
+  equal tracks, rather than the former `2fr` search column, keep "Todas las ligas" and "Todas las
+  posiciones" whole at 1200px and above; between roughly 768px and 1000px the selects still clip,
+  which is the accepted trade-off of the chosen option.
+- `frontend/src/pages/PlayerListPage/PlayerListPage.css` — the empty `::after` press band is gone.
+  The existing subtitle element is the band at every width: press fill, halftone, ink text at 4.75:1,
+  `--t3`. At 768px the header is a single `--split` row with the title in column 1 and the rotated
+  subtitle block in column 2, so the header height is `max(title, caption)` instead of title plus
+  subtitle plus strip.
+- `docs/ui.md` section 5 and the design doc updated with the new header and filter descriptions and
+  re-measured citations.
+
+## P3 — detail page
+
+- `frontend/src/pages/PlayerDetailPage/PlayerDetailPage.css` — rewritten as a paper sheet (halftone,
+  ink rule, press-tinted hard shadow, `width: calc(100% - var(--s3) * 2)`, `flex: 1`). Back button is
+  a stamp; loading spinner press on paper-edge; error card mirrors the catalog error. The 768px block
+  replaces `1.05fr 1fr` with `minmax(0, 1.618fr) minmax(360px, 1fr)`, `gap: var(--s4)` and
+  `min-width: 0` on both columns. Deleted the 75-line `.player-detail-page__card-col .player-card*`
+  override block and the 64-line dead `__unauth*` / `__auth-button*` block (no markup renders those
+  classes).
+- `frontend/src/components/PlayerCard/PlayerCard.css` — album sticker: halftone paper, ink rule, 6px
+  paper die-cut ring, ink offset shadow, static `-1.5deg` tilt, Anton uppercase name, press-ink club,
+  square status stamps, two-column field ledger with paper-edge hairlines, stamped shirt-number slot.
+  Dropped `max-width: 40%`; the detail page is the only consumer.
+- `frontend/src/components/PlayerCard/PlayerCard.tsx` — one presentational class,
+  `player-card__value--shirt`, appended to the existing value class.
+- `frontend/src/components/PlayerScore/PlayerScore.css` — stats ledger: paper panel, ink rule, hard
+  shadow, Anton heading with an ink rule, aligned breakdown with tabular numerals, ledger history
+  table with scoped zebra, non-italic uppercase empty state.
+- `frontend/src/components/PlayerScore/PlayerScore.tsx` — presentational scroll wrapper
+  `.player-score__history-wrap` around the history table; the table carries `min-width: 520px` so it
+  scrolls inside its panel at 360px instead of widening the page. No logic change.
+- `docs/ui.md` — section 1 hex count (569 to 505, 16 to 14 files, nine hex-free) and section 5 detail
+  grid description and citations.
+- Design doc — component tree note recording the two presentational markup touches.
+
+Accepted intermediate states: `PlayerQuote` and `PlayerStatistics` keep the old cream-card palette on
+the new paper sheet until P4; `PlayerTrade` keeps its old card in the narrow column until P5. Above
+roughly 1000px the split is 61.8/38.2; between 768px and that point the 360px trade floor compresses
+it toward 50/50, which is deliberate.
+
 ## Checks
 
-`npm run typecheck`, `npm run lint`, `npm run knip`, `npm run test` (16 files, 58 tests) and `npx vite build` all pass from `frontend/`. No `.tsx`, test, `package.json`, backend, or `specs/` file was touched. Visual check with Firefox headless at 1440px and 390px against the built CSS.
+`npm run typecheck`, `npm run lint`, `npm run knip`, `npm run test` (16 files, 58 tests) and `npx vite build` all pass from `frontend/` after P1, P2, the P2 amendments and P3. No test, `package.json`, backend, or `specs/` file was touched; the only `.tsx` edits are the two presentational touches listed above. Visual checks with Firefox headless against the built CSS at 1440px and 390px for the catalog and the detail page, plus 768px and 900px for the filter and header.
 
 ## Open items for the next passes
 
-- P3: `PlayerDetailPage`, `PlayerCard`, `PlayerScore`; delete the scoped `.player-card` overrides at `PlayerDetailPage.css:107-181`.
-- P4-P7 as listed in the design doc; P8 removes the legacy aliases and the Rubik/Merriweather requests.
-- `PlayerScore` still renders ink text on a translucent card on the detail page (pre-existing contrast debt, unchanged by P2).
+- P4: `PlayerQuote`, `PlayerStatistics`.
+- P5-P7 as listed in the design doc; P8 removes the legacy aliases and the Rubik/Merriweather requests.
+- `PlayerTrade` is the only remaining old cream card on the detail page.

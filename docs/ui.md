@@ -60,15 +60,17 @@ ships 300-700 and no italic. Fonts are requested from the network at page load; 
 self-hosted fallback.
 
 Hard-coded colours remain the norm outside the shell. The 23 CSS files under `frontend/src`
-contain 569 hex literals; 16 of them contain at least one, including colours that predate the
+contain 505 hex literals; 14 of them contain at least one, including colours that predate the
 tokens: `#dfaf0f` is still a literal border in
-`frontend/src/components/AuthModal/AuthModal.css:31` and no longer matches `--gold`. Seven files are hex-free:
+`frontend/src/components/AuthModal/AuthModal.css:31` and no longer matches `--gold`. Nine files are hex-free:
 `frontend/src/components/Navbar/Navbar.css`,
 `frontend/src/components/Pagination/Pagination.css`,
+`frontend/src/components/PlayerCard/PlayerCard.css`,
 `frontend/src/components/PlayerFilter/PlayerFilter.css`,
 `frontend/src/components/PlayerScore/PlayerScore.css`,
 `frontend/src/components/PlayerTable/PlayerTable.css`,
-`frontend/src/components/ScoreBar/ScoreBar.css`, and
+`frontend/src/components/ScoreBar/ScoreBar.css`,
+`frontend/src/pages/PlayerDetailPage/PlayerDetailPage.css`, and
 `frontend/src/pages/PlayerListPage/PlayerListPage.css`. In `frontend/src/index.css` the
 literals now live only in the `:root` palette at `index.css:5`; `body` reads `--ink` at
 `index.css:30` and `--paper` at `index.css:34` instead of the old `#16241b` and `#232742`. This is
@@ -164,20 +166,25 @@ There are four media queries under `frontend/src`, all at the same breakpoint:
 
 ```bash
 grep -rn "@media" frontend/src
-# frontend/src/pages/PlayerDetailPage/PlayerDetailPage.css:100
-# frontend/src/pages/PlayerListPage/PlayerListPage.css:152
-# frontend/src/components/PlayerFilter/PlayerFilter.css:77
+# frontend/src/pages/PlayerDetailPage/PlayerDetailPage.css:121
+# frontend/src/pages/PlayerListPage/PlayerListPage.css:146
+# frontend/src/components/PlayerFilter/PlayerFilter.css:80
 # frontend/src/components/Pagination/Pagination.css:51
 ```
 
 Each one is `@media (min-width: 768px)`, so 768px is the only breakpoint and mobile is the default
-layout. No file has more than one media query. `PlayerDetailPage.css:100-105` switches the detail
-grid from one column to `1.05fr 1fr`. `PlayerListPage.css:152` widens the catalog sheet padding and
-turns its header into the `--split` grid with the title and subtitle stacked in the wide column and
-the rotated press band in the narrow one at `PlayerListPage.css:182`. `PlayerFilter.css:77` replaces
-the `auto-fit` columns of `PlayerFilter.css:3` with the spans `2fr 1fr 1fr 1fr auto`.
-`Pagination.css:51` puts the footer on one `auto 1fr auto` row and restores the info line order at
-`Pagination.css:59`.
+layout. No file has more than one media query. `PlayerDetailPage.css:121-131` switches the detail
+grid from one column to `minmax(0, 1.618fr) minmax(360px, 1fr)` at `:127`, so the golden split is
+exact above roughly 1000px and the trade column never drops below 360px. `PlayerListPage.css:146`
+widens the catalog sheet padding and
+turns its header into the `--split` grid: the title sits in the wide column (`:159`) and the subtitle
+itself is the narrow column, a press block with a halftone texture in the base rule (`:49`) rotated
+at `:171`. The header height is therefore the taller of the two, with no empty band.
+`PlayerFilter.css:80` replaces the `auto-fit` columns of `PlayerFilter.css:3` with four equal
+flexible tracks plus the auto-width reset stamp at `PlayerFilter.css:82`; the groups and the controls
+carry `min-width: 0` and the controls `width: 100%` (`:18`, `:39-40`) so the row shrinks instead of
+overflowing. `Pagination.css:51` puts the footer on one `auto 1fr auto` row and restores the info
+line order at `Pagination.css:59`.
 
 The catalog table has no media query: it keeps its horizontal overflow wrapper at
 `PlayerTable.css:3` and its `min-width: 780px` at `PlayerTable.css:12` at every width.

@@ -1,21 +1,31 @@
 .player-score {
-  background-color: color-mix(in srgb, var(--radiant-orange) 12%, transparent);
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background-color: var(--paper);
+  border: var(--rule-thin);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hard-sm);
+  padding: var(--s3);
+  margin-bottom: var(--s3);
 }
 
 .player-score__title {
-  font-size: 1.25rem;
-  color: var(--ink-blue);
-  margin: 0 0 1rem;
+  font-family: var(--font-display);
+  font-size: var(--t5);
+  font-weight: 400;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin: 0 0 var(--s2);
+  padding-bottom: var(--s1);
+  border-bottom: 2px solid var(--ink);
 }
 
 .player-score__empty {
-  color: var(--ink-blue);
-  font-style: italic;
-  opacity: 0.7;
+  color: var(--ink-muted);
+  font-size: var(--t2);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-style: normal;
+  opacity: 1;
   margin: 0;
 }
 
@@ -23,57 +33,70 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 2rem;
-  margin-bottom: 1rem;
+  gap: var(--s3);
+  margin-bottom: var(--s2);
 }
 
 .player-score__breakdown {
   display: flex;
-  gap: 2rem;
+  flex-wrap: wrap;
+  gap: var(--s3);
   margin: 0;
 }
 
 .player-score__item {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 2px;
 }
 
 .player-score__label {
-  font-size: 0.75rem;
+  font-size: var(--t1);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--ink-blue);
-  opacity: 0.7;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  opacity: 1;
 }
 
 .player-score__value {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: var(--t3);
   font-weight: 600;
-  color: var(--green-forest);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.player-score__history-wrap {
+  overflow-x: auto;
 }
 
 .player-score__history {
   width: 100%;
+  min-width: 520px;
   border-collapse: collapse;
   text-align: left;
-  margin-top: 1rem;
+  margin-top: var(--s2);
 }
 
 .player-score__history th,
 .player-score__history td {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  color: var(--ink-blue);
-  border-bottom: 1px solid rgba(19, 27, 35, 0.15);
+  padding: var(--s1) var(--s2);
+  font-size: var(--t2);
+  color: var(--ink);
+  border-bottom: 1px solid var(--paper-edge);
+  font-variant-numeric: tabular-nums;
 }
 
 .player-score__history th {
-  font-size: 0.75rem;
+  font-size: var(--t1);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--teal);
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  border-bottom: var(--rule-thin);
+}
+
+.player-score__history tbody tr:nth-child(even) {
+  background-color: var(--paper-deep);
 }

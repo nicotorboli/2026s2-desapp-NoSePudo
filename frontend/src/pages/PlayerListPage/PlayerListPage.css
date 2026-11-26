@@ -34,17 +34,6 @@
   border-bottom: var(--rule);
 }
 
-.player-list-page__header::after {
-  content: "";
-  display: block;
-  height: var(--s2);
-  margin-top: var(--s2);
-  background: var(--press);
-  background-image: var(--halftone);
-  background-size: var(--halftone-tile) var(--halftone-tile);
-  border: var(--rule-thin);
-}
-
 .player-list-page__title {
   font-family: var(--font-display);
   font-size: var(--t7);
@@ -58,11 +47,16 @@
 }
 
 .player-list-page__subtitle {
-  font-size: var(--t4);
-  color: var(--ink-muted);
-  max-width: 58ch;
+  margin: var(--s2) 0 0;
+  padding: var(--s2);
+  background-color: var(--press);
+  background-image: var(--halftone);
+  background-size: var(--halftone-tile) var(--halftone-tile);
+  border: var(--rule-thin);
+  color: var(--ink);
+  font-size: var(--t3);
+  line-height: 1.45;
   text-shadow: none;
-  margin: 0;
 }
 
 .player-list-page__loading {
@@ -157,29 +151,23 @@
   .player-list-page__header {
     display: grid;
     grid-template-columns: var(--split);
-    grid-template-areas:
-      "title band"
-      "subtitle band";
-    grid-template-rows: auto 1fr;
-    align-items: end;
+    align-items: start;
     column-gap: var(--s3);
   }
 
   .player-list-page__title {
-    grid-area: title;
+    grid-column: 1;
     font-size: var(--display);
   }
 
   .player-list-page__subtitle {
-    grid-area: subtitle;
-  }
-
-  .player-list-page__header::after {
-    grid-area: band;
+    grid-column: 2;
+    margin: 0;
     align-self: stretch;
-    height: auto;
-    margin-top: 0;
-    transform: rotate(calc(var(--tilt) * -1));
+    display: flex;
+    align-items: center;
+    padding: var(--s3);
     box-shadow: var(--shadow-hard-sm);
+    transform: rotate(calc(var(--tilt) * -1));
   }
 }

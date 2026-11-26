@@ -2,8 +2,8 @@
 
 Replace the current dark-green reskin with an ink album cover and paper sticker sheets: golden-angle
 palette anchored on `#e83b20`, 60/30/10 surface proportion, 61.8/38.2 splits at 768px, Anton
-display type over Space Grotesk. P1 lays the tokens and the shell; P2 applies them to the catalog.
-No behavior, data, copy, route, or test change.
+display type over Space Grotesk. P1 lays the tokens and the shell; P2 applies them to the catalog;
+P3 applies them to the player detail. No behavior, data, copy, route, or test change.
 
 ## Route and placement
 
@@ -35,7 +35,9 @@ PlayerListPage                     reuse, frontend/src/pages/PlayerListPage/Play
 | PlayerTable | reuse | `PlayerTable.tsx:28` | existing container and table |
 | Pagination | reuse | `Pagination.tsx:25` | existing nav and two buttons |
 
-No component, file, or BEM block is created in P1 or P2.
+No component, file, or BEM block is created in P1 or P2. P3 adds two presentational touches only:
+`player-card__value--shirt` on the existing value span (`PlayerCard.tsx:59`) and a scroll wrapper
+around the score history table (`PlayerScore.tsx:39`) so the ledger cannot widen the page at 360px.
 
 ## State ownership (local/context/URL)
 
@@ -73,8 +75,9 @@ The six states keep their current markup and copy; only their colours and frames
 No new block. Extended blocks, all existing: `.navbar` (`Navbar.css:1`), `.player-list-page`
 (`PlayerListPage.css:1`), `.player-filter` (`PlayerFilter.css:1`), `.player-table-container` and
 `.player-table` (`PlayerTable.css:1`, `:9`), `.pagination` (`Pagination.css:1`). Elements and
-modifiers already in the markup are reused; decoration is `::before`/`::after` with `content: ""`
-and shapes only, no generated text.
+modifiers already in the markup are reused; the header caption is the existing subtitle element
+restyled as the press block, not a pseudo-element, and other decoration is `::before`/`::after` with
+`content: ""` and shapes only, no generated text.
 
 Tokens added to `:root` (`index.css:1-12`):
 
@@ -116,11 +119,15 @@ P1: no change. The Navbar keeps its single flex row; below 768 it wraps rather t
 breakpoint.
 
 P2: one new `@media (min-width: 768px)` per file at most, at the existing 768px breakpoint. Below it
-the header is one column, the filter stacks, the table keeps its horizontal overflow wrapper
-(`PlayerTable.css:3`), and the pagination footer stacks with full-width stamp buttons. At or above it
-the header band splits `1.618fr 1fr`, the filter uses golden spans 2/1/1/1 instead of the current
-`auto-fit` (`PlayerFilter.css:3`), and the pagination footer keeps its single row. `docs/ui.md:135-151`
-currently claims exactly one media query in `frontend/src`; P2 updates that count.
+the header is one column with the subtitle as a full-width press caption, the filter stacks, the
+table keeps its horizontal overflow wrapper (`PlayerTable.css:3`), and the pagination footer stacks
+with full-width stamp buttons. At or above it the header is a `1.618fr 1fr` row: the title in the
+wide column and the subtitle, styled as the rotated press block, in the narrow one, so the header
+height is the taller of the two and no empty band remains. The filter keeps a single row of four
+equal flexible tracks plus the auto-width reset stamp, with `min-width: 0` on the groups and
+controls so the row shrinks instead of overflowing. The pagination footer keeps its single row.
+`docs/ui.md` section 5 currently claims exactly one media query in `frontend/src`; P2 updates that
+count.
 
 ## Accessibility
 
@@ -157,10 +164,13 @@ P2 — catalog (5 files):
 - [ ] `frontend/src/components/Pagination/Pagination.css` — stamp footer
 - [ ] `frontend/src/components/ScoreBar/ScoreBar.css` — ink-bordered track and press fill, now that the table renders on paper
 
+
 ## Non-goals
 
-- No `tsx` edit: P1 and P2 are CSS plus one `index.html` line. Markup at `PlayerListPage.tsx:96-164` stays.
-- No other page or component: detail, trade, portfolio, P2P, admin, ranking, and auth modal stay on the old palette until their pass.
+- No `tsx` edit: P1-P3 are CSS plus one `index.html` line. Detail markup at
+  `PlayerDetailPage.tsx:107-162`, `PlayerCard.tsx:35-87` and `PlayerScore.tsx:14-58` stays.
+- No other page or component: trade, quote, statistics, portfolio, P2P, admin, ranking, and auth modal
+  stay on the old palette until their pass.
 - No alias removal, no Rubik/Merriweather removal, no `docs/ui.md` rewrite beyond the palette and breakpoint facts.
 - No test creation or edit; only regression runs.
 - No backend, `src/api`, state, copy, or dependency change.
