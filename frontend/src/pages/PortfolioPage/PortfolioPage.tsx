@@ -208,7 +208,7 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
                       <td>
                         <strong>{pos.quantity}</strong>
                         {pos.reservedQuantity && pos.reservedQuantity > 0 ? (
-                          <span style={{ display: 'block', fontSize: '0.8em', color: '#666' }}>
+                          <span className="portfolio-table__reserved">
                             ({pos.availableQuantity ?? (pos.quantity - pos.reservedQuantity)} disp. / {pos.reservedQuantity} en orden)
                           </span>
                         ) : null}
@@ -367,7 +367,7 @@ export const PortfolioPage: React.FC<PortfolioPageProps> = ({
                   <span>
                     Página {transactionsPage.page} de {transactionsPage.totalPages} ({transactionsPage.total} operaciones)
                   </span>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div className="portfolio-page__pagination-actions">
                     <button
                       type="button"
                       className="portfolio-page__page-btn"

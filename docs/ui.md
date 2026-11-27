@@ -15,10 +15,10 @@ plus 4 under `components/admin/`), each with one `.tsx` and one `.css`. Pages ar
 
 ## 1. Palette and tokens
 
-`frontend/src/index.css:1-12` defines one `:root` block with the font stack, the palette and its
-legacy aliases, the type scale, spacing, grid, rule, and texture tokens. It is the only `:root` in
-`frontend/src`. Sizes in unmigrated files are still literal `rem`/`px` values; the shell now takes
-spacing, type, and colour from tokens. There is no theme switch.
+`frontend/src/index.css:1-11` defines one `:root` block with the font stack, the palette, the type
+scale, spacing, grid, rule, and texture tokens. It is the only `:root` in `frontend/src`. Spacing,
+type, and colour come from tokens; only intrinsic sizes (table minimum widths, stamp padding) remain
+literal `px`/`rem`. There is no theme switch.
 
 | Token | Value | Role in practice |
 | --- | --- | --- |
@@ -28,7 +28,7 @@ spacing, type, and colour from tokens. There is no theme switch.
 | `--green` | `#1a9e57` | positive fills at 145.5° |
 | `--green-ink` | `#11703c` | positive text on paper |
 | `--teal` | `#17a2b8` | secondary accent at 198°, Navbar links |
-| `--violet` | `#7b2fb0` | admin accent at 283°, defined and not yet referenced |
+| `--violet` | `#7b2fb0` | admin accent at 283°: section header rules, session edge, logout hover |
 | `--paper` | `#f4ead8` | 60% surface: sheets and text on ink |
 | `--paper-deep` | `#e7d7bb` | alternating rows and wells |
 | `--paper-edge` | `#d8c4a0` | die-cut edges |
@@ -36,45 +36,27 @@ spacing, type, and colour from tokens. There is no theme switch.
 | `--ink-2` | `#2a2521` | cover gradient top |
 | `--ink-muted` | `#5c5348` | secondary text on paper |
 
-The palette is the golden-angle set anchored on `--press`. The five legacy names still resolve as
-aliases at `frontend/src/index.css:6`: `--ink-blue: var(--ink)`, `--golden: var(--gold)`,
-`--radiant-orange: var(--press)`, `--green-forest: var(--green-ink)`, and
-`--orange-green: var(--gold)`; `--teal` and `--violet` keep their names on the new values. No alias
-is removed in this pass.
+The palette is the golden-angle set anchored on `--press`. The old `--ink-blue`, `--golden`,
+`--radiant-orange`, `--green-forest` and `--orange-green` aliases were removed in P8; every
+stylesheet now uses the token names directly.
 
-The block also defines `--t1`-`--t8` and `--display` at `index.css:7`, Fibonacci spacing
-`--s1`-`--s6` at `index.css:8`, grid tokens (`--page`, `--gutter`, `--split`, `--split-rev`) at
-`index.css:9`, rules and print tokens (`--rule`, `--shadow-hard`, `--radius`, `--tilt`) at
-`index.css:10`, and textures (`--halftone`, its 6px `--halftone-tile`, `--grain`) at `index.css:11`.
-The body tiles the paper halftone over the grain on the ink cover at `index.css:30-32`.
+The block also defines `--t1`-`--t8` and `--display` at `index.css:6`, Fibonacci spacing
+`--s1`-`--s6` at `index.css:7`, grid tokens (`--page`, `--gutter`, `--split`, `--split-rev`) at
+`index.css:8`, rules and print tokens (`--rule`, `--shadow-hard`, `--radius`, `--tilt`) at
+`index.css:9`, and textures (`--halftone`, its 6px `--halftone-tile`, `--grain`) at `index.css:10`.
+The body tiles the paper halftone over the grain on the ink cover at `index.css:29-31`.
 
 Typeface: Space Grotesk is the base family, declared as `--font-body` at
-`frontend/src/index.css:4` and applied to `:root` at `index.css:2` and `body` at `index.css:33`;
+`frontend/src/index.css:4` and applied to `:root` at `index.css:2` and `body` at `index.css:32`;
 Anton is the display face, `--font-display` at `index.css:4`, and it drives the base `h1`-`h3`
-rule at `index.css:50-56`. Both are loaded from Google Fonts by the `<link>` in
-`frontend/index.html:6`, which still requests Rubik and Merriweather in the same call. Rubik is the
-fallback in `--font-body`; Merriweather still renders headings in the unmigrated CSS files (for
-example `frontend/src/pages/PlayerDetailPage/PlayerDetailPage.css:70`), and `Courier New` renders
-numeric trade columns (`frontend/src/components/PlayerTrade/PlayerTrade.css:55`). Space Grotesk
-ships 300-700 and no italic. Fonts are requested from the network at page load; there is no
-self-hosted fallback.
+rule at `index.css:49-55`. Both are the only families loaded from Google Fonts by the `<link>` in
+`frontend/index.html:6`. Space Grotesk ships 300-700 and no italic. Fonts are requested from the
+network at page load; there is no self-hosted fallback.
 
-Hard-coded colours remain the norm outside the shell. The 23 CSS files under `frontend/src`
-contain 505 hex literals; 14 of them contain at least one, including colours that predate the
-tokens: `#dfaf0f` is still a literal border in
-`frontend/src/components/AuthModal/AuthModal.css:31` and no longer matches `--gold`. Nine files are hex-free:
-`frontend/src/components/Navbar/Navbar.css`,
-`frontend/src/components/Pagination/Pagination.css`,
-`frontend/src/components/PlayerCard/PlayerCard.css`,
-`frontend/src/components/PlayerFilter/PlayerFilter.css`,
-`frontend/src/components/PlayerScore/PlayerScore.css`,
-`frontend/src/components/PlayerTable/PlayerTable.css`,
-`frontend/src/components/ScoreBar/ScoreBar.css`,
-`frontend/src/pages/PlayerDetailPage/PlayerDetailPage.css`, and
-`frontend/src/pages/PlayerListPage/PlayerListPage.css`. In `frontend/src/index.css` the
-literals now live only in the `:root` palette at `index.css:5`; `body` reads `--ink` at
-`index.css:30` and `--paper` at `index.css:34` instead of the old `#16241b` and `#232742`. This is
-known debt: new work should prefer an existing token, but do not mass-rewrite old files.
+All hard-coded colours now live in the token block. The 23 CSS files under `frontend/src` contain 13
+hex literals, all inside the `:root` palette at `index.css:5`; the other 22 files are hex-free.
+`body` reads `--ink` at `index.css:29` and `--paper` at `index.css:33` instead of the old `#16241b`
+and `#232742`. Keep it that way: new work takes an existing token.
 
 ## 2. BEM convention
 
@@ -162,14 +144,16 @@ session ends.
 
 ## 5. Responsive
 
-There are four media queries under `frontend/src`, all at the same breakpoint:
+There are six media queries under `frontend/src`, all at the same breakpoint:
 
 ```bash
 grep -rn "@media" frontend/src
+# frontend/src/components/PlayerFilter/PlayerFilter.css:80
+# frontend/src/components/PlayerTrade/PlayerTrade.css:555
+# frontend/src/components/Pagination/Pagination.css:51
+# frontend/src/pages/P2PSessionPage/P2PSessionPage.css:371
 # frontend/src/pages/PlayerDetailPage/PlayerDetailPage.css:121
 # frontend/src/pages/PlayerListPage/PlayerListPage.css:146
-# frontend/src/components/PlayerFilter/PlayerFilter.css:80
-# frontend/src/components/Pagination/Pagination.css:51
 ```
 
 Each one is `@media (min-width: 768px)`, so 768px is the only breakpoint and mobile is the default
@@ -184,17 +168,20 @@ at `:171`. The header height is therefore the taller of the two, with no empty b
 flexible tracks plus the auto-width reset stamp at `PlayerFilter.css:82`; the groups and the controls
 carry `min-width: 0` and the controls `width: 100%` (`:18`, `:39-40`) so the row shrinks instead of
 overflowing. `Pagination.css:51` puts the footer on one `auto 1fr auto` row and restores the info
-line order at `Pagination.css:59`.
+line order at `Pagination.css:59`. `PlayerTrade.css:555` splits the order book from one stacked
+column into `repeat(2, minmax(0, 1fr))`; below 768px the two buy/sell columns stay stacked.
+`P2PSessionPage.css:371` does the same for the session receipt grid.
 
 The catalog table has no media query: it keeps its horizontal overflow wrapper at
 `PlayerTable.css:3` and its `min-width: 780px` at `PlayerTable.css:12` at every width.
 
 Everything else adapts without breakpoints: `repeat(auto-fit, minmax(...))` grids in
-`PlayerCard.css:60`, `PlayerStatistics.css:51`, `PortfolioPage.css:31`,
-`StrategySection.css:124`, `SyncSection.css:39`; horizontal table scrolling in
-`PlayerTable.css:3`, `RankingPage.css:68`, `PortfolioPage.css:135`, `SyncSection.css:225`,
-`CoefficientSection.css:31`; and `min-width: 320px` on `body` (`frontend/src/index.css:28`).
-Fixed two-column grids do not adapt: `PlayerTrade.css:417` and `P2PSessionPage.css:175`.
+`PlayerCard.css:74`, `PlayerStatistics.css:72`, `PortfolioPage.css:42`,
+`StrategySection.css:132`, `SyncSection.css:43`; horizontal table scrolling in
+`PlayerTable.css:3`, `RankingPage.css:100`, `PortfolioPage.css:154`, `SyncSection.css:264`,
+`CoefficientSection.css:37`; and `min-width: 320px` on `body` (`frontend/src/index.css:27`).
+Every previously fixed two-column grid now stacks in its base rule and splits at 768px, and the
+remaining wide tables scroll inside their wrappers.
 
 ## 6. State patterns
 
@@ -267,7 +254,7 @@ components call typed functions such as `getPlayersRanking` (`PlayerListPage.tsx
 `acceptP2PSession` (`P2PSessionPage.tsx:136`). No component builds an API URL or imports axios.
 Keep it that way: one typed function per endpoint in `src/api/<module>.ts`.
 
-### No inline styles, with four verified exceptions
+### No inline styles, with one verified exception
 
 ```bash
 grep -rn "style={{" frontend/src --include=*.tsx
@@ -276,11 +263,9 @@ grep -rn "style={{" frontend/src --include=*.tsx
 | Location | What it does | Assessment |
 | --- | --- | --- |
 | `frontend/src/components/ScoreBar/ScoreBar.tsx:20` | sets `width: ${width}%` | dynamic value; unavoidable without a CSS variable |
-| `frontend/src/components/PlayerTrade/PlayerTrade.tsx:292` | small text for reserved-token note | should be a BEM element; debt |
-| `frontend/src/pages/PortfolioPage/PortfolioPage.tsx:211` | reserved-token note with `color: '#666'` | bypasses tokens; debt |
-| `frontend/src/pages/PortfolioPage/PortfolioPage.tsx:370` | flex row around pagination buttons | should be a BEM class; debt |
 
-Do not fix these as part of an unrelated change. New components must not add more.
+New components must not add more. Everything else, including the reserved-token note in
+`PlayerTrade`, is a BEM class styled from its component stylesheet.
 
 ### UI copy is Spanish
 

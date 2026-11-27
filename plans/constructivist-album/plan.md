@@ -74,12 +74,101 @@ the new paper sheet until P4; `PlayerTrade` keeps its old card in the narrow col
 roughly 1000px the split is 61.8/38.2; between 768px and that point the 360px trade floor compresses
 it toward 50/50, which is deliberate.
 
+## P4 — quote and statistics (implemented, uncommitted)
+
+- `frontend/src/components/PlayerQuote/PlayerQuote.css` — paper slip with halftone and hard shadow;
+  Anton title over an ink rule; `__current` price box on `--paper-deep` with tabular Anton price;
+  scoped-zebra history ledger; search form as paper controls plus a press stamp; catalog-shaped
+  error card and dashed empty slot. 13 hex and 18 alias uses removed.
+- `frontend/src/components/PlayerStatistics/PlayerStatistics.css` — stats ledger matching
+  `PlayerScore`; stamp tabs with a press active state (replaces the blue `#2b6cb0`); square tiles
+  with a gold rating tile; tabular values; scoped-zebra history. 18 hex removed.
+- `frontend/src/components/PlayerStatistics/PlayerStatistics.tsx` — one presentational wrapper,
+  `.player-stats__history-wrap`, around the 13-column history table (the same pattern as
+  `player-score__history-wrap` in P3).
+- Review fixes: the table keeps `display: table` and scrolls through the wrapper instead of relying
+  on `display: block`; the history price column is ink, because `--green-ink` on zebra
+  `--paper-deep` rows is 4.35:1.
+
+## P5 — trade (implemented, uncommitted)
+
+- `frontend/src/components/PlayerTrade/PlayerTrade.css` — order slip: ruled header, stamp tabs,
+  paper form, receipt block, order-book ledger on `--paper-deep`, catalog-shaped auth gate.
+  `Merriweather` and the four `"Courier New"` blocks replaced with the display/body stacks and
+  tabular numerals. One `@media (min-width: 768px)` splits `.player-trade__book-columns` into
+  `repeat(2, minmax(0, 1fr))`; it stacks below. 107 hex removed.
+- Review fix: the buy/sell book column titles are ink with a 3px `--green`/`--press` bottom rule
+  (`--green-ink` on `--paper-deep` was 4.35:1).
+- `frontend/src/components/PlayerTrade/PlayerTrade.tsx` — the inline reserved-token note becomes
+  `.player-trade__reserved`, styled from the stylesheet with `--t1`, `--ink-muted` and
+  `calc(var(--s1) / 2)`.
+
+## P6 — auth, ranking and portfolio (implemented, uncommitted)
+
+- `frontend/src/components/AuthModal/AuthModal.css` — paper ticket on the ink/grain overlay; gold top
+  band replaces the `#dfaf0f` double border; stamp tabs, paper fields, press submit, paper alert
+  cards, press-ink switch links. 46 hex and the `Merriweather` heading removed.
+- `frontend/src/pages/RankingPage/RankingPage.css` — catalog sheet and ledger: Anton header, press
+  subtitle band, ink table head, scoped zebra, position stamps on press/green/teal/gold, catalog
+  loading/error/empty. 28 hex and `Merriweather` removed.
+- `frontend/src/pages/PortfolioPage/PortfolioPage.css` — sheet, stamp tabs with count badge,
+  `--paper-deep` stat cards, ink-head ledger with buy/sell stamps, stamp pagination footer, paper
+  alerts, dashed empty slot. 66 hex and three `Merriweather` uses removed.
+- `frontend/src/pages/PortfolioPage/PortfolioPage.tsx` — two inline styles moved to
+  `portfolio-table__reserved` and `portfolio-page__pagination-actions`; no other markup change.
+- Review fixes: P&L badges get a `--paper` chip so `--green-ink`/`--press-ink` text sits on paper
+  (5.17:1 / 5.54:1) instead of `--paper-deep`.
+
+Checks after P4-P6: `npm run typecheck`, `npm run lint`, `npm run knip`, `npm run test` (16 files,
+58 tests) all pass. Inventory now 227 hex literals in 8 files, 15 hex-free; five media queries, all
+`min-width: 768px`.
+
+## P7 — P2P and admin (implemented, uncommitted)
+
+- `frontend/src/pages/P2PCreatePage/P2PCreatePage.css` — offer docket: paper sheet, ruled header,
+  paper form controls, receipt summary, share-link ticket, green success stamp, catalog-shaped
+  states. 32 hex and the `outline: none` removed.
+- `frontend/src/pages/P2PSessionPage/P2PSessionPage.css` — two-party receipt: paper card with
+  press/teal/ink-muted/green state edges, stamp badges, Anton timer with an urgent press state,
+  participant ledger, offer/grid receipt blocks, stamp actions. 43 hex removed; one
+  `@media (min-width: 768px)` splits the receipt grid.
+- `frontend/src/pages/AdminPage/AdminPage.css` — paper admin shell with `--violet` section rules,
+  stamp nav, session well, logout stamp. 16 hex removed.
+- `frontend/src/components/admin/AdminFeedback/AdminFeedback.css` — shared dialog on the ink/grain
+  overlay with a violet top edge, and status strips with green/press/teal left rules. 23 hex removed.
+- `frontend/src/components/admin/CoefficientSection/CoefficientSection.css` — coefficient ledger,
+  paper inputs, press button; `outline: none` removed. 24 hex removed.
+- `frontend/src/components/admin/StrategySection/StrategySection.css` — strategy cards with a press
+  active rule, tabular weights ledger, `monospace` replaced. 22 hex removed.
+- `frontend/src/components/admin/SyncSection/SyncSection.css` — schedules, on/off badges, status
+  strips, progress bar, history ledger; `outline: none` removed. 54 hex removed.
+- Review: no fixes needed. Class parity, scoped selectors, focus rings, violet usage (paper text on
+  violet only) and contrast all verified.
+
+## P8 — removal (implemented, uncommitted)
+
+- `frontend/src/index.css` — deleted the five legacy aliases and dropped `"Rubik"` from
+  `--font-body`. The 13 palette literals are untouched.
+- `frontend/index.html` — the Google Fonts request now asks only for Anton and Space Grotesk.
+- `docs/ui.md` and this design doc were updated to the final inventory.
+
+Final inventory: 13 hex literals, all in `index.css:5`; 22 hex-free CSS files; six
+`@media (min-width: 768px)` queries; no `Merriweather`, `Rubik`, `Courier New` or legacy alias
+anywhere under `frontend/`.
+
+## Status
+
+All passes P1-P8 are implemented. The only outstanding item is the commit; `ScoreBar.tsx:20` is the
+only remaining inline style in `frontend/src` (a dynamic width).
+
 ## Checks
 
-`npm run typecheck`, `npm run lint`, `npm run knip`, `npm run test` (16 files, 58 tests) and `npx vite build` all pass from `frontend/` after P1, P2, the P2 amendments and P3. No test, `package.json`, backend, or `specs/` file was touched; the only `.tsx` edits are the two presentational touches listed above. Visual checks with Firefox headless against the built CSS at 1440px and 390px for the catalog and the detail page, plus 768px and 900px for the filter and header.
-
-## Open items for the next passes
-
-- P4: `PlayerQuote`, `PlayerStatistics`.
-- P5-P7 as listed in the design doc; P8 removes the legacy aliases and the Rubik/Merriweather requests.
-- `PlayerTrade` is the only remaining old cream card on the detail page.
+`npm run typecheck`, `npm run lint`, `npm run knip`, `npm run test` (16 files, 58 tests) and
+`npx vite build` all pass from `frontend/` after P1-P8. No test, `package.json`, backend, or
+`specs/` file was touched. The `.tsx` edits are presentational only: the P3
+`player-card__value--shirt` class and `player-score__history-wrap`, the P4
+`player-stats__history-wrap`, and the presentational moves in `PlayerTrade.tsx` and
+`PortfolioPage.tsx`. Visual
+checks with Firefox headless against the built CSS at 1440px and 390px for the catalog and the
+detail page, plus 768px and 900px for the filter and header; P4-P8 were reviewed statically
+(class parity, hex/alias counts, scoped selectors, contrast) and against the shared build.

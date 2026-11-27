@@ -117,44 +117,46 @@ export const PlayerStatistics: React.FC<PlayerStatisticsProps> = ({ stats }) => 
           <p className="player-stats__updated">Actualizado: {formatDate(latest.createdAt)}</p>
         </>
       ) : (
-        <table className="player-stats__history">
-          <thead>
-            <tr>
-              <th scope="col">Fecha</th>
-              <th scope="col">Goles</th>
-              <th scope="col">Asistencias</th>
-              <th scope="col">Remates</th>
-              <th scope="col">Pases clave</th>
-              <th scope="col">Regates</th>
-              <th scope="col">Entradas</th>
-              <th scope="col">Intercepciones</th>
-              <th scope="col">Faltas</th>
-              <th scope="col">Despejes</th>
-              <th scope="col">Bloqueos</th>
-              <th scope="col">Gambeteado</th>
-              <th scope="col">Rating</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats.slice(1).map((snapshot) => (
-              <tr key={snapshot.createdAt}>
-                <td>{formatDate(snapshot.createdAt)}</td>
-                <td>{snapshot.goals}</td>
-                <td>{snapshot.assists}</td>
-                <td>{formatValue(snapshot.shots)}</td>
-                <td>{formatValue(snapshot.keyPasses)}</td>
-                <td>{formatValue(snapshot.dribbles)}</td>
-                <td>{formatValue(snapshot.tackles)}</td>
-                <td>{formatValue(snapshot.interceptions)}</td>
-                <td>{formatValue(snapshot.fouls)}</td>
-                <td>{formatValue(snapshot.clears)}</td>
-                <td>{formatValue(snapshot.blocks)}</td>
-                <td>{formatValue(snapshot.wasDribbled)}</td>
-                <td>{snapshot.rating.toFixed(2)}</td>
+        <div className="player-stats__history-wrap">
+          <table className="player-stats__history">
+            <thead>
+              <tr>
+                <th scope="col">Fecha</th>
+                <th scope="col">Goles</th>
+                <th scope="col">Asistencias</th>
+                <th scope="col">Remates</th>
+                <th scope="col">Pases clave</th>
+                <th scope="col">Regates</th>
+                <th scope="col">Entradas</th>
+                <th scope="col">Intercepciones</th>
+                <th scope="col">Faltas</th>
+                <th scope="col">Despejes</th>
+                <th scope="col">Bloqueos</th>
+                <th scope="col">Gambeteado</th>
+                <th scope="col">Rating</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {stats.slice(1).map((snapshot) => (
+                <tr key={snapshot.createdAt}>
+                  <td>{formatDate(snapshot.createdAt)}</td>
+                  <td>{snapshot.goals}</td>
+                  <td>{snapshot.assists}</td>
+                  <td>{formatValue(snapshot.shots)}</td>
+                  <td>{formatValue(snapshot.keyPasses)}</td>
+                  <td>{formatValue(snapshot.dribbles)}</td>
+                  <td>{formatValue(snapshot.tackles)}</td>
+                  <td>{formatValue(snapshot.interceptions)}</td>
+                  <td>{formatValue(snapshot.fouls)}</td>
+                  <td>{formatValue(snapshot.clears)}</td>
+                  <td>{formatValue(snapshot.blocks)}</td>
+                  <td>{formatValue(snapshot.wasDribbled)}</td>
+                  <td>{snapshot.rating.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );

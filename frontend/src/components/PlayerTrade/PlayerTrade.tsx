@@ -289,7 +289,7 @@ export const PlayerTrade: React.FC<PlayerTradeProps> = ({
             <span>
               Tokens en cartera: <strong>{totalOwnedTokens}</strong>
               {reservedTokens > 0 && (
-                <span style={{ fontSize: '0.85em', opacity: 0.85, marginLeft: '4px' }}>
+                <span className="player-trade__reserved">
                   ({availableTokens} disp. / {reservedTokens} en orden)
                 </span>
               )}

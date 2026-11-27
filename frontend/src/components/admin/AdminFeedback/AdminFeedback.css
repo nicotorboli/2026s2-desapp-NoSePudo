@@ -1,27 +1,29 @@
 .admin-status {
-  margin: 1rem 0;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
+  display: block;
+  width: 100%;
+  margin: var(--s3) 0;
+  padding: var(--s2) var(--s3);
+  background-color: var(--paper);
+  border: var(--rule-thin);
+  border-left: 6px solid var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hard-sm);
+  color: var(--ink);
+  font-size: var(--t2);
   font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  line-height: 1.5;
 }
 
 .admin-status--success {
-  background-color: #c6f6d5;
-  border: 1px solid #38a169;
-  color: #1c4532;
+  border-left-color: var(--green);
 }
 
 .admin-status--error {
-  background-color: #fed7d7;
-  border: 1px solid #e53e3e;
-  color: #742a2a;
+  border-left-color: var(--press);
 }
 
 .admin-status--info {
-  background-color: #bee3f8;
-  border: 1px solid #3182ce;
-  color: #2a4365;
+  border-left-color: var(--teal);
 }
 
 .admin-dialog {
@@ -31,75 +33,87 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
-  background-color: rgba(19, 27, 35, 0.65);
-  backdrop-filter: blur(3px);
+  padding: var(--s2);
+  background-color: var(--ink);
+  background-image: var(--grain);
 }
 
 .admin-dialog__panel {
   width: min(32rem, 100%);
-  padding: 1.75rem;
-  border-radius: 6px;
-  background-color: #dfc29d;
-  border: 1px solid rgba(223, 175, 15, 0.35);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  max-height: calc(100vh - var(--s3) * 2);
+  overflow-y: auto;
+  padding: var(--s3);
+  background-color: var(--paper);
+  background-image: var(--halftone);
+  background-size: var(--halftone-tile) var(--halftone-tile);
+  border: var(--rule);
+  border-top: 6px solid var(--violet);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hard);
+  color: var(--ink);
 }
 
 .admin-dialog__title {
-  margin: 0 0 0.5rem;
-  font-family: "Merriweather", Georgia, serif;
-  color: var(--ink-blue, #131b23);
-  font-size: 1.35rem;
-  font-weight: 800;
+  margin: 0 0 var(--s2);
+  font-family: var(--font-display);
+  font-size: var(--t5);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--ink);
 }
 
 .admin-dialog__description {
-  margin: 0 0 1.25rem;
-  color: #3d2f1f;
-  font-size: 0.95rem;
+  margin: 0 0 var(--s3);
+  color: var(--ink-muted);
+  font-size: var(--t2);
   line-height: 1.5;
 }
 
 .admin-dialog__actions {
   display: flex;
-  gap: 0.75rem;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: var(--s1);
 }
 
 .admin-dialog__button {
-  border-radius: 4px;
-  padding: 0.55rem 1rem;
-  font: inherit;
+  padding: var(--s1) var(--s2);
+  border: var(--rule-thin);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hard-sm);
+  font-family: var(--font-body);
+  font-size: var(--t2);
   font-weight: 700;
-  font-size: 0.875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-  transition: all 0.15s ease-in-out;
+  transition: box-shadow 0.15s ease-in-out;
 }
 
 .admin-dialog__button--cancel {
-  background-color: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(19, 27, 35, 0.25);
-  color: var(--ink-blue, #131b23);
+  background-color: var(--paper);
+  color: var(--ink);
 }
 
 .admin-dialog__button--cancel:hover:not(:disabled) {
-  background-color: #ffffff;
-  border-color: var(--ink-blue, #131b23);
+  box-shadow: var(--shadow-hard);
 }
 
 .admin-dialog__button--confirm {
-  border: 1px solid #c95e09;
-  background: linear-gradient(180deg, #ff9b49 0%, #ff7f1f 45%, #ea690b 100%);
-  color: #ffffff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  background-color: var(--press);
+  color: var(--ink);
 }
 
 .admin-dialog__button--confirm:hover:not(:disabled) {
-  background: linear-gradient(180deg, #ffa85c 0%, #ff8930 45%, #f27214 100%);
+  box-shadow: var(--shadow-hard);
 }
 
 .admin-dialog__button:disabled {
-  opacity: 0.55;
+  background-color: var(--paper-deep);
+  border-color: var(--ink-muted);
+  box-shadow: none;
+  color: var(--ink-muted);
   cursor: not-allowed;
 }

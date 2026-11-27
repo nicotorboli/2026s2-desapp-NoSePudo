@@ -1,9 +1,8 @@
 :root {
   font-family: var(--font-body);
   line-height: 1.5; font-weight: 400;
-  --font-display: "Anton", "Arial Narrow", Impact, sans-serif; --font-body: "Space Grotesk", "Rubik", system-ui, sans-serif;
+  --font-display: "Anton", "Arial Narrow", Impact, sans-serif; --font-body: "Space Grotesk", system-ui, sans-serif;
   --press: #e83b20; --press-ink: #b02918; --gold: #dcb207; --green: #1a9e57; --green-ink: #11703c; --teal: #17a2b8; --violet: #7b2fb0; --paper: #f4ead8; --paper-deep: #e7d7bb; --paper-edge: #d8c4a0; --ink: #0d0b09; --ink-2: #2a2521; --ink-muted: #5c5348;
-  --ink-blue: var(--ink); --golden: var(--gold); --radiant-orange: var(--press); --green-forest: var(--green-ink); --orange-green: var(--gold);
   --t1: 0.75rem; --t2: 0.875rem; --t3: 1rem; --t4: 1.25rem; --t5: 1.625rem; --t6: 2.0625rem; --t7: 2.625rem; --t8: 3.3125rem; --display: 4.236rem;
   --s1: 8px; --s2: 13px; --s3: 21px; --s4: 34px; --s5: 55px; --s6: 89px;
   --page: 1200px; --gutter: 21px; --split: 1.618fr 1fr; --split-rev: 1fr 1.618fr;
